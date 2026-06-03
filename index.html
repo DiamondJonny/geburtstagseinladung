@@ -1253,6 +1253,8 @@ let cinematicAliens = [];
 const alienCraters = [];
 let abductionUfo = null;
 let abductionPhase = 0;
+let nextAlienSpawn = 0;
+const MAX_ALIENS = 10;
 
 function makeVolcano(x, z, h, r) {
   const g = new THREE.Group();
@@ -2452,6 +2454,32 @@ function updateMonsters(dt) {
   }
 }
 
+function maybeSpawnAlien() {
+  if (!inAlienWorld || gameState !== 'playing') return;
+  if (performance.now() < nextAlienSpawn) return;
+  let aliveAliens = 0;
+  for (const m of monsters) if (m.alive && m.isAlien) aliveAliens++;
+  if (aliveAliens >= MAX_ALIENS) {
+    nextAlienSpawn = performance.now() + 3000;
+    return;
+  }
+  // Spawn at edge of alien area, away from player
+  let ax, az, tries = 0;
+  do {
+    const ang = Math.random() * Math.PI * 2;
+    const rad = 14 + Math.random() * 8;
+    ax = ALIEN_X + Math.cos(ang) * rad;
+    az = Math.sin(ang) * rad;
+    tries++;
+  } while (Math.hypot(ax - camera.position.x, az - camera.position.z) < 8 && tries < 15);
+  monsters.push(makeAlien(ax, 1.0 + Math.random() * 2.5, az, 0.85 + Math.random() * 0.4));
+  // Shrink spawn interval as more aliens die
+  let killedAliens = 0;
+  for (const m of monsters) if (!m.alive && m.isAlien) killedAliens++;
+  const interval = Math.max(4000, 9000 - killedAliens * 400);
+  nextAlienSpawn = performance.now() + interval;
+}
+
 function maybeSpawnCloudMonster() {
   if (!inBonusWorld || gameState !== 'playing') return;
   if (performance.now() < nextCloudSpawn) return;
@@ -2778,13 +2806,16 @@ function teleportToAlienWorld() {
   alienCakeState.hp = alienCakeState.maxHp;
   alienCakeState.alive = true;
   for (const c of alienCakeGroup.children) c.visible = true;
-  // Spawn 4 alien enemies around the pedestal
-  for (let i = 0; i < 4; i++) {
-    const ang = Math.random() * Math.PI * 2;
-    const ax = ALIEN_X + Math.cos(ang) * (8 + Math.random() * 4);
-    const az = Math.sin(ang) * (8 + Math.random() * 4);
-    monsters.push(makeAlien(ax, 1.0 + Math.random() * 2, az, 0.95 + Math.random() * 0.2));
+  // Spawn 8 alien enemies around the pedestal
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2 + Math.random() * 0.3;
+    const rad = 8 + Math.random() * 8;
+    const ax = ALIEN_X + Math.cos(ang) * rad;
+    const az = Math.sin(ang) * rad;
+    monsters.push(makeAlien(ax, 1.0 + Math.random() * 2, az, 0.9 + Math.random() * 0.3));
   }
+  // More aliens come over time
+  nextAlienSpawn = performance.now() + 8000;
   gameState = 'playing';
   showUnlockMessage('\u{1F47D} Du bist auf dem Alien-Planeten! Schlag die Alien-Torte zur&uuml;ck!');
   beep(440, 0.15, 'sine', 0.12);
@@ -2991,6 +3022,7 @@ function startGame() {
   for (const c of alienCakeGroup.children) c.visible = true;
   cinematicAliens.length = 0;
   abductionPhase = 0;
+  nextAlienSpawn = 0;
   if (abductionUfo) {
     scene.remove(abductionUfo.group);
     abductionUfo = null;
@@ -3104,6 +3136,7 @@ function animate() {
   updateCrowns();
   maybeSpawnMonster();
   maybeSpawnCloudMonster();
+  maybeSpawnAlien();
   updateArrows(dt);
   updateCinematic(dt);
   if (shootCooldown > 0) shootCooldown = Math.max(0, shootCooldown - dt);
