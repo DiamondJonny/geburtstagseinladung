@@ -176,17 +176,9 @@
 
 <div class="overlay hidden" id="winScreen">
   <div class="invitation">
-    <h2>Du bist eingeladen!</h2>
-    <p style="color:#fff; margin-bottom: 12px;">Die Torte ist Geschichte &mdash; und damit ist es offiziell:</p>
-    <div class="details">
-      <div class="row"><span class="label">Anlass:</span><span>Geburtstag von [DEIN NAME]</span></div>
-      <div class="row"><span class="label">Datum:</span><span>[TT.MM.JJJJ]</span></div>
-      <div class="row"><span class="label">Uhrzeit:</span><span>[XX:XX Uhr]</span></div>
-      <div class="row"><span class="label">Wo:</span><span>[ADRESSE / ORT]</span></div>
-      <div class="row"><span class="label">Programm:</span><span>[z.B. Pizza, Filme, &Uuml;bernachten]</span></div>
-      <div class="row"><span class="label">Mitbringen:</span><span>[z.B. Schlafsack, gute Laune]</span></div>
-      <div class="row"><span class="label">Zusagen bis:</span><span>[TT.MM.] an [KONTAKT]</span></div>
-    </div>
+    <h2>Geschafft! &#x1F389;</h2>
+    <p style="color:#fff; font-size:1.2em; margin-bottom: 14px;">Du hast die Alien-Torte zertr&uuml;mmert und das UFO besiegt!</p>
+    <p style="color:#fff; font-style:italic;">&#x1F3C6; Klassenkamerad-Held des Tages! &#x1F3C6;</p>
   </div>
   <button class="btn" id="restartBtn">Nochmal spielen</button>
 </div>
@@ -1610,27 +1602,75 @@ function makeAlien(x, y, z, scale) {
   // The final Alien Cake (glowing)
   alienCakeGroup = new THREE.Group();
   alienCakeGroup.position.set(ALIEN_X, 1.2, 0);
+  // Lime-green base (appetitlich, aber alien)
   const acBase = new THREE.Mesh(
     new THREE.CylinderGeometry(0.5, 0.55, 0.35, 24),
-    new THREE.MeshStandardMaterial({ color: 0x44aaff, emissive: 0x4488ff, emissiveIntensity: 0.25, roughness: 0.4 })
+    new THREE.MeshStandardMaterial({ color: 0x9bd44a, emissive: 0x55aa22, emissiveIntensity: 0.2, roughness: 0.45 })
   );
   acBase.position.y = 0.18;
   acBase.castShadow = true;
   alienCakeGroup.add(acBase);
+  // Darker green frosting on top
   const acTop = new THREE.Mesh(
     new THREE.CylinderGeometry(0.35, 0.4, 0.28, 24),
-    new THREE.MeshStandardMaterial({ color: 0xff44aa, emissive: 0xff44aa, emissiveIntensity: 0.3, roughness: 0.4 })
+    new THREE.MeshStandardMaterial({ color: 0x6cbb38, emissive: 0x55aa22, emissiveIntensity: 0.3, roughness: 0.4 })
   );
   acTop.position.y = 0.5;
   acTop.castShadow = true;
   alienCakeGroup.add(acTop);
+  // Bubbly sprinkles (yellow/green dots like pollen)
+  const sprColorsA = [0xffff66, 0xccff66, 0xeeffaa, 0xffeb66];
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const sp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.028, 6, 5),
+      new THREE.MeshStandardMaterial({ color: sprColorsA[i % sprColorsA.length], emissive: sprColorsA[i % sprColorsA.length], emissiveIntensity: 0.4 })
+    );
+    sp.position.set(Math.cos(a) * 0.22, 0.66, Math.sin(a) * 0.22);
+    alienCakeGroup.add(sp);
+  }
+  // Two alien eyes peeking out from the top (the "alien" personality)
+  for (const sx of [-0.09, 0.09]) {
+    const eyeball = new THREE.Mesh(
+      new THREE.SphereGeometry(0.065, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+    );
+    eyeball.position.set(sx, 0.72, 0.12);
+    alienCakeGroup.add(eyeball);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.028, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0x111111 })
+    );
+    pupil.position.set(sx, 0.72, 0.19);
+    alienCakeGroup.add(pupil);
+  }
+  // Crowning gem on top — glowing pink berry
   const acGem = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.16),
-    new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 0.9, metalness: 0.6, roughness: 0.1 })
+    new THREE.OctahedronGeometry(0.13),
+    new THREE.MeshStandardMaterial({ color: 0xff66cc, emissive: 0xff44aa, emissiveIntensity: 0.7, metalness: 0.4, roughness: 0.2 })
   );
-  acGem.position.y = 0.82;
+  acGem.position.y = 0.88;
   alienCakeGroup.add(acGem);
   scene.add(alienCakeGroup);
+
+  // Six red lasers from the UFO down to the ground forming a cage around the pedestal
+  const laserMat = new THREE.MeshBasicMaterial({ color: 0xff3344, transparent: true, opacity: 0.7 });
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const lx = ALIEN_X + Math.cos(a) * 1.7;
+    const lz = Math.sin(a) * 1.7;
+    const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 7.5, 6), laserMat);
+    laser.position.set(lx, 3.5, lz);
+    laser.visible = false;
+    scene.add(laser);
+    alienLasers.push(laser);
+    // Glow at base of each laser
+    const laserGlow = new THREE.PointLight(0xff3344, 0.6, 3);
+    laserGlow.position.set(lx, 0.4, lz);
+    laser.userData.glow = laserGlow;
+    scene.add(laserGlow);
+    laserGlow.visible = false;
+  }
 
   // Two moons in the alien sky
   const moon1 = new THREE.Mesh(
@@ -2363,7 +2403,15 @@ function checkHit() {
     const ok = dist <= 2.8
       && (cw.y - camera.position.y <= 0.7)
       && camDir.dot(cw.clone().sub(camera.position).normalize()) >= 0.4;
-    if (ok) { registerAlienCakeHit(); return; }
+    if (ok) {
+      if (alienLasersActive()) {
+        beep(160, 0.18, 'sawtooth', 0.12);
+        showUnlockMessage('🚨 Erst alle Aliens töten — die UFO-Laser schützen die Torte!');
+        return;
+      }
+      registerAlienCakeHit();
+      return;
+    }
   }
 
   // Bonus cakes (in the cloud world)
@@ -2554,8 +2602,12 @@ function updateArrows(dt) {
       alienCakeGroup.getWorldPosition(cw);
       cw.y += 0.45;
       if (a.pos.distanceTo(cw) < 0.7) {
-        registerAlienCakeHit();
-        hit = true;
+        if (alienLasersActive()) {
+          hit = true; // arrow blocked by laser
+        } else {
+          registerAlienCakeHit();
+          hit = true;
+        }
       }
     }
     // Boundary / out of world
@@ -2638,6 +2690,27 @@ function updateMonsters(dt) {
   }
 }
 
+function alienLasersActive() {
+  if (!inAlienWorld) return false;
+  // Wait until initial 8 aliens have been spawned
+  if (totalAliensSpawned < 8) return true;
+  // Any alien still alive?
+  for (const m of monsters) {
+    if (m.alive && m.isAlien) return true;
+  }
+  return false;
+}
+
+function updateLasers() {
+  const shouldShow = alienLasersActive();
+  for (const l of alienLasers) {
+    if (l.visible !== shouldShow) {
+      l.visible = shouldShow;
+      if (l.userData.glow) l.userData.glow.visible = shouldShow;
+    }
+  }
+}
+
 function maybeSpawnAlien() {
   if (!inAlienWorld || gameState !== 'playing') return;
   if (performance.now() < nextAlienSpawn) return;
@@ -2656,11 +2729,16 @@ function maybeSpawnAlien() {
     az = Math.sin(ang) * rad;
     tries++;
   } while (Math.hypot(ax - camera.position.x, az - camera.position.z) < 8 && tries < 15);
+  if (totalAliensSpawned >= MAX_ALIENS_TO_SPAWN) {
+    nextAlienSpawn = performance.now() + 5000;
+    return;
+  }
   if (Math.random() < 0.5) {
     monsters.push(makeAlien(ax, 1.0 + Math.random() * 2.5, az, 0.85 + Math.random() * 0.4));
   } else {
     monsters.push(makeHumanAlien(ax, 0, az, 0.95 + Math.random() * 0.2));
   }
+  totalAliensSpawned++;
   // Shrink spawn interval as more aliens die
   let killedAliens = 0;
   for (const m of monsters) if (!m.alive && m.isAlien) killedAliens++;
@@ -2840,23 +2918,33 @@ function updateCompass() {
 }
 
 function win() {
-  // Garden cake destroyed → show invitation first
+  // Garden cake destroyed → UFO cinematic first, THEN show invitation after abduction
   for (const child of cakeGroup.children) child.visible = false;
   spawnCrumbs(180, true);
   beep(523, 0.15, 'square', 0.15);
   setTimeout(() => beep(659, 0.15, 'square', 0.15), 150);
   setTimeout(() => beep(784, 0.3, 'square', 0.15), 300);
-  gameState = 'showInvite';
-  if (!isTouch) document.exitPointerLock();
-  touchUI.classList.remove('active');
-  setTimeout(() => {
-    invitationScreen.classList.remove('hidden');
-    spawnConfetti();
-  }, 800);
+  // Start abduction right away (no invitation popup yet)
+  startAbductionDirect();
+}
+
+function startAbductionDirect() {
+  gameState = 'cinematic';
+  abductionEnd = performance.now() + 5000;
+  abductionPhase = 1;
+  abductionUfo = createAbductionUfo(camera.position.x, 30, camera.position.z);
+  showUnlockMessage('\u{1F6F8} Ein Raumschiff kommt!');
+  scene.fog.color.setHex(0x442266);
+  scene.fog.near = 5;
+  scene.fog.far = 30;
+  beep(180, 0.3, 'sawtooth', 0.12);
+  setTimeout(() => beep(240, 0.3, 'sawtooth', 0.1), 300);
+  setTimeout(() => beep(320, 0.5, 'sine', 0.15), 600);
 }
 
 function startAbduction() {
-  if (gameState !== 'showInvite') return;
+  // Legacy entry point (still works if called from elsewhere)
+  if (gameState !== 'showInvite' && gameState !== 'playing') return;
   gameState = 'cinematic';
   abductionEnd = performance.now() + 5000;
   abductionPhase = 1;
@@ -2995,6 +3083,7 @@ function teleportToAlienWorld() {
   alienCakeState.alive = true;
   for (const c of alienCakeGroup.children) c.visible = true;
   // Spawn 8 alien enemies around the pedestal (mix of floating + humanoid)
+  totalAliensSpawned = 0;
   for (let i = 0; i < 8; i++) {
     const ang = (i / 8) * Math.PI * 2 + Math.random() * 0.3;
     const rad = 8 + Math.random() * 8;
@@ -3005,14 +3094,22 @@ function teleportToAlienWorld() {
     } else {
       monsters.push(makeHumanAlien(ax, 0, az, 0.95 + Math.random() * 0.2));
     }
+    totalAliensSpawned++;
   }
+  hasBeenInAlienWorld = true;
   // More aliens come over time
   nextAlienSpawn = performance.now() + 8000;
-  gameState = 'playing';
-  showUnlockMessage('\u{1F47D} Du bist auf dem Alien-Planeten! Schlag die Alien-Torte zur&uuml;ck!');
+  // Show the invitation now (between abduction and actual alien gameplay)
+  gameState = 'showInvite';
+  if (!isTouch) document.exitPointerLock();
+  touchUI.classList.remove('active');
   beep(440, 0.15, 'sine', 0.12);
   setTimeout(() => beep(660, 0.15, 'sine', 0.12), 100);
   setTimeout(() => beep(880, 0.2, 'sine', 0.12), 200);
+  setTimeout(() => {
+    invitationScreen.classList.remove('hidden');
+    spawnConfetti();
+  }, 400);
 }
 
 function registerAlienCakeHit() {
@@ -3215,6 +3312,12 @@ function startGame() {
   cinematicAliens.length = 0;
   abductionPhase = 0;
   nextAlienSpawn = 0;
+  totalAliensSpawned = 0;
+  hasBeenInAlienWorld = false;
+  for (const l of alienLasers) {
+    l.visible = false;
+    if (l.userData.glow) l.userData.glow.visible = false;
+  }
   // Clear alien projectiles
   for (const p of alienProjectiles) {
     if (p.mesh.parent) scene.remove(p.mesh);
@@ -3311,7 +3414,20 @@ document.getElementById('restartBtn').addEventListener('click', startGame);
 document.getElementById('retryBtn').addEventListener('click', startGame);
 document.getElementById('continueBtn').addEventListener('click', () => {
   invitationScreen.classList.add('hidden');
-  startAbduction();
+  // Reset HP and cake state for the alien fight
+  playerHp = PLAYER_MAX_HP;
+  invulnerableUntil = 0;
+  updateHearts();
+  alienCakeState.hp = alienCakeState.maxHp;
+  alienCakeState.alive = true;
+  for (const c of alienCakeGroup.children) c.visible = true;
+  gameState = 'playing';
+  if (isTouch) {
+    touchUI.classList.add('active');
+    crosshair.style.display = 'block';
+  } else {
+    canvas.requestPointerLock();
+  }
 });
 
 window.addEventListener('resize', () => {
@@ -3340,6 +3456,7 @@ function animate() {
   updateArrows(dt);
   updateAlienProjectiles(dt);
   updatePipeBtn();
+  updateLasers();
   updateCinematic(dt);
   if (shootCooldown > 0) shootCooldown = Math.max(0, shootCooldown - dt);
   compassTick += dt;
