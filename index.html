@@ -78,6 +78,10 @@
   #bowBtn { position: absolute; bottom: 60px; right: 280px; width: 92px; height: 92px; background: rgba(0,0,0,0.4); border: 2px solid #66bb88; border-radius: 50%; color: #aaffcc; font-size: 2rem; pointer-events: auto; touch-action: manipulation; cursor: pointer; padding: 0; line-height: 1; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: none; }
   #bowBtn.show { display: flex; align-items: center; justify-content: center; }
   #bowBtn:active { transform: scale(0.92); }
+  #pipeBtn { position: absolute; bottom: 184px; right: 168px; width: 76px; height: 76px; background: rgba(0,170,80,0.7); border: 2px solid #00ff88; border-radius: 50%; color: #fff; font-size: 1.7rem; pointer-events: auto; touch-action: manipulation; cursor: pointer; padding: 0; line-height: 1; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: none; animation: pipePulse 1.5s ease-in-out infinite; }
+  #pipeBtn.show { display: flex; align-items: center; justify-content: center; }
+  #pipeBtn:active { transform: scale(0.92); animation: none; }
+  @keyframes pipePulse { 0%, 100% { box-shadow: 0 4px 14px rgba(0,255,136,0.5); } 50% { box-shadow: 0 4px 26px rgba(0,255,136,0.95); } }
 </style>
 </head>
 <body>
@@ -124,6 +128,7 @@
   <button id="runBtn" type="button">&#x1F3C3;</button>
   <button id="jumpBtn" type="button">&#x2B06;</button>
   <button id="bowBtn" type="button">&#x1F3F9;</button>
+  <button id="pipeBtn" type="button">&#x1F573;</button>
   <button id="hitBtn" type="button">&#x2692;</button>
 </div>
 
@@ -229,6 +234,7 @@ const hitBtn = document.getElementById('hitBtn');
 const runBtn = document.getElementById('runBtn');
 const jumpBtn = document.getElementById('jumpBtn');
 const bowBtn = document.getElementById('bowBtn');
+const pipeBtn = document.getElementById('pipeBtn');
 
 const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let joystickVec = { x: 0, y: 0 };
@@ -1068,6 +1074,7 @@ function makeCupcakeMonster(x, z, scale, color) {
     speed: 1.8 + Math.random() * 0.8,
     hopHeight: 0.12 * s,
     alive: true,
+    hp: 1,
     color
   };
 }
@@ -1194,7 +1201,7 @@ function makeCloudMonster(x, y, z, scale) {
     phase: Math.random() * Math.PI * 2,
     speed: 1.6 + Math.random() * 0.4,
     hopHeight: 0,
-    alive: true,
+    alive: true, hp: 1,
     color: 0xffffff,
     isCloud: true
   };
@@ -1315,7 +1322,7 @@ function makeHumanAlien(x, y, z, scale) {
     phase: Math.random() * Math.PI * 2,
     speed: 1.4,
     hopHeight: 0,
-    alive: true, color: 0x66cc44,
+    alive: true, hp: 2, color: 0x66cc44,
     isHuman: true, isAlien: true,
     nextShoot: performance.now() + 3500 + Math.random() * 2500
   };
@@ -1473,7 +1480,7 @@ function makeAlien(x, y, z, scale) {
     phase: Math.random() * Math.PI * 2,
     speed: 1.7 + Math.random() * 0.3,
     hopHeight: 0,
-    alive: true, color: 0x88dd44,
+    alive: true, hp: 2, color: 0x88dd44,
     isCloud: true, isAlien: true
   };
 }
@@ -1938,6 +1945,7 @@ window.addEventListener('keydown', e => {
 
 function tryEnterPipe() {
   if (inBonusWorld) return;
+  if (gameState !== 'playing') return;
   for (const o of obstacles) {
     if (!o.isPipe) continue;
     const dx = camera.position.x - o.x;
@@ -1948,6 +1956,26 @@ function tryEnterPipe() {
       return;
     }
   }
+}
+
+function isOnPipe() {
+  if (inBonusWorld || inAlienWorld) return false;
+  if (gameState !== 'playing') return false;
+  for (const o of obstacles) {
+    if (!o.isPipe) continue;
+    const dx = camera.position.x - o.x;
+    const dz = camera.position.z - o.z;
+    const onTop = Math.abs(camera.position.y - PLAYER_HEIGHT - o.top) < 0.4;
+    if (Math.hypot(dx, dz) < 0.7 && onTop) return true;
+  }
+  return false;
+}
+
+function updatePipeBtn() {
+  if (!isTouch) return;
+  const show = isOnPipe();
+  if (show && !pipeBtn.classList.contains('show')) pipeBtn.classList.add('show');
+  else if (!show && pipeBtn.classList.contains('show')) pipeBtn.classList.remove('show');
 }
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -1983,7 +2011,7 @@ function joystickFromTouch(t) {
 
 function isUIElement(el) {
   return el === joystick || el === joystickKnob || joystick.contains(el)
-      || el === hitBtn || el === runBtn || el === jumpBtn || el === bowBtn
+      || el === hitBtn || el === runBtn || el === jumpBtn || el === bowBtn || el === pipeBtn
       || el.closest && el.closest('.overlay, .btn');
 }
 
@@ -2086,6 +2114,17 @@ bowBtn.addEventListener('click', e => {
   e.preventDefault();
   if (isTouch) return;
   tryShoot();
+});
+
+pipeBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  tryEnterPipe();
+}, { passive: false });
+pipeBtn.addEventListener('click', e => {
+  e.preventDefault();
+  if (isTouch) return;
+  tryEnterPipe();
 });
 jumpBtn.addEventListener('click', e => {
   e.preventDefault();
@@ -2340,10 +2379,44 @@ function checkMonsterHit(camDir) {
     if (dist > 2.0) continue;
     const toMon = monsterCenter.clone().sub(camera.position).normalize();
     if (camDir.dot(toMon) < 0.55) continue;
-    killMonster(m);
+    damageMonster(m);
     return true;
   }
   return false;
+}
+
+function damageMonster(m) {
+  m.hp = (m.hp != null ? m.hp : 1) - 1;
+  if (m.hp <= 0) {
+    killMonster(m);
+    return;
+  }
+  // Hit feedback - small burst, sound, knockback
+  beep(220, 0.07, 'square', 0.07);
+  for (let i = 0; i < 8; i++) {
+    const sz = 0.025 + Math.random() * 0.03;
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(sz, sz, sz),
+      new THREE.MeshStandardMaterial({ color: m.color || 0xffffff, roughness: 0.5 })
+    );
+    mesh.position.set(m.x, m.group.position.y + 0.3, m.z);
+    scene.add(mesh);
+    const a = Math.random() * Math.PI * 2;
+    crumbs.push({
+      mesh,
+      vx: Math.cos(a) * 2.5,
+      vy: 1.5 + Math.random() * 2,
+      vz: Math.sin(a) * 2.5,
+      av: new THREE.Vector3((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10),
+      life: 1.0
+    });
+  }
+  // Knockback
+  const dx = m.x - camera.position.x;
+  const dz = m.z - camera.position.z;
+  const d = Math.hypot(dx, dz) || 1;
+  m.x += (dx / d) * 0.7;
+  m.z += (dz / d) * 0.7;
 }
 
 function killMonster(m) {
@@ -2457,7 +2530,7 @@ function updateArrows(dt) {
       const dz = a.pos.z - m.z;
       const dy = a.pos.y - (m.group.position.y + m.height * 0.5);
       if (Math.hypot(dx, dz) < 0.45 && Math.abs(dy) < 0.7) {
-        killMonster(m);
+        damageMonster(m);
         hit = true;
         break;
       }
@@ -3150,6 +3223,7 @@ function startGame() {
     abductionUfo = null;
   }
   invitationScreen.classList.add('hidden');
+  pipeBtn.classList.remove('show');
   // Restore garden sky
   scene.background = new THREE.Color(0xb6cdb0);
   scene.fog.color.setHex(0xb6cdb0);
@@ -3261,6 +3335,7 @@ function animate() {
   maybeSpawnAlien();
   updateArrows(dt);
   updateAlienProjectiles(dt);
+  updatePipeBtn();
   updateCinematic(dt);
   if (shootCooldown > 0) shootCooldown = Math.max(0, shootCooldown - dt);
   compassTick += dt;
