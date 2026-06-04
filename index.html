@@ -1255,6 +1255,110 @@ let abductionUfo = null;
 let abductionPhase = 0;
 let nextAlienSpawn = 0;
 const MAX_ALIENS = 10;
+const alienProjectiles = [];
+
+function makeHumanAlien(x, y, z, scale) {
+  const g = new THREE.Group();
+  const s = scale || 1.0;
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0x66cc44, roughness: 0.5 });
+  const clothMat = new THREE.MeshStandardMaterial({ color: 0x336622, roughness: 0.85 });
+  // Torso
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * s, 0.17 * s, 0.55 * s, 12), clothMat);
+  torso.position.y = 0.62 * s;
+  torso.castShadow = true;
+  g.add(torso);
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.19 * s, 14, 12), skinMat);
+  head.position.y = 1.05 * s;
+  head.scale.set(1.0, 1.15, 0.95);
+  head.castShadow = true;
+  g.add(head);
+  // Big black eyes
+  for (const sx of [-0.07, 0.07]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.062 * s, 8, 6), new THREE.MeshStandardMaterial({ color: 0x070707, roughness: 0.3, metalness: 0.5 }));
+    eye.position.set(sx * s, 1.06 * s, 0.155 * s);
+    eye.scale.y = 1.5;
+    g.add(eye);
+  }
+  // Legs
+  for (const sx of [-0.08, 0.08]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.11 * s, 0.42 * s, 0.11 * s), clothMat);
+    leg.position.set(sx * s, 0.21 * s, 0);
+    leg.castShadow = true;
+    g.add(leg);
+  }
+  // Left arm (free)
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.09 * s, 0.42 * s, 0.09 * s), skinMat);
+  armL.position.set(-0.25 * s, 0.62 * s, 0);
+  armL.castShadow = true;
+  g.add(armL);
+  // Right arm (holds gun, slightly forward)
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.09 * s, 0.42 * s, 0.09 * s), skinMat);
+  armR.position.set(0.25 * s, 0.55 * s, 0.06 * s);
+  armR.rotation.x = -0.4;
+  armR.castShadow = true;
+  g.add(armR);
+  // Pistol
+  const gunMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.7, roughness: 0.4 });
+  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.09 * s, 0.07 * s, 0.18 * s), gunMat);
+  gun.position.set(0.27 * s, 0.42 * s, 0.18 * s);
+  g.add(gun);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * s, 0.018 * s, 0.12 * s), gunMat);
+  barrel.position.set(0.27 * s, 0.42 * s, 0.32 * s);
+  barrel.rotation.x = Math.PI / 2;
+  g.add(barrel);
+  g.position.set(x, y, z);
+  scene.add(g);
+  return {
+    group: g, x, z, baseY: y,
+    halfW: 0.28 * s, halfD: 0.28 * s, height: 1.4 * s,
+    phase: Math.random() * Math.PI * 2,
+    speed: 1.4,
+    hopHeight: 0,
+    alive: true, color: 0x66cc44,
+    isHuman: true, isAlien: true,
+    nextShoot: performance.now() + 3500 + Math.random() * 2500
+  };
+}
+
+function alienShoot(alien) {
+  const start = new THREE.Vector3(alien.x, alien.baseY + 0.45, alien.z);
+  const target = new THREE.Vector3(camera.position.x, camera.position.y - 0.4, camera.position.z);
+  const dir = target.clone().sub(start).normalize();
+  start.add(dir.clone().multiplyScalar(0.4));
+  const proj = new THREE.Mesh(
+    new THREE.SphereGeometry(0.07, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xff44ff })
+  );
+  proj.position.copy(start);
+  scene.add(proj);
+  // glow
+  const glow = new THREE.PointLight(0xff44ff, 1.0, 3);
+  proj.add(glow);
+  alienProjectiles.push({ mesh: proj, pos: start.clone(), dir, speed: 11, life: 2.5 });
+  beep(720, 0.07, 'square', 0.06);
+  setTimeout(() => beep(480, 0.05, 'square', 0.04), 30);
+}
+
+function updateAlienProjectiles(dt) {
+  for (let i = alienProjectiles.length - 1; i >= 0; i--) {
+    const p = alienProjectiles[i];
+    p.pos.add(p.dir.clone().multiplyScalar(p.speed * dt));
+    p.mesh.position.copy(p.pos);
+    p.life -= dt;
+    let hit = false;
+    if (gameState === 'playing' && p.pos.distanceTo(camera.position) < 0.55) {
+      damagePlayer(0.5);
+      hit = true;
+    }
+    if (hit || p.life <= 0 || p.pos.y < -2 || p.pos.y > 30) {
+      scene.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      p.mesh.material.dispose();
+      alienProjectiles.splice(i, 1);
+    }
+  }
+}
 
 function makeVolcano(x, z, h, r) {
   const g = new THREE.Group();
@@ -1786,18 +1890,17 @@ function getMaxJumps() {
 function tryJump() {
   if (gameState !== 'playing') return;
   if (inBonusWorld) {
-    // Floaty jump: always allowed, gentle boost
     playerVy = 5.5;
     onGround = false;
     beep(550, 0.07, 'sine', 0.05);
     wingPuff();
     return;
   }
-  if (jumpsUsed >= getMaxJumps()) return;
+  // Unlimited jumps everywhere
   playerVy = JUMP_SPEED;
   onGround = false;
   jumpsUsed++;
-  beep(440 + jumpsUsed * 80, 0.08, 'sine', 0.06);
+  beep(440 + Math.min(jumpsUsed, 5) * 70, 0.08, 'sine', 0.06);
   if (jumpsUsed > 1) wingPuff();
 }
 
@@ -2420,7 +2523,7 @@ function updateMonsters(dt) {
       const dz = camera.position.z - m.z;
       const distXZ = Math.hypot(dx, dz) || 0.001;
       if (distXZ < 18 && distXZ > 0.5) {
-        const moveSpeed = (m.isCloud ? 1.9 : 1.4) + monstersKilled * 0.05;
+        const moveSpeed = (m.isHuman ? 1.4 : (m.isCloud ? 1.9 : 1.4)) + monstersKilled * 0.05;
         const ux = dx / distXZ, uz = dz / distXZ;
         const nx = m.x + ux * moveSpeed * dt;
         const nz = m.z + uz * moveSpeed * dt;
@@ -2429,7 +2532,6 @@ function updateMonsters(dt) {
         m.group.position.x = m.x;
         m.group.position.z = m.z;
         m.group.rotation.y = Math.atan2(ux, uz);
-        // Cloud monsters track player y too
         if (m.isCloud) {
           const targetY = camera.position.y - 0.4;
           const dy = targetY - m.baseY;
@@ -2437,9 +2539,14 @@ function updateMonsters(dt) {
           m.baseY = Math.max(BONUS_Y - 3, Math.min(BONUS_Y + 12, m.baseY));
         }
       }
+      // Humanoid aliens shoot from a distance
+      if (m.isHuman && distXZ > 1.8 && distXZ < 14 && performance.now() > m.nextShoot) {
+        alienShoot(m);
+        m.nextShoot = performance.now() + 3500 + Math.random() * 2500;
+      }
+      // Contact damage (humanoid aliens only do half a heart on contact, less aggressive)
       if (distXZ < 0.9 && Math.abs(camera.position.y - PLAYER_HEIGHT - m.group.position.y) < 1.4) {
-        // Aliens hit hard, cupcake/cloud monsters only half a heart
-        damagePlayer(m.isAlien ? 1 : 0.5);
+        damagePlayer(m.isHuman ? 0.5 : (m.isAlien ? 1 : 0.5));
       }
     }
 
@@ -2472,7 +2579,11 @@ function maybeSpawnAlien() {
     az = Math.sin(ang) * rad;
     tries++;
   } while (Math.hypot(ax - camera.position.x, az - camera.position.z) < 8 && tries < 15);
-  monsters.push(makeAlien(ax, 1.0 + Math.random() * 2.5, az, 0.85 + Math.random() * 0.4));
+  if (Math.random() < 0.5) {
+    monsters.push(makeAlien(ax, 1.0 + Math.random() * 2.5, az, 0.85 + Math.random() * 0.4));
+  } else {
+    monsters.push(makeHumanAlien(ax, 0, az, 0.95 + Math.random() * 0.2));
+  }
   // Shrink spawn interval as more aliens die
   let killedAliens = 0;
   for (const m of monsters) if (!m.alive && m.isAlien) killedAliens++;
@@ -2806,13 +2917,17 @@ function teleportToAlienWorld() {
   alienCakeState.hp = alienCakeState.maxHp;
   alienCakeState.alive = true;
   for (const c of alienCakeGroup.children) c.visible = true;
-  // Spawn 8 alien enemies around the pedestal
+  // Spawn 8 alien enemies around the pedestal (mix of floating + humanoid)
   for (let i = 0; i < 8; i++) {
     const ang = (i / 8) * Math.PI * 2 + Math.random() * 0.3;
     const rad = 8 + Math.random() * 8;
     const ax = ALIEN_X + Math.cos(ang) * rad;
     const az = Math.sin(ang) * rad;
-    monsters.push(makeAlien(ax, 1.0 + Math.random() * 2, az, 0.9 + Math.random() * 0.3));
+    if (i % 2 === 0) {
+      monsters.push(makeAlien(ax, 1.0 + Math.random() * 2, az, 0.9 + Math.random() * 0.3));
+    } else {
+      monsters.push(makeHumanAlien(ax, 0, az, 0.95 + Math.random() * 0.2));
+    }
   }
   // More aliens come over time
   nextAlienSpawn = performance.now() + 8000;
@@ -3023,6 +3138,13 @@ function startGame() {
   cinematicAliens.length = 0;
   abductionPhase = 0;
   nextAlienSpawn = 0;
+  // Clear alien projectiles
+  for (const p of alienProjectiles) {
+    if (p.mesh.parent) scene.remove(p.mesh);
+    p.mesh.geometry.dispose();
+    p.mesh.material.dispose();
+  }
+  alienProjectiles.length = 0;
   if (abductionUfo) {
     scene.remove(abductionUfo.group);
     abductionUfo = null;
@@ -3138,6 +3260,7 @@ function animate() {
   maybeSpawnCloudMonster();
   maybeSpawnAlien();
   updateArrows(dt);
+  updateAlienProjectiles(dt);
   updateCinematic(dt);
   if (shootCooldown > 0) shootCooldown = Math.max(0, shootCooldown - dt);
   compassTick += dt;
