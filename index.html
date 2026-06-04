@@ -2826,6 +2826,9 @@ const GRAVITY = 19;
 
 const PLAYER_MAX_HP = 5;
 let playerHp = PLAYER_MAX_HP;
+function getMaxHp() {
+  return PLAYER_MAX_HP + (hasShield ? 1 : 0) + (hasArmor ? 2 : 0) + (hasGoldHammer ? 1 : 0);
+}
 let invulnerableUntil = 0;
 let jumpsUsed = 0;
 let crownsCollected = 0;
@@ -3539,9 +3542,19 @@ function tryCraft(cs) {
     return;
   }
   stoneCount -= cost;
-  if (cs.kind === 'hammer') { hasGoldHammer = true; showUnlockMessage('\u{2692} Gold-Hammer gebaut! Mehr Reichweite!'); }
-  else if (cs.kind === 'shield') { hasShield = true; showUnlockMessage('\u{1F6E1} Schild gebaut! Halber Schaden!'); }
-  else if (cs.kind === 'armor') { hasArmor = true; playerHp = Math.min(PLAYER_MAX_HP + 2, playerHp + 2); showUnlockMessage('\u{1F9E5} R&uuml;stung gebaut! +2 Herzen!'); }
+  if (cs.kind === 'hammer') {
+    hasGoldHammer = true;
+    playerHp = Math.min(getMaxHp(), playerHp + 1);
+    showUnlockMessage('\u{2692} Gold-Hammer gebaut! +1 Herz, mehr Reichweite!');
+  } else if (cs.kind === 'shield') {
+    hasShield = true;
+    playerHp = Math.min(getMaxHp(), playerHp + 1);
+    showUnlockMessage('\u{1F6E1} Schild gebaut! +1 Herz, halber Schaden!');
+  } else if (cs.kind === 'armor') {
+    hasArmor = true;
+    playerHp = Math.min(getMaxHp(), playerHp + 2);
+    showUnlockMessage('\u{1F9E5} R&uuml;stung gebaut! +2 Herzen!');
+  }
   updateInventory();
   updateHearts();
   // Crafting sparkle
@@ -3674,8 +3687,8 @@ function killMonster(m) {
   updateInventory();
   checkUnlockBow();
   // Every 3 kills: heal half a heart (if not full)
-  if (monstersKilled % 3 === 0 && playerHp < PLAYER_MAX_HP) {
-    playerHp = Math.min(PLAYER_MAX_HP, playerHp + 0.5);
+  if (monstersKilled % 3 === 0 && playerHp < getMaxHp()) {
+    playerHp = Math.min(getMaxHp(), playerHp + 0.5);
     updateHearts();
     beep(880, 0.15, 'sine', 0.12);
     setTimeout(() => beep(1320, 0.2, 'sine', 0.12), 130);
@@ -4267,7 +4280,7 @@ function teleportToAlienWorld() {
   onGround = true;
   jumpsUsed = 0;
   // Heal & change sky
-  playerHp = PLAYER_MAX_HP;
+  playerHp = getMaxHp();
   updateHearts();
   scene.background = new THREE.Color(0x5a2810);
   scene.fog.color.setHex(0x5a2810);
@@ -4399,8 +4412,9 @@ function updateHud() {
 }
 
 function updateHearts() {
+  const maxHp = getMaxHp();
   let html = '';
-  for (let i = 0; i < PLAYER_MAX_HP; i++) {
+  for (let i = 0; i < maxHp; i++) {
     const pos = i + 1;
     if (pos <= playerHp) html += '<span class="heart">❤</span>';
     else if (pos - 0.5 <= playerHp) html += '<span class="heart half">❤</span>';
@@ -4632,7 +4646,7 @@ document.getElementById('retryBtn').addEventListener('click', startGame);
 document.getElementById('continueBtn').addEventListener('click', () => {
   invitationScreen.classList.add('hidden');
   // Reset HP and cake state for the alien fight
-  playerHp = PLAYER_MAX_HP;
+  playerHp = getMaxHp();
   invulnerableUntil = 0;
   updateHearts();
   alienCakeState.hp = alienCakeState.maxHp;
