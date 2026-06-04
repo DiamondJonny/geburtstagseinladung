@@ -63,6 +63,7 @@
   .invitation .details .label { font-weight: bold; color: #c06cff; }
 
   .confetti { position: fixed; width: 10px; height: 10px; pointer-events: none; z-index: 11; }
+  #sunFlare { position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: 0; transition: opacity 0.18s linear; mix-blend-mode: screen; }
   #nameInput { margin: 22px 0; padding: 14px 22px; font-size: 1.4rem; background: rgba(255,255,255,0.96); border: 3px solid #ffd700; border-radius: 10px; font-family: inherit; text-align: center; width: 300px; max-width: 80vw; color: #1a1a2e; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
   #nameInput:focus { outline: none; border-color: #ff6b9d; box-shadow: 0 0 18px rgba(255,107,157,0.65); }
   #nameInput.shake { animation: nameShake 0.4s; }
@@ -75,8 +76,7 @@
   #joystickKnob { position: absolute; top: 50%; left: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; background: rgba(255,255,255,0.55); border: 2px solid rgba(255,255,255,0.7); border-radius: 50%; pointer-events: none; }
   #hitBtn { position: absolute; bottom: 50px; right: 28px; width: 120px; height: 120px; background: linear-gradient(135deg, #ff6b9d 0%, #c06cff 100%); border: 3px solid #ffd700; border-radius: 50%; color: #fff; font-size: 2.6rem; font-weight: bold; pointer-events: auto; touch-action: manipulation; box-shadow: 0 6px 20px rgba(0,0,0,0.45); cursor: pointer; padding: 0; line-height: 1; display: flex; align-items: center; justify-content: center; }
   #hitBtn:active { transform: scale(0.92); }
-  #runBtn { position: absolute; bottom: 184px; right: 50px; width: 76px; height: 76px; background: rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; color: #fff; font-size: 1.6rem; pointer-events: auto; touch-action: manipulation; cursor: pointer; padding: 0; line-height: 1; }
-  #runBtn.on { background: rgba(255,215,0,0.55); color: #1a1a2e; }
+  #runBtn { display: none !important; }
   #jumpBtn { position: absolute; bottom: 60px; right: 168px; width: 92px; height: 92px; background: rgba(0,0,0,0.4); border: 2px solid #ffd700; border-radius: 50%; color: #ffd700; font-size: 2rem; pointer-events: auto; touch-action: manipulation; cursor: pointer; padding: 0; line-height: 1; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
   #jumpBtn:active { transform: scale(0.92); }
   #bowBtn { position: absolute; bottom: 60px; right: 280px; width: 92px; height: 92px; background: rgba(0,0,0,0.4); border: 2px solid #66bb88; border-radius: 50%; color: #aaffcc; font-size: 2rem; pointer-events: auto; touch-action: manipulation; cursor: pointer; padding: 0; line-height: 1; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: none; }
@@ -92,6 +92,7 @@
 
 <div id="loading">Lade Garten...</div>
 <canvas id="game"></canvas>
+<div id="sunFlare"></div>
 <div id="crosshair"></div>
 
 <div id="hud">
@@ -155,8 +156,8 @@
     <span class="key">Maus</span> &nbsp;umsehen (klick zum Aktivieren)<br>
     <span class="key">Linke Maustaste</span> &nbsp;zuschlagen<br>
     <span class="key">Rechte Maustaste</span> &nbsp;Pfeil schie&szlig;en (ab 3 Kronen / 8 Monster)<br>
-    <span class="key">Leertaste</span> &nbsp;springen &nbsp;&middot;&nbsp; <span class="key">F</span> &nbsp;auf einer R&ouml;hre = Wolken-Welt<br>
-    <span class="key">Shift</span> &nbsp;rennen &nbsp;&middot;&nbsp; <span class="key">ESC</span> &nbsp;Maus freigeben
+    <span class="key">Leertaste</span> &nbsp;springen &nbsp;&middot;&nbsp; <span class="key">F</span> &nbsp;auf einer R&ouml;hre = H&ouml;hle<br>
+    <span class="key">ESC</span> &nbsp;Maus freigeben
   </div>
   <button class="btn" id="startBtn">Garten betreten</button>
 </div>
@@ -333,8 +334,9 @@ const sunGlow = new THREE.Mesh(
 sunGlow.position.copy(sunSphere.position);
 scene.add(sunGlow);
 
-// Fluffy white clouds floating in the sky
+// Fluffy white clouds floating in the sky (animated)
 const cloudWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, emissive: 0xeef4ff, emissiveIntensity: 0.08 });
+const cloudGroups = [];
 const cloudPositions = [
   { x: -22, y: 18, z: -14 },
   { x: 12,  y: 22, z: -20 },
@@ -345,12 +347,54 @@ const cloudPositions = [
   { x: 18,  y: 21, z: -2 }
 ];
 for (const cp of cloudPositions) {
+  const cg = new THREE.Group();
   for (let i = 0; i < 5; i++) {
     const r = 1.4 + Math.random() * 1.0;
     const blob = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), cloudWhite);
-    blob.position.set(cp.x + (Math.random() - 0.5) * 3, cp.y + (Math.random() - 0.5) * 0.6, cp.z + (Math.random() - 0.5) * 3);
-    scene.add(blob);
+    blob.position.set((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 3);
+    cg.add(blob);
   }
+  cg.position.set(cp.x, cp.y, cp.z);
+  scene.add(cg);
+  cloudGroups.push({ group: cg, speed: 0.4 + Math.random() * 0.5 });
+}
+
+function updateClouds(dt) {
+  for (const c of cloudGroups) {
+    c.group.position.x += c.speed * dt;
+    if (c.group.position.x > 38) c.group.position.x = -38;
+  }
+}
+
+const sunFlare = document.getElementById('sunFlare');
+const _sunVec = new THREE.Vector3();
+const _camDirVec = new THREE.Vector3();
+
+function updateSunFlare() {
+  if (inCaveWorld || inAlienWorld || inBonusWorld || gameState !== 'playing') {
+    if (sunFlare.style.opacity !== '0') sunFlare.style.opacity = '0';
+    return;
+  }
+  _sunVec.copy(sunSphere.position).sub(camera.position).normalize();
+  camera.getWorldDirection(_camDirVec);
+  const dot = _camDirVec.dot(_sunVec);
+  if (dot < 0.55) {
+    if (sunFlare.style.opacity !== '0') sunFlare.style.opacity = '0';
+    return;
+  }
+  // Screen-space sun position
+  const proj = sunSphere.position.clone().project(camera);
+  if (proj.z > 1) { sunFlare.style.opacity = '0'; return; }
+  const sx = (proj.x * 0.5 + 0.5) * window.innerWidth;
+  const sy = (-proj.y * 0.5 + 0.5) * window.innerHeight;
+  const intensity = Math.min(1, (dot - 0.55) / 0.45);
+  sunFlare.style.background =
+    'radial-gradient(circle at ' + sx + 'px ' + sy + 'px, ' +
+    'rgba(255, 252, 220, ' + (0.85 * intensity) + ') 0%, ' +
+    'rgba(255, 240, 180, ' + (0.5 * intensity) + ') ' + (60 + 80 * intensity) + 'px, ' +
+    'rgba(255, 220, 150, ' + (0.2 * intensity) + ') ' + (200 + 150 * intensity) + 'px, ' +
+    'rgba(255, 200, 120, 0) ' + (380 + 220 * intensity) + 'px)';
+  sunFlare.style.opacity = '1';
 }
 
 // === Ground ===
@@ -2661,8 +2705,7 @@ function updateMovement(dt) {
   if (gameState !== 'playing') return;
   if (!isTouch && !pointerLocked) return;
 
-  const running = keys['ShiftLeft'] || keys['ShiftRight'] || touchRunning;
-  const speed = running ? 7.5 : 4.2;
+  const speed = 5.5;
   let moveZ = 0, moveX = 0;
   if (isTouch && (joystickVec.x !== 0 || joystickVec.y !== 0)) {
     moveZ = joystickVec.y;
@@ -3820,8 +3863,7 @@ if (isTouch) {
       'Bildschirm wischen &nbsp;umsehen<br>' +
       'Gro&szlig;er Knopf rechts &nbsp;zuschlagen<br>' +
       'Pfeil-nach-oben Knopf &nbsp;springen<br>' +
-      'Bogen-Knopf (sp&auml;ter freigeschaltet) &nbsp;Pfeil schie&szlig;en<br>' +
-      'L&auml;ufer-Knopf &nbsp;rennen ein/aus';
+      'Bogen-Knopf (sp&auml;ter freigeschaltet) &nbsp;Pfeil schie&szlig;en';
   }
   document.getElementById('startBtn').textContent = 'Garten betreten (tippen)';
 }
@@ -3875,6 +3917,8 @@ function animate() {
   updatePipeBtn();
   updateLasers();
   updatePipeRide(dt);
+  updateClouds(dt);
+  updateSunFlare();
   updateCinematic(dt);
   if (shootCooldown > 0) shootCooldown = Math.max(0, shootCooldown - dt);
   compassTick += dt;
