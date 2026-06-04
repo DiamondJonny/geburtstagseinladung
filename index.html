@@ -1262,6 +1262,10 @@ let abductionUfo = null;
 let abductionPhase = 0;
 let nextAlienSpawn = 0;
 const MAX_ALIENS = 10;
+const MAX_ALIENS_TO_SPAWN = 12;
+let totalAliensSpawned = 0;
+let hasBeenInAlienWorld = false;
+const alienLasers = [];
 const alienProjectiles = [];
 
 function makeHumanAlien(x, y, z, scale) {
