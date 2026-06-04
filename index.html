@@ -616,6 +616,71 @@ function makeTree(x, z) {
   obstacles.push({ x, z, halfW: 0.35, halfD: 0.35 });
 }
 
+// === Fir tree (cone stack) ===
+function makeFirTree(x, z) {
+  const trunkH = 3.5 + Math.random() * 2;
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.28, trunkH, 8),
+    new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.95 })
+  );
+  trunk.position.set(x, trunkH / 2, z);
+  trunk.castShadow = trunk.receiveShadow = true;
+  scene.add(trunk);
+  const colors = [0x2a6a2a, 0x357a3a, 0x2d6638];
+  const fol = new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)], roughness: 0.95 });
+  for (let i = 0; i < 4; i++) {
+    const r = 1.6 - i * 0.32;
+    const h = 1.5;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 9), fol);
+    cone.position.set(x, trunkH - 0.4 + i * 0.95, z);
+    cone.castShadow = true;
+    scene.add(cone);
+  }
+  obstacles.push({ x, z, halfW: 0.35, halfD: 0.35 });
+}
+
+// === Mushroom tree (giant colorful mushroom) ===
+function makeMushroomTree(x, z) {
+  const trunkH = 1.6 + Math.random() * 1.1;
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.4, 0.5, trunkH, 12),
+    new THREE.MeshStandardMaterial({ color: 0xefe8d8, roughness: 0.7 })
+  );
+  trunk.position.set(x, trunkH / 2, z);
+  trunk.castShadow = true;
+  scene.add(trunk);
+  const colors = [0xff4444, 0xff7733, 0x9944cc, 0xffd700, 0xff66aa];
+  const capColor = colors[Math.floor(Math.random() * colors.length)];
+  const capR = 1.3 + Math.random() * 0.5;
+  const cap = new THREE.Mesh(
+    new THREE.SphereGeometry(capR, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: capColor, roughness: 0.55 })
+  );
+  cap.position.set(x, trunkH, z);
+  cap.castShadow = true;
+  scene.add(cap);
+  // Cap rim underneath
+  const rim = new THREE.Mesh(
+    new THREE.CylinderGeometry(capR, capR * 0.85, 0.1, 16),
+    new THREE.MeshStandardMaterial({ color: 0xddd6c4, roughness: 0.7 })
+  );
+  rim.position.set(x, trunkH - 0.05, z);
+  scene.add(rim);
+  // White dots on the cap
+  for (let i = 0; i < 7; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 0.3 + Math.random() * (capR * 0.7);
+    const py = Math.sqrt(Math.max(0, capR * capR - r * r));
+    const dot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.16 + Math.random() * 0.06, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
+    );
+    dot.position.set(x + Math.cos(a) * r, trunkH + py * 0.85, z + Math.sin(a) * r);
+    scene.add(dot);
+  }
+  obstacles.push({ x, z, halfW: 0.5, halfD: 0.5 });
+}
+
 // === Bushes ===
 function makeBush(x, z) {
   const g = new THREE.Group();
@@ -766,14 +831,136 @@ function makeBarrel(x, z) {
   obstacles.push({ x, z, halfW: 0.5, halfD: 0.5 });
 }
 
+// === Decorative objects (random garden goodies) ===
+function makeFountain(x, z) {
+  const stone = new THREE.MeshStandardMaterial({ color: 0x9a9088, roughness: 0.95 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 0.3, 16), stone);
+  base.position.set(x, 0.15, z);
+  base.castShadow = base.receiveShadow = true;
+  scene.add(base);
+  const water = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.78, 0.78, 0.06, 16),
+    new THREE.MeshStandardMaterial({ color: 0x4488dd, transparent: true, opacity: 0.8, metalness: 0.5, roughness: 0.1, emissive: 0x224488, emissiveIntensity: 0.15 })
+  );
+  water.position.set(x, 0.3, z);
+  scene.add(water);
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.55, 12), stone);
+  pillar.position.set(x, 0.58, z);
+  pillar.castShadow = true;
+  scene.add(pillar);
+  const spout = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), stone);
+  spout.position.set(x, 0.92, z);
+  spout.castShadow = true;
+  scene.add(spout);
+  obstacles.push({ x, z, halfW: 1.05, halfD: 1.05, top: 0.3 });
+}
+
+function makeBonfire(x, z) {
+  const log = new THREE.MeshStandardMaterial({ color: 0x3a2515, roughness: 0.95 });
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 6), log);
+    l.position.set(x + Math.cos(a) * 0.18, 0.08, z + Math.sin(a) * 0.18);
+    l.rotation.z = Math.PI / 2;
+    l.rotation.y = a;
+    l.castShadow = true;
+    scene.add(l);
+  }
+  const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.6, 8), new THREE.MeshBasicMaterial({ color: 0xff7711 }));
+  flameOuter.position.set(x, 0.4, z);
+  scene.add(flameOuter);
+  const flameInner = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.4, 8), new THREE.MeshBasicMaterial({ color: 0xffee44 }));
+  flameInner.position.set(x, 0.35, z);
+  scene.add(flameInner);
+  const glow = new THREE.PointLight(0xff7722, 1.3, 7);
+  glow.position.set(x, 0.6, z);
+  scene.add(glow);
+  obstacles.push({ x, z, halfW: 0.5, halfD: 0.5 });
+}
+
+function makeBirdhouse(x, z) {
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x9a7a4a, roughness: 0.85 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0xa84a3a, roughness: 0.85 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), woodMat);
+  pole.position.set(x, 1.2, z);
+  pole.castShadow = true;
+  scene.add(pole);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.36), woodMat);
+  box.position.set(x, 2.5, z);
+  box.castShadow = true;
+  scene.add(box);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.22, 4), roofMat);
+  roof.position.set(x, 2.82, z);
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  scene.add(roof);
+  const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 12), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }));
+  hole.position.set(x, 2.45, z + 0.19);
+  hole.rotation.x = Math.PI / 2;
+  scene.add(hole);
+  const perch = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.12, 6), woodMat);
+  perch.position.set(x, 2.32, z + 0.22);
+  perch.rotation.x = Math.PI / 2;
+  scene.add(perch);
+  obstacles.push({ x, z, halfW: 0.2, halfD: 0.2 });
+}
+
+function makeMushroomCluster(x, z) {
+  const colors = [0xff4444, 0xff8844, 0xddff44, 0x9944ff];
+  const count = 3 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < count; i++) {
+    const sx = x + (Math.random() - 0.5) * 0.8;
+    const sz = z + (Math.random() - 0.5) * 0.8;
+    const h = 0.14 + Math.random() * 0.18;
+    const r = 0.06 + Math.random() * 0.04;
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(r, r * 1.2, h, 8),
+      new THREE.MeshStandardMaterial({ color: 0xeeead8, roughness: 0.8 })
+    );
+    stem.position.set(sx, h / 2, sz);
+    scene.add(stem);
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 2.4, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)], roughness: 0.7 })
+    );
+    cap.position.set(sx, h, sz);
+    scene.add(cap);
+  }
+}
+
+function makeStonebench(x, z) {
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8a8278, roughness: 0.9 });
+  const rotY = Math.random() * Math.PI;
+  const g = new THREE.Group();
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.15, 0.5), stoneMat);
+  seat.position.y = 0.5;
+  seat.castShadow = seat.receiveShadow = true;
+  g.add(seat);
+  for (const sx of [-0.55, 0.55]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 0.4), stoneMat);
+    leg.position.set(sx, 0.2, 0);
+    leg.castShadow = true;
+    g.add(leg);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  scene.add(g);
+  obstacles.push({ x, z, halfW: 0.85, halfD: 0.45, top: 0.58 });
+}
+
 // Random decoration AFTER hedges (avoids hedges and cake)
 function tooCloseToCake(x, z, d) { return Math.hypot(x - cakeSpot.x, z - cakeSpot.z) < d; }
 
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 12; i++) {
   let x, z, tries = 0;
   do { x = (Math.random() - 0.5) * 52; z = (Math.random() - 0.5) * 52; tries++; }
   while ((tooCloseToCake(x, z, 4) || collidesAny(x, z, 2)) && tries < 30);
-  if (tries < 30) makeTree(x, z);
+  if (tries < 30) {
+    const r = Math.random();
+    if (r < 0.4) makeTree(x, z);
+    else if (r < 0.75) makeFirTree(x, z);
+    else makeMushroomTree(x, z);
+  }
 }
 
 for (let i = 0; i < 18; i++) {
@@ -802,6 +989,38 @@ for (let i = 0; i < 3; i++) {
   do { x = (Math.random() - 0.5) * 48; z = (Math.random() - 0.5) * 48; tries++; }
   while ((tooCloseToCake(x, z, 3) || collidesAny(x, z, 1.5)) && tries < 30);
   if (tries < 30) makeBarrel(x, z);
+}
+
+// New decorative objects — random count, random positions
+for (let i = 0; i < 2; i++) {
+  let x, z, tries = 0;
+  do { x = (Math.random() - 0.5) * 44; z = (Math.random() - 0.5) * 44; tries++; }
+  while ((tooCloseToCake(x, z, 5) || collidesAny(x, z, 2.8)) && tries < 30);
+  if (tries < 30) makeFountain(x, z);
+}
+for (let i = 0; i < 3; i++) {
+  let x, z, tries = 0;
+  do { x = (Math.random() - 0.5) * 46; z = (Math.random() - 0.5) * 46; tries++; }
+  while ((tooCloseToCake(x, z, 4) || collidesAny(x, z, 2.2)) && tries < 30);
+  if (tries < 30) makeBonfire(x, z);
+}
+for (let i = 0; i < 4; i++) {
+  let x, z, tries = 0;
+  do { x = (Math.random() - 0.5) * 48; z = (Math.random() - 0.5) * 48; tries++; }
+  while ((tooCloseToCake(x, z, 3) || collidesAny(x, z, 1.4)) && tries < 30);
+  if (tries < 30) makeBirdhouse(x, z);
+}
+for (let i = 0; i < 12; i++) {
+  let x, z, tries = 0;
+  do { x = (Math.random() - 0.5) * 52; z = (Math.random() - 0.5) * 52; tries++; }
+  while ((tooCloseToCake(x, z, 2) || collidesAny(x, z, 0.6)) && tries < 30);
+  if (tries < 30) makeMushroomCluster(x, z);
+}
+for (let i = 0; i < 3; i++) {
+  let x, z, tries = 0;
+  do { x = (Math.random() - 0.5) * 46; z = (Math.random() - 0.5) * 46; tries++; }
+  while ((tooCloseToCake(x, z, 4) || collidesAny(x, z, 2.5)) && tries < 30);
+  if (tries < 30) makeStonebench(x, z);
 }
 
 // === Fence around the garden ===
@@ -2779,7 +2998,9 @@ function triggerSwing() {
   swing.active = true;
   swing.t = 0;
   swing.hit = false;
-  beep(60, 0.06, 'sawtooth', 0.06);
+  beep(120, 0.08, 'sawtooth', 0.06);
+  setTimeout(() => beep(70, 0.1, 'sawtooth', 0.04), 30);
+  ensureGrassNoise();
 }
 
 hitBtn.addEventListener('touchstart', e => {
@@ -2848,7 +3069,10 @@ document.addEventListener('mousedown', e => {
     swing.active = true;
     swing.t = 0;
     swing.hit = false;
-    beep(60, 0.06, 'sawtooth', 0.06);
+    // Whoosh sound when swinging
+    beep(120, 0.08, 'sawtooth', 0.06);
+    setTimeout(() => beep(70, 0.1, 'sawtooth', 0.04), 30);
+    ensureGrassNoise();
     if (!pointerLocked) canvas.requestPointerLock();
   } else if (e.button === 2) {
     tryShoot();
@@ -2873,6 +3097,80 @@ function beep(freq, duration, type='square', volume=0.1) {
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
   } catch (e) {}
+}
+
+// Bird tweet — short pitched chirp (only in garden)
+function birdTweet() {
+  if (gameState !== 'playing') return;
+  if (inAlienWorld || inCaveWorld || inBonusWorld) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ttype = Math.random() < 0.5 ? 'sine' : 'triangle';
+    const baseFreq = 1500 + Math.random() * 1500;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = ttype;
+    const now = audioCtx.currentTime;
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.linearRampToValueAtTime(baseFreq * (1 + (Math.random() - 0.3) * 0.6), now + 0.06);
+    osc.frequency.linearRampToValueAtTime(baseFreq * 0.85, now + 0.13);
+    gain.gain.value = 0;
+    gain.gain.linearRampToValueAtTime(0.05, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.2);
+  } catch (e) {}
+}
+
+function scheduleBirds() {
+  const wait = 2500 + Math.random() * 5500;
+  setTimeout(() => {
+    if (Math.random() < 0.85 && audioCtx) {
+      birdTweet();
+      // Sometimes a second tweet right after (like a real bird)
+      if (Math.random() < 0.4) setTimeout(birdTweet, 250 + Math.random() * 200);
+    }
+    scheduleBirds();
+  }, wait);
+}
+scheduleBirds();
+
+// Grass rustling — low filtered noise that comes alive while walking in the garden
+let grassNoiseGain = null;
+function ensureGrassNoise() {
+  if (grassNoiseGain) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bufferSize = audioCtx.sampleRate * 2;
+    const buf = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 550;
+    grassNoiseGain = audioCtx.createGain();
+    grassNoiseGain.gain.value = 0;
+    src.connect(filter).connect(grassNoiseGain).connect(audioCtx.destination);
+    src.start();
+  } catch (e) {}
+}
+
+function updateGrassNoise(moving) {
+  if (!grassNoiseGain) return;
+  const inGarden = gameState === 'playing' && !inAlienWorld && !inCaveWorld && !inBonusWorld;
+  const target = (moving && inGarden) ? 0.025 : 0;
+  try { grassNoiseGain.gain.linearRampToValueAtTime(target, audioCtx.currentTime + 0.3); } catch (e) {}
+}
+
+// Layered hammer hit sound (richer than a single beep)
+function hammerHitSound() {
+  beep(140, 0.12, 'square', 0.14);
+  setTimeout(() => beep(80, 0.18, 'sawtooth', 0.10), 25);
+  setTimeout(() => beep(220, 0.08, 'triangle', 0.06), 12);
 }
 
 // === Movement ===
@@ -3605,8 +3903,7 @@ function registerHit() {
   cakeHp = Math.max(0, cakeHp - 1);
   updateHud();
   cakeShakeTimer = 0.35;
-  beep(140, 0.15, 'square', 0.18);
-  setTimeout(() => beep(90, 0.1, 'sawtooth', 0.12), 30);
+  hammerHitSound();
   spawnCrumbs(28, false);
   shakeAmount = 0.08;
   if (cakeHp <= 0) win();
@@ -4290,6 +4587,12 @@ function animate() {
   updatePipeRide(dt);
   updateClouds(dt);
   updateSunFlare();
+  // Grass rustling while moving in the garden
+  const movingNow = gameState === 'playing' && onGround && (
+    (isTouch && (joystickVec.x !== 0 || joystickVec.y !== 0)) ||
+    (!isTouch && (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight']))
+  );
+  updateGrassNoise(movingNow);
   updateCinematic(dt);
   if (shootCooldown > 0) shootCooldown = Math.max(0, shootCooldown - dt);
   compassTick += dt;
