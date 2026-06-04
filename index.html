@@ -63,6 +63,10 @@
   .invitation .details .label { font-weight: bold; color: #c06cff; }
 
   .confetti { position: fixed; width: 10px; height: 10px; pointer-events: none; z-index: 11; }
+  #nameInput { margin: 22px 0; padding: 14px 22px; font-size: 1.4rem; background: rgba(255,255,255,0.96); border: 3px solid #ffd700; border-radius: 10px; font-family: inherit; text-align: center; width: 300px; max-width: 80vw; color: #1a1a2e; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  #nameInput:focus { outline: none; border-color: #ff6b9d; box-shadow: 0 0 18px rgba(255,107,157,0.65); }
+  #nameInput.shake { animation: nameShake 0.4s; }
+  @keyframes nameShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0a0a14; color: #ffd700; font-size: 1.2rem; z-index: 100; }
 
   #touchUI { position: fixed; inset: 0; pointer-events: none; z-index: 6; display: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -132,7 +136,14 @@
   <button id="hitBtn" type="button">&#x2692;</button>
 </div>
 
-<div class="overlay" id="startScreen">
+<div class="overlay" id="nameScreen">
+  <h1>&#x1F382; Wer spielt hier?</h1>
+  <p>Gib deinen Vornamen ein, um zu sehen, ob du eingeladen bist!</p>
+  <input type="text" id="nameInput" placeholder="Dein Vorname" maxlength="24" autocomplete="off" />
+  <button class="btn" id="nameSubmit">Los geht's!</button>
+</div>
+
+<div class="overlay hidden" id="startScreen">
   <h1>Der verwilderte Garten</h1>
   <p>Irgendwo zwischen hohen Hecken steht ein alter Steinsockel mit einer Geburtstagstorte.</p>
   <p><strong>Finde sie</strong>, klettere auf die Steine ringsum &mdash; vom Boden kommst du nicht ran &mdash; und zertr&uuml;mmere sie mit dem Vorschlaghammer.</p>
@@ -157,9 +168,9 @@
 </div>
 
 <div class="overlay hidden" id="invitationScreen">
-  <div class="invitation">
-    <h2>Du bist eingeladen!</h2>
-    <p style="color:#fff; margin-bottom: 12px;">Die Torte ist Geschichte &mdash; hier ist deine Einladung:</p>
+  <div class="invitation" id="invitedContent">
+    <h2>Du bist eingeladen, <span id="invitedName">Freund</span>!</h2>
+    <p style="color:#fff; margin-bottom: 12px;">Du stehst auf der G&auml;steliste &mdash; hier ist deine Einladung:</p>
     <div class="details">
       <div class="row"><span class="label">Anlass:</span><span>Geburtstag von [DEIN NAME]</span></div>
       <div class="row"><span class="label">Datum:</span><span>[TT.MM.JJJJ]</span></div>
@@ -169,7 +180,12 @@
       <div class="row"><span class="label">Mitbringen:</span><span>[z.B. Schlafsack, gute Laune]</span></div>
       <div class="row"><span class="label">Zusagen bis:</span><span>[TT.MM.] an [KONTAKT]</span></div>
     </div>
-    <p style="color:#fff; margin-top:10px; font-style:italic;">Aber pass auf &mdash; da kommen Aliens!</p>
+    <p style="color:#fff; margin-top:10px; font-style:italic;">Aber pass auf &mdash; auf dem Alien-Planeten ist es noch nicht vorbei!</p>
+  </div>
+  <div class="invitation" id="notInvitedContent" style="display:none">
+    <h2>Hallo, <span id="notInvitedName">Fremder</span>...</h2>
+    <p style="color:#fff; font-size:1.1em; margin-bottom: 14px;">Du stehst leider <strong>nicht</strong> auf der G&auml;steliste &mdash; das ist eine private Geburtstagsparty.</p>
+    <p style="color:#fff;">Aber kein Sorge: du kannst trotzdem mit auf den Alien-Planeten und Spa&szlig; haben! &#x1F47D;</p>
   </div>
   <button class="btn" id="continueBtn">Weiter zum Alien-Planeten &rarr;</button>
 </div>
@@ -202,6 +218,39 @@ const startScreen = document.getElementById('startScreen');
 const winScreen = document.getElementById('winScreen');
 const deathScreen = document.getElementById('deathScreen');
 const invitationScreen = document.getElementById('invitationScreen');
+const nameScreen = document.getElementById('nameScreen');
+const nameInput = document.getElementById('nameInput');
+const nameSubmit = document.getElementById('nameSubmit');
+
+// Gästeliste — Namen kleingeschrieben! Groß/Kleinschreibung beim Vergleich egal.
+const INVITED_NAMES = ['jonathan'];
+let playerName = '';
+let playerIsInvited = false;
+
+nameSubmit.addEventListener('click', () => {
+  const n = nameInput.value.trim();
+  if (!n) {
+    nameInput.classList.add('shake');
+    setTimeout(() => nameInput.classList.remove('shake'), 420);
+    return;
+  }
+  playerName = n;
+  playerIsInvited = INVITED_NAMES.includes(n.toLowerCase());
+  nameScreen.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+});
+nameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') nameSubmit.click();
+});
+
+function showInvitation() {
+  document.getElementById('invitedContent').style.display = playerIsInvited ? '' : 'none';
+  document.getElementById('notInvitedContent').style.display = playerIsInvited ? 'none' : '';
+  if (playerIsInvited) document.getElementById('invitedName').textContent = playerName;
+  else document.getElementById('notInvitedName').textContent = playerName;
+  invitationScreen.classList.remove('hidden');
+  spawnConfetti();
+}
 const hud = document.getElementById('hud');
 const hpBar = document.getElementById('hpBar');
 const hpText = document.getElementById('hpText');
@@ -3107,8 +3156,7 @@ function teleportToAlienWorld() {
   setTimeout(() => beep(660, 0.15, 'sine', 0.12), 100);
   setTimeout(() => beep(880, 0.2, 'sine', 0.12), 200);
   setTimeout(() => {
-    invitationScreen.classList.remove('hidden');
-    spawnConfetti();
+    showInvitation();
   }, 400);
 }
 
