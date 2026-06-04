@@ -1558,6 +1558,7 @@ let inCaveWorld = false;
 let caveReturnPos = null;
 const oreBlocks = [];
 const craftStations = [];
+let caveExitVisuals = null;
 let stoneCount = 0;
 let hasArmor = false;
 let hasShield = false;
@@ -1784,25 +1785,57 @@ const ladderTriggers = [];
   makeCraftStation(CAVE_X - 9, -16, 'shield');
   makeCraftStation(CAVE_X - 6, -16, 'armor');
 
-  // Exit pipe in the middle (looks like a Mario pipe, brown/dark to mark return)
+  // Exit pipe in the middle — bigger, golden, with arrow + glow
   const exitG = new THREE.Group();
-  const exitMat = new THREE.MeshStandardMaterial({ color: 0x884422, roughness: 0.6 });
-  const exitShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.0, 16), exitMat);
-  exitShaft.position.y = 0.5;
+  const exitMat = new THREE.MeshStandardMaterial({ color: 0xc89030, roughness: 0.5, metalness: 0.5, emissive: 0x664400, emissiveIntensity: 0.4 });
+  const exitMatLight = new THREE.MeshStandardMaterial({ color: 0xffd766, roughness: 0.4, metalness: 0.6, emissive: 0xffaa00, emissiveIntensity: 0.5 });
+  // Floor disc to mark the spot
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.04, 24), exitMatLight);
+  disc.position.y = 0.02;
+  exitG.add(disc);
+  // Shaft
+  const exitShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 1.1, 18), exitMat);
+  exitShaft.position.y = 0.6;
+  exitShaft.castShadow = true;
   exitG.add(exitShaft);
-  const exitRim = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.22, 16), exitMat);
-  exitRim.position.y = 0.95;
+  // Rim
+  const exitRim = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.26, 18), exitMatLight);
+  exitRim.position.y = 1.1;
   exitG.add(exitRim);
-  const exitHole = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.04, 16), new THREE.MeshBasicMaterial({ color: 0xfff5a0 }));
-  exitHole.position.y = 1.09;
+  // Bright inner hole
+  const exitHole = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 18), new THREE.MeshBasicMaterial({ color: 0xfffae0 }));
+  exitHole.position.y = 1.25;
   exitG.add(exitHole);
-  // Glow upward to indicate exit
-  const exitLight = new THREE.PointLight(0xfff5a0, 1.2, 6);
-  exitLight.position.y = 2;
+  // Floating arrow (cone) pointing UP above the pipe
+  const arrowShaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffee44 })
+  );
+  arrowShaft.position.y = 2.0;
+  exitG.add(arrowShaft);
+  const arrowHead = new THREE.Mesh(
+    new THREE.ConeGeometry(0.22, 0.4, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffee44 })
+  );
+  arrowHead.position.y = 2.45;
+  exitG.add(arrowHead);
+  // "Garten" sign next to the pipe
+  const signMat = new THREE.MeshStandardMaterial({ color: 0xfff5a0, emissive: 0xfff5a0, emissiveIntensity: 0.45 });
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 0.06), signMat);
+  sign.position.set(0, 1.8, 1.1);
+  exitG.add(sign);
+  // Two strong glow lights
+  const exitLight = new THREE.PointLight(0xfff5a0, 1.8, 9);
+  exitLight.position.y = 1.5;
   exitG.add(exitLight);
+  const exitLight2 = new THREE.PointLight(0xffaa44, 1.2, 6);
+  exitLight2.position.y = 2.4;
+  exitG.add(exitLight2);
   exitG.position.set(CAVE_X, 0, 0);
   scene.add(exitG);
-  obstacles.push({ x: CAVE_X, z: 0, halfW: 0.55, halfD: 0.55, top: 1.05, isCaveExit: true });
+  // Save for animation (pulsing arrow + lights)
+  caveExitVisuals = { group: exitG, arrowShaft, arrowHead, light: exitLight };
+  obstacles.push({ x: CAVE_X, z: 0, halfW: 0.62, halfD: 0.62, top: 1.2, isCaveExit: true });
 })();
 
 let pipeRideEnd = 0;
@@ -2989,6 +3022,47 @@ function updatePipeBtn() {
   const show = isOnPipe() || isNearLadder();
   if (show && !pipeBtn.classList.contains('show')) pipeBtn.classList.add('show');
   else if (!show && pipeBtn.classList.contains('show')) pipeBtn.classList.remove('show');
+}
+
+let caveExitStandTime = 0;
+let caveExitHintShown = false;
+function updateCaveExit(dt) {
+  // Animate arrow bobbing
+  if (caveExitVisuals) {
+    const t = performance.now() / 1000;
+    caveExitVisuals.arrowShaft.position.y = 2.0 + Math.sin(t * 3) * 0.18;
+    caveExitVisuals.arrowHead.position.y = 2.45 + Math.sin(t * 3) * 0.18;
+    caveExitVisuals.light.intensity = 1.4 + Math.sin(t * 3) * 0.5;
+  }
+  if (!inCaveWorld || gameState !== 'playing') {
+    caveExitStandTime = 0;
+    caveExitHintShown = false;
+    return;
+  }
+  // Check if player is standing on exit pipe
+  let onExit = false;
+  for (const o of obstacles) {
+    if (!o.isCaveExit) continue;
+    const dx = camera.position.x - o.x;
+    const dz = camera.position.z - o.z;
+    const onTop = Math.abs(camera.position.y - PLAYER_HEIGHT - o.top) < 0.5;
+    if (Math.hypot(dx, dz) < 0.65 && onTop) { onExit = true; break; }
+  }
+  if (onExit) {
+    if (!caveExitHintShown) {
+      showUnlockMessage('\u{2B06} Bleib stehen f&uuml;r 1 Sekunde, um zur&uuml;ck in den Garten zu kommen!');
+      caveExitHintShown = true;
+    }
+    caveExitStandTime += dt;
+    if (caveExitStandTime >= 1.2) {
+      caveExitStandTime = 0;
+      caveExitHintShown = false;
+      exitCaveWorld();
+    }
+  } else {
+    caveExitStandTime = 0;
+    if (caveExitHintShown && performance.now() % 100 < 50) caveExitHintShown = false;
+  }
 }
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -4693,6 +4767,7 @@ function animate() {
   updateSunFlare();
   windUniform.value = performance.now() / 1000;
   updateButterflies(dt);
+  updateCaveExit(dt);
   // Grass rustling while moving in the garden
   const movingNow = gameState === 'playing' && onGround && (
     (isTouch && (joystickVec.x !== 0 || joystickVec.y !== 0)) ||
