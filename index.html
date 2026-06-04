@@ -126,6 +126,22 @@
     <span class="inv-ico">&#x2620;</span>
     <span class="inv-num" id="invKills">0</span>
   </div>
+  <div class="inv-slot" id="slotStone">
+    <span class="inv-ico">&#x1FAA8;</span>
+    <span class="inv-num" id="invStone">0</span>
+  </div>
+  <div class="inv-slot locked" id="slotItemHammer">
+    <span class="inv-ico" style="color:#ffd700">&#x2692;</span>
+    <span class="inv-lbl">Gold</span>
+  </div>
+  <div class="inv-slot locked" id="slotItemShield">
+    <span class="inv-ico" style="color:#66aaff">&#x1F6E1;</span>
+    <span class="inv-lbl">Schild</span>
+  </div>
+  <div class="inv-slot locked" id="slotItemArmor">
+    <span class="inv-ico" style="color:#cdd2d8">&#x1F9E5;</span>
+    <span class="inv-lbl">R&uuml;st.</span>
+  </div>
 </div>
 
 <div id="touchUI">
@@ -156,7 +172,8 @@
     <span class="key">Maus</span> &nbsp;umsehen (klick zum Aktivieren)<br>
     <span class="key">Linke Maustaste</span> &nbsp;zuschlagen<br>
     <span class="key">Rechte Maustaste</span> &nbsp;Pfeil schie&szlig;en (ab 3 Kronen / 8 Monster)<br>
-    <span class="key">Leertaste</span> &nbsp;springen &nbsp;&middot;&nbsp; <span class="key">F</span> &nbsp;auf einer R&ouml;hre = H&ouml;hle<br>
+    <span class="key">Leertaste</span> &nbsp;springen<br>
+    <span class="key">F</span> &nbsp;auf R&ouml;hre = H&ouml;hle &nbsp;&middot;&nbsp; an Leiter = hochklettern<br>
     <span class="key">ESC</span> &nbsp;Maus freigeben
   </div>
   <button class="btn" id="startBtn">Garten betreten</button>
@@ -1230,6 +1247,15 @@ spawnMonsters();
 const CAVE_X = -110;
 let inCaveWorld = false;
 let caveReturnPos = null;
+const oreBlocks = [];
+const craftStations = [];
+let stoneCount = 0;
+let hasArmor = false;
+let hasShield = false;
+let hasGoldHammer = false;
+let ladderClimbing = false;
+let ladderObj = null;
+const ladderTriggers = [];
 
 (function buildCaveWorld() {
   const stoneMat = new THREE.MeshStandardMaterial({ color: 0x4a4248, roughness: 0.95 });
@@ -1258,6 +1284,64 @@ let caveReturnPos = null;
   ceiling.position.set(CAVE_X, wallH, 0);
   ceiling.rotation.x = Math.PI / 2;
   scene.add(ceiling);
+  // === Wooden mine-shaft supports ===
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b3410, roughness: 0.85 });
+  const woodMatDark = new THREE.MeshStandardMaterial({ color: 0x4a2510, roughness: 0.9 });
+  // Vertical pillars along the 4 walls
+  const pillarPositions = [
+    { x: -15, z: -19, ry: 0 }, { x: -5, z: -19, ry: 0 }, { x: 5, z: -19, ry: 0 }, { x: 15, z: -19, ry: 0 },
+    { x: -15, z: 19, ry: 0 }, { x: -5, z: 19, ry: 0 }, { x: 5, z: 19, ry: 0 }, { x: 15, z: 19, ry: 0 },
+    { x: -19, z: -15, ry: 0 }, { x: -19, z: -5, ry: 0 }, { x: -19, z: 5, ry: 0 }, { x: -19, z: 15, ry: 0 },
+    { x: 19, z: -15, ry: 0 }, { x: 19, z: -5, ry: 0 }, { x: 19, z: 5, ry: 0 }, { x: 19, z: 15, ry: 0 }
+  ];
+  for (const p of pillarPositions) {
+    const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.28, 7.8, 0.28), woodMat);
+    pillar.position.set(CAVE_X + p.x, 3.9, p.z);
+    pillar.castShadow = true;
+    pillar.receiveShadow = true;
+    scene.add(pillar);
+    // Top cross-piece (connects pillar to ceiling)
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.22, 0.28), woodMatDark);
+    cross.position.set(CAVE_X + p.x, 7.7, p.z);
+    if (Math.abs(p.z) === 19) cross.rotation.y = 0;
+    else cross.rotation.y = Math.PI / 2;
+    cross.castShadow = true;
+    scene.add(cross);
+  }
+  // Long horizontal beams along the ceiling
+  for (const z of [-12, -4, 4, 12]) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(38, 0.28, 0.28), woodMatDark);
+    beam.position.set(CAVE_X, 7.7, z);
+    beam.castShadow = true;
+    scene.add(beam);
+  }
+  // Some diagonal supports
+  for (const corner of [
+    { x: -15, z: -15 }, { x: 15, z: -15 }, { x: -15, z: 15 }, { x: 15, z: 15 }
+  ]) {
+    const sup = new THREE.Mesh(new THREE.BoxGeometry(0.22, 5, 0.22), woodMat);
+    sup.position.set(CAVE_X + corner.x * 0.85, 5, corner.z * 0.85);
+    sup.rotation.z = (corner.x > 0 ? 1 : -1) * Math.PI / 6;
+    sup.rotation.x = (corner.z > 0 ? -1 : 1) * Math.PI / 12;
+    scene.add(sup);
+  }
+  // Hanging lanterns on the wooden cross-pieces
+  for (const lp of [{ x: -10, z: -12 }, { x: 8, z: -4 }, { x: -8, z: 8 }, { x: 12, z: 12 }, { x: 0, z: 0 }]) {
+    const lanternMat = new THREE.MeshStandardMaterial({ color: 0x222018, metalness: 0.6, roughness: 0.5 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0xffcc55, emissive: 0xffaa33, emissiveIntensity: 1.0, transparent: true, opacity: 0.85 });
+    const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.2, 4), lanternMat);
+    wire.position.set(CAVE_X + lp.x, 7.0, lp.z);
+    scene.add(wire);
+    const cage = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.32, 0.25), lanternMat);
+    cage.position.set(CAVE_X + lp.x, 6.3, lp.z);
+    scene.add(cage);
+    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), glassMat);
+    flame.position.set(CAVE_X + lp.x, 6.3, lp.z);
+    scene.add(flame);
+    const lt = new THREE.PointLight(0xffaa33, 0.9, 6);
+    lt.position.set(CAVE_X + lp.x, 6.3, lp.z);
+    scene.add(lt);
+  }
   // Stalactites (hanging from ceiling)
   for (let i = 0; i < 18; i++) {
     const sx = CAVE_X + (Math.random() - 0.5) * 36;
@@ -1303,6 +1387,94 @@ let caveReturnPos = null;
     lt.position.set(sx, h * 0.7, sz);
     scene.add(lt);
   }
+  // === Ore blocks (mineable stones) ===
+  function makeOreBlock(ox, oz) {
+    const g = new THREE.Group();
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x6e6566, roughness: 0.95 });
+    const block = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.7, 0.65), stoneMat);
+    block.position.y = 0.35;
+    block.castShadow = block.receiveShadow = true;
+    g.add(block);
+    // Sparkly mineral bits
+    const sparkleMat = new THREE.MeshStandardMaterial({ color: 0xeed060, emissive: 0xeed060, emissiveIntensity: 0.5, metalness: 0.5 });
+    for (let i = 0; i < 4; i++) {
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), sparkleMat);
+      sp.position.set((Math.random() - 0.5) * 0.45, 0.35 + (Math.random() - 0.5) * 0.45, (Math.random() - 0.5) * 0.45);
+      sp.rotation.set(Math.random(), Math.random(), Math.random());
+      g.add(sp);
+    }
+    g.position.set(ox, 0, oz);
+    scene.add(g);
+    obstacles.push({ x: ox, z: oz, halfW: 0.36, halfD: 0.36, top: 0.65 });
+    oreBlocks.push({ group: g, x: ox, z: oz, hp: 2, alive: true });
+  }
+  for (let i = 0; i < 10; i++) {
+    let rx, rz, tries = 0;
+    do {
+      rx = CAVE_X + (Math.random() - 0.5) * 32;
+      rz = (Math.random() - 0.5) * 32;
+      tries++;
+    } while ((Math.hypot(rx - CAVE_X, rz) < 4 || collidesAny(rx, rz, 1.4)) && tries < 25);
+    if (tries < 25) makeOreBlock(rx, rz);
+  }
+
+  // === Craft stations ===
+  function makeCraftStation(ox, oz, kind) {
+    const g = new THREE.Group();
+    const tableMat = new THREE.MeshStandardMaterial({ color: 0x4a2510, roughness: 0.85 });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 1.0), tableMat);
+    top.position.y = 0.8;
+    top.castShadow = true;
+    g.add(top);
+    for (const [lx, lz] of [[-0.5, -0.4], [0.5, -0.4], [-0.5, 0.4], [0.5, 0.4]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.78, 0.1), tableMat);
+      leg.position.set(lx, 0.39, lz);
+      g.add(leg);
+    }
+    // Item icon on top of station
+    let iconMesh;
+    if (kind === 'hammer') {
+      // golden hammer
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45, 8), new THREE.MeshStandardMaterial({ color: 0x6b3410 }));
+      handle.position.set(0, 1.05, 0);
+      handle.rotation.z = 0.3;
+      g.add(handle);
+      iconMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 0.28), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.85, roughness: 0.25 }));
+      iconMesh.position.set(0.08, 1.18, 0);
+      g.add(iconMesh);
+    } else if (kind === 'shield') {
+      iconMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.04, 8), new THREE.MeshStandardMaterial({ color: 0x4488ff, metalness: 0.7, roughness: 0.3 }));
+      iconMesh.position.set(0, 1.04, 0);
+      iconMesh.rotation.x = Math.PI / 2;
+      g.add(iconMesh);
+      const cross = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.3), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8 }));
+      cross.position.set(0, 1.07, 0);
+      g.add(cross);
+    } else if (kind === 'armor') {
+      iconMesh = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.18), new THREE.MeshStandardMaterial({ color: 0x999fa6, metalness: 0.8, roughness: 0.3 }));
+      iconMesh.position.set(0, 1.12, 0);
+      g.add(iconMesh);
+      const shoulder1 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshStandardMaterial({ color: 0x999fa6, metalness: 0.8 }));
+      shoulder1.position.set(-0.18, 1.22, 0);
+      g.add(shoulder1);
+      const shoulder2 = shoulder1.clone();
+      shoulder2.position.set(0.18, 1.22, 0);
+      g.add(shoulder2);
+    }
+    // Glow under station to highlight it
+    const glow = new THREE.PointLight(0xffaa55, 0.6, 4);
+    glow.position.y = 1.3;
+    g.add(glow);
+    g.position.set(ox, 0, oz);
+    scene.add(g);
+    obstacles.push({ x: ox, z: oz, halfW: 0.7, halfD: 0.6, top: 0.95 });
+    craftStations.push({ group: g, x: ox, z: oz, kind, iconMesh });
+  }
+  // Three craft stations in a row near one wall
+  makeCraftStation(CAVE_X - 12, -16, 'hammer');
+  makeCraftStation(CAVE_X - 9, -16, 'shield');
+  makeCraftStation(CAVE_X - 6, -16, 'armor');
+
   // Exit pipe in the middle (looks like a Mario pipe, brown/dark to mark return)
   const exitG = new THREE.Group();
   const exitMat = new THREE.MeshStandardMaterial({ color: 0x884422, roughness: 0.6 });
@@ -1480,6 +1652,7 @@ function exitCaveWorld() {
   gateLight.position.set(LX, 8.6, LZ);
   scene.add(gateLight);
   obstacles.push({ x: LX, z: LZ, halfW: 0.9, halfD: 0.9, top: 8.5, isCloudGate: true });
+  ladderTriggers.push({ x: LX, z: LZ, halfW: 1.4, halfD: 1.4, top: 8.5 });
 })();
 
 // === Bonus Sky World (above & far from garden) ===
@@ -2405,10 +2578,43 @@ window.addEventListener('keydown', e => {
     tryJump();
   }
   if (e.code === 'KeyF' && !keys[e.code] && gameState === 'playing') {
-    tryEnterPipe();
+    tryF();
   }
   keys[e.code] = true;
 });
+
+function tryClimbLadder() {
+  if (gameState !== 'playing') return false;
+  if (inBonusWorld || inCaveWorld || inAlienWorld) return false;
+  for (const o of ladderTriggers) {
+    if (Math.abs(camera.position.x - o.x) < o.halfW && Math.abs(camera.position.z - o.z) < o.halfD) {
+      ladderClimbing = !ladderClimbing;
+      ladderObj = o;
+      if (ladderClimbing) {
+        showUnlockMessage('\u{1FA9C} Klettere die Leiter hoch!');
+        beep(440, 0.1, 'sine', 0.08);
+      } else {
+        beep(220, 0.1, 'sine', 0.06);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+function isNearLadder() {
+  if (gameState !== 'playing') return false;
+  if (inBonusWorld || inCaveWorld || inAlienWorld) return false;
+  for (const o of ladderTriggers) {
+    if (Math.abs(camera.position.x - o.x) < o.halfW && Math.abs(camera.position.z - o.z) < o.halfD) return true;
+  }
+  return false;
+}
+
+function tryF() {
+  if (tryClimbLadder()) return;
+  tryEnterPipe();
+}
 
 function tryEnterPipe() {
   if (gameState !== 'playing') return;
@@ -2468,7 +2674,7 @@ function isOnPipe() {
 
 function updatePipeBtn() {
   if (!isTouch) return;
-  const show = isOnPipe();
+  const show = isOnPipe() || isNearLadder();
   if (show && !pipeBtn.classList.contains('show')) pipeBtn.classList.add('show');
   else if (!show && pipeBtn.classList.contains('show')) pipeBtn.classList.remove('show');
 }
@@ -2614,12 +2820,12 @@ bowBtn.addEventListener('click', e => {
 pipeBtn.addEventListener('touchstart', e => {
   e.preventDefault();
   e.stopPropagation();
-  tryEnterPipe();
+  tryF();
 }, { passive: false });
 pipeBtn.addEventListener('click', e => {
   e.preventDefault();
   if (isTouch) return;
-  tryEnterPipe();
+  tryF();
 });
 jumpBtn.addEventListener('click', e => {
   e.preventDefault();
@@ -2749,6 +2955,24 @@ function updateMovement(dt) {
     camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
   }
 
+  // Ladder climbing override
+  if (ladderClimbing && ladderObj) {
+    const ax = Math.abs(camera.position.x - ladderObj.x);
+    const az = Math.abs(camera.position.z - ladderObj.z);
+    if (ax > ladderObj.halfW + 0.4 || az > ladderObj.halfD + 0.4) {
+      ladderClimbing = false;
+    } else {
+      camera.position.y += 3.0 * dt;
+      playerVy = 0;
+      onGround = false;
+      if (camera.position.y >= ladderObj.top + PLAYER_HEIGHT) {
+        camera.position.y = ladderObj.top + PLAYER_HEIGHT;
+        ladderClimbing = false;
+      }
+      return;
+    }
+  }
+
   // Vertical: jump, gravity, platforms
   const groundH = getGroundHeightAt(camera.position.x, camera.position.z);
   const standingY = groundH + PLAYER_HEIGHT;
@@ -2845,8 +3069,127 @@ function updateHammer(dt) {
   }
 }
 
+function checkOreHit(camDir) {
+  if (!inCaveWorld) return false;
+  const hammerReach = hasGoldHammer ? 2.7 : 2.0;
+  for (const o of oreBlocks) {
+    if (!o.alive) continue;
+    const center = new THREE.Vector3(o.x, 0.35, o.z);
+    const dist = camera.position.distanceTo(center);
+    if (dist > hammerReach) continue;
+    const dir = center.clone().sub(camera.position).normalize();
+    if (camDir.dot(dir) < 0.5) continue;
+    damageOre(o);
+    return true;
+  }
+  return false;
+}
+
+function damageOre(o) {
+  o.hp -= hasGoldHammer ? 2 : 1;
+  beep(220, 0.08, 'square', 0.12);
+  // Chip particles
+  for (let i = 0; i < 6; i++) {
+    const sz = 0.04 + Math.random() * 0.03;
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(sz, sz, sz),
+      new THREE.MeshStandardMaterial({ color: 0x6e6566, roughness: 0.9 })
+    );
+    m.position.set(o.x, 0.4, o.z);
+    scene.add(m);
+    const a = Math.random() * Math.PI * 2;
+    crumbs.push({
+      mesh: m,
+      vx: Math.cos(a) * 2.5,
+      vy: 1.5 + Math.random() * 2,
+      vz: Math.sin(a) * 2.5,
+      av: new THREE.Vector3((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10),
+      life: 1.2
+    });
+  }
+  if (o.hp <= 0) {
+    o.alive = false;
+    scene.remove(o.group);
+    o.group.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material && c.material.dispose) c.material.dispose(); });
+    // Remove obstacle entry
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      if (Math.abs(obstacles[i].x - o.x) < 0.01 && Math.abs(obstacles[i].z - o.z) < 0.01 && obstacles[i].top === 0.65) {
+        obstacles.splice(i, 1); break;
+      }
+    }
+    const gain = hasGoldHammer ? 2 : 1;
+    stoneCount += gain;
+    updateInventory();
+    beep(550, 0.1, 'sine', 0.12);
+    setTimeout(() => beep(750, 0.13, 'sine', 0.1), 90);
+    showUnlockMessage('+' + gain + ' Stein gesammelt! (Gesamt: ' + stoneCount + ')');
+  }
+}
+
+function checkCraftStationHit(camDir) {
+  if (!inCaveWorld) return false;
+  for (const cs of craftStations) {
+    const center = new THREE.Vector3(cs.x, 1.0, cs.z);
+    const dist = camera.position.distanceTo(center);
+    if (dist > 2.3) continue;
+    const dir = center.clone().sub(camera.position).normalize();
+    if (camDir.dot(dir) < 0.5) continue;
+    tryCraft(cs);
+    return true;
+  }
+  return false;
+}
+
+function tryCraft(cs) {
+  const cost = cs.kind === 'hammer' ? 4 : cs.kind === 'shield' ? 4 : 5;
+  if (cs.kind === 'hammer' && hasGoldHammer) { showUnlockMessage('Du hast schon den Gold-Hammer!'); return; }
+  if (cs.kind === 'shield' && hasShield) { showUnlockMessage('Du hast schon einen Schild!'); return; }
+  if (cs.kind === 'armor' && hasArmor) { showUnlockMessage('Du hast schon eine R&uuml;stung!'); return; }
+  if (stoneCount < cost) {
+    showUnlockMessage('Du brauchst ' + cost + ' Steine f&uuml;r dieses Item! (Du hast ' + stoneCount + ')');
+    beep(180, 0.15, 'sawtooth', 0.08);
+    return;
+  }
+  stoneCount -= cost;
+  if (cs.kind === 'hammer') { hasGoldHammer = true; showUnlockMessage('\u{2692} Gold-Hammer gebaut! Mehr Reichweite!'); }
+  else if (cs.kind === 'shield') { hasShield = true; showUnlockMessage('\u{1F6E1} Schild gebaut! Halber Schaden!'); }
+  else if (cs.kind === 'armor') { hasArmor = true; playerHp = Math.min(PLAYER_MAX_HP + 2, playerHp + 2); showUnlockMessage('\u{1F9E5} R&uuml;stung gebaut! +2 Herzen!'); }
+  updateInventory();
+  updateHearts();
+  // Crafting sparkle
+  for (let i = 0; i < 25; i++) {
+    const sz = 0.04 + Math.random() * 0.05;
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(sz, 5, 4),
+      new THREE.MeshBasicMaterial({ color: 0xffd700 })
+    );
+    m.position.set(cs.x, 1.2, cs.z);
+    scene.add(m);
+    const a = Math.random() * Math.PI * 2;
+    crumbs.push({
+      mesh: m,
+      vx: Math.cos(a) * 2.5,
+      vy: 2 + Math.random() * 2.5,
+      vz: Math.sin(a) * 2.5,
+      av: new THREE.Vector3(0, 0, 0),
+      life: 1.5
+    });
+  }
+  beep(700, 0.15, 'sine', 0.14);
+  setTimeout(() => beep(900, 0.15, 'sine', 0.14), 110);
+  setTimeout(() => beep(1200, 0.25, 'sine', 0.14), 220);
+}
+
 function checkHit() {
   const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+
+  // Cave: mine ore or craft items first
+  if (inCaveWorld) {
+    if (checkOreHit(camDir)) return;
+    if (checkCraftStationHit(camDir)) return;
+    beep(220, 0.1, 'sawtooth', 0.04);
+    return;
+  }
 
   // Garden cake (only if still visible / not yet destroyed)
   if (!inAlienWorld && cakeGroup.children.some(c => c.visible)) {
@@ -3682,8 +4025,18 @@ function updateHearts() {
 function updateInventory() {
   invCrowns.textContent = crownsCollected + '/3';
   invKills.textContent = monstersKilled;
+  document.getElementById('invStone').textContent = stoneCount;
   slotBow.classList.toggle('locked', !bowUnlocked);
   slotBow.classList.toggle('ready', bowUnlocked);
+  const slotItemHammer = document.getElementById('slotItemHammer');
+  const slotItemShield = document.getElementById('slotItemShield');
+  const slotItemArmor = document.getElementById('slotItemArmor');
+  slotItemHammer.classList.toggle('locked', !hasGoldHammer);
+  slotItemHammer.classList.toggle('ready', hasGoldHammer);
+  slotItemShield.classList.toggle('locked', !hasShield);
+  slotItemShield.classList.toggle('ready', hasShield);
+  slotItemArmor.classList.toggle('locked', !hasArmor);
+  slotItemArmor.classList.toggle('ready', hasArmor);
   const maxJ = getMaxJumps();
   let icon = '\u{1F45F}', txt = '×1';
   if (maxJ >= 4) { icon = '⚡'; txt = '×4'; }
@@ -3705,7 +4058,8 @@ function damagePlayer(amount) {
   if (now < invulnerableUntil) return;
   if (gameState !== 'playing') return;
   if (playerHp <= 0) return;
-  const dmg = amount || 1;
+  let dmg = amount || 1;
+  if (hasShield) dmg *= 0.5;
   playerHp = Math.max(0, playerHp - dmg);
   invulnerableUntil = now + 1400;
   shakeAmount = 0.18;
@@ -3763,7 +4117,24 @@ function startGame() {
   bowUnlocked = false;
   bowBtn.classList.remove('show');
   shootCooldown = 0;
+  stoneCount = 0;
+  hasArmor = false;
+  hasShield = false;
+  hasGoldHammer = false;
+  ladderClimbing = false;
+  // Respawn ore blocks
+  for (const o of oreBlocks) {
+    if (!o.alive) {
+      o.alive = true;
+      o.hp = 2;
+      scene.add(o.group);
+      obstacles.push({ x: o.x, z: o.z, halfW: 0.36, halfD: 0.36, top: 0.65 });
+    } else {
+      o.hp = 2;
+    }
+  }
   if (inBonusWorld) exitBonusWorld();
+  if (inCaveWorld) { inCaveWorld = false; }
   // Reset alien world state
   inAlienWorld = false;
   alienCakeState.hp = alienCakeState.maxHp;
