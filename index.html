@@ -2152,8 +2152,8 @@ const alienCraters = [];
 let abductionUfo = null;
 let abductionPhase = 0;
 let nextAlienSpawn = 0;
-const MAX_ALIENS = 3;
-const MAX_ALIENS_TO_SPAWN = 3;
+const MAX_ALIENS = 5;
+const MAX_ALIENS_TO_SPAWN = 5;
 let activeAlien = null;
 let totalAliensSpawned = 0;
 let hasBeenInAlienWorld = false;
@@ -2250,6 +2250,12 @@ function makeHumanAlien(x, y, z, scale) {
   const gunLight = new THREE.Mesh(new THREE.SphereGeometry(0.02 * s, 6, 5), visorMat);
   gunLight.position.set(0.3 * s, 0.45 * s, 0.31 * s);
   g.add(gunLight);
+  // Marker arrow above so the player always sees the robot
+  const markerMat = new THREE.MeshBasicMaterial({ color: 0xff3344 });
+  const marker = new THREE.Mesh(new THREE.ConeGeometry(0.18 * s, 0.32 * s, 6), markerMat);
+  marker.position.y = 1.7 * s;
+  marker.rotation.x = Math.PI;
+  g.add(marker);
   g.position.set(x, y, z);
   scene.add(g);
   return {
@@ -2260,7 +2266,8 @@ function makeHumanAlien(x, y, z, scale) {
     hopHeight: 0,
     alive: true, hp: 1, color: 0x5fb340,
     isHuman: true, isAlien: true,
-    nextShoot: performance.now() + 4500 + Math.random() * 3000
+    nextShoot: performance.now() + 4500 + Math.random() * 3000,
+    marker
   };
 }
 
@@ -2657,14 +2664,93 @@ function makeAlien(x, y, z, scale) {
   scene.add(moon2);
   // A scatter of bright stars in the sky (low-poly)
   const starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 60; i++) {
     const star = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4), starMat);
     const a = Math.random() * Math.PI * 2;
-    const r2 = 28 + Math.random() * 6;
-    const elev = 15 + Math.random() * 18;
+    const r2 = 40 + Math.random() * 30;
+    const elev = 20 + Math.random() * 25;
     star.position.set(ALIEN_X + Math.cos(a) * r2, elev, Math.sin(a) * r2);
     scene.add(star);
   }
+
+  // Other planets visible from the UFO flight area
+  const lavaPlanet = new THREE.Mesh(
+    new THREE.SphereGeometry(5, 24, 18),
+    new THREE.MeshStandardMaterial({ color: 0xc24a1c, emissive: 0xff5500, emissiveIntensity: 0.45, roughness: 0.7 })
+  );
+  lavaPlanet.position.set(ALIEN_X - 55, 28, -45);
+  scene.add(lavaPlanet);
+  // Surface markings on lava planet
+  for (let i = 0; i < 6; i++) {
+    const spot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.6 + Math.random() * 0.5, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffee44 })
+    );
+    const a = Math.random() * Math.PI * 2;
+    const b = Math.random() * Math.PI - Math.PI / 2;
+    spot.position.set(
+      lavaPlanet.position.x + Math.cos(a) * Math.cos(b) * 4.8,
+      lavaPlanet.position.y + Math.sin(b) * 4.8,
+      lavaPlanet.position.z + Math.sin(a) * Math.cos(b) * 4.8
+    );
+    scene.add(spot);
+  }
+
+  const icePlanet = new THREE.Mesh(
+    new THREE.SphereGeometry(4, 24, 18),
+    new THREE.MeshStandardMaterial({ color: 0xb0e0ff, emissive: 0x88ccff, emissiveIntensity: 0.35, roughness: 0.4, metalness: 0.3 })
+  );
+  icePlanet.position.set(ALIEN_X + 60, 32, 40);
+  scene.add(icePlanet);
+  // Ice ring
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(6.5, 0.3, 8, 32),
+    new THREE.MeshStandardMaterial({ color: 0xd0e8ff, transparent: true, opacity: 0.6, roughness: 0.3 })
+  );
+  ring.position.copy(icePlanet.position);
+  ring.rotation.x = 0.4;
+  scene.add(ring);
+
+  const greenPlanet = new THREE.Mesh(
+    new THREE.SphereGeometry(3, 24, 18),
+    new THREE.MeshStandardMaterial({ color: 0x88dd44, emissive: 0x44aa22, emissiveIntensity: 0.25, roughness: 0.7 })
+  );
+  greenPlanet.position.set(ALIEN_X + 5, 38, -60);
+  scene.add(greenPlanet);
+
+  // Patrolling enemy spaceships (small UFOs)
+  const enemyShips = [];
+  function makeEnemyShip(x, y, z) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 1.2, 0.3, 16),
+      new THREE.MeshStandardMaterial({ color: 0x884444, metalness: 0.7, roughness: 0.4, emissive: 0x441111, emissiveIntensity: 0.3 })
+    );
+    g.add(body);
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.55, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0xff6666, transparent: true, opacity: 0.7, emissive: 0xff3333, emissiveIntensity: 0.6 })
+    );
+    dome.position.y = 0.1;
+    g.add(dome);
+    // Underside lights
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      const led = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08, 6, 5),
+        new THREE.MeshBasicMaterial({ color: 0xff2200 })
+      );
+      led.position.set(Math.cos(a) * 1.0, -0.15, Math.sin(a) * 1.0);
+      g.add(led);
+    }
+    g.position.set(x, y, z);
+    scene.add(g);
+    enemyShips.push({ group: g, baseX: x, baseY: y, baseZ: z, phase: Math.random() * Math.PI * 2, speed: 0.3 + Math.random() * 0.3, alive: true, hp: 3 });
+  }
+  makeEnemyShip(ALIEN_X - 20, 16, -25);
+  makeEnemyShip(ALIEN_X + 25, 18, 28);
+  makeEnemyShip(ALIEN_X - 30, 22, 35);
+  window.__enemyShips = enemyShips;
 })();
 
 function killBonusCake(bc) {
@@ -3104,6 +3190,63 @@ function enterUfoMode() {
   setTimeout(() => { if (inUfo) finalWin(); }, 12000);
 }
 
+function updateEnemyShips(dt) {
+  if (!window.__enemyShips) return;
+  const t = performance.now() / 1000;
+  for (const s of window.__enemyShips) {
+    if (!s.alive) continue;
+    s.group.position.x = s.baseX + Math.cos(t * s.speed + s.phase) * 8;
+    s.group.position.z = s.baseZ + Math.sin(t * s.speed * 1.3 + s.phase) * 6;
+    s.group.position.y = s.baseY + Math.sin(t * s.speed * 0.8) * 2;
+    s.group.rotation.y += dt * 1.2;
+  }
+}
+
+function damageEnemyShip(s) {
+  s.hp -= 1;
+  // bright flash
+  for (let i = 0; i < 16; i++) {
+    const sz = 0.05 + Math.random() * 0.06;
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(sz, sz, sz),
+      new THREE.MeshBasicMaterial({ color: 0xff4422 })
+    );
+    m.position.copy(s.group.position);
+    scene.add(m);
+    const a = Math.random() * Math.PI * 2;
+    crumbs.push({
+      mesh: m, vx: Math.cos(a) * 5, vy: 2 + Math.random() * 3, vz: Math.sin(a) * 5,
+      av: new THREE.Vector3((Math.random()-0.5)*15, (Math.random()-0.5)*15, (Math.random()-0.5)*15), life: 1.8
+    });
+  }
+  beep(200, 0.1, 'square', 0.12);
+  if (s.hp <= 0) {
+    s.alive = false;
+    scene.remove(s.group);
+    s.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.dispose) o.material.dispose(); });
+    // big explosion
+    for (let i = 0; i < 60; i++) {
+      const sz = 0.06 + Math.random() * 0.08;
+      const colors = [0xff3300, 0xffaa00, 0xffff44];
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(sz, sz, sz),
+        new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * 3)] })
+      );
+      m.position.copy(s.group.position);
+      scene.add(m);
+      const a = Math.random() * Math.PI * 2;
+      crumbs.push({
+        mesh: m, vx: Math.cos(a) * (4 + Math.random() * 5), vy: (Math.random() - 0.3) * 8, vz: Math.sin(a) * (4 + Math.random() * 5),
+        av: new THREE.Vector3((Math.random()-0.5)*20, (Math.random()-0.5)*20, (Math.random()-0.5)*20), life: 2.5
+      });
+    }
+    beep(80, 0.4, 'sawtooth', 0.15);
+    setTimeout(() => beep(120, 0.3, 'sawtooth', 0.12), 200);
+    showUnlockMessage('\u{1F4A5} Feindliches Raumschiff zerst&ouml;rt!');
+  }
+}
+
+let ufoBlockedHintTime = 0;
 function updateUfoEntry(dt) {
   if (gameState !== 'playing' || !inAlienWorld || inUfo) {
     ufoEnterStandTime = 0;
@@ -3118,6 +3261,16 @@ function updateUfoEntry(dt) {
     if (Math.hypot(dx, dz) < 0.75 && onTop) { onPortal = true; break; }
   }
   if (onPortal) {
+    if (alienLasersActive()) {
+      // Block UFO entry while lasers are up
+      ufoBlockedHintTime -= dt;
+      if (ufoBlockedHintTime <= 0) {
+        showUnlockMessage('🚨 Erst alle Roboter besiegen — die Laser schützen das UFO!');
+        ufoBlockedHintTime = 3.0;
+      }
+      ufoEnterStandTime = 0;
+      return;
+    }
     ufoEnterStandTime += dt;
     if (ufoEnterStandTime > 0.6) {
       ufoEnterStandTime = 0;
@@ -3125,6 +3278,7 @@ function updateUfoEntry(dt) {
     }
   } else {
     ufoEnterStandTime = 0;
+    ufoBlockedHintTime = 0;
   }
 }
 
@@ -3582,13 +3736,43 @@ function updateMovement(dt) {
     camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
   }
 
-  // UFO flight mode: no gravity, vertical via jump/crouch
+  // UFO flight mode: free 3D flight
   if (inUfo) {
+    camera.rotation.y = yaw;
+    camera.rotation.x = pitch;
+    if (gameState !== 'playing') return;
+    // Horizontal via WASD or joystick
+    let moveZ = 0, moveX = 0;
+    if (isTouch && (joystickVec.x !== 0 || joystickVec.y !== 0)) {
+      moveZ = joystickVec.y;
+      moveX = joystickVec.x;
+    } else {
+      const fwd = (keys['KeyW']) ? 1 : 0;
+      const back = (keys['KeyS']) ? 1 : 0;
+      const left = (keys['KeyA']) ? 1 : 0;
+      const right = (keys['KeyD']) ? 1 : 0;
+      moveZ = back - fwd;
+      moveX = right - left;
+    }
+    if (moveZ !== 0 || moveX !== 0) {
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+      const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+      let dx = fx * -moveZ + rx * moveX;
+      let dz = fz * -moveZ + rz * moveX;
+      const len = Math.hypot(dx, dz);
+      if (len > 0) { dx /= len; dz /= len; }
+      camera.position.x += dx * 7 * dt;
+      camera.position.z += dz * 7 * dt;
+    }
+    // Vertical: Space = up, C/Shift = down
     const upPress = keys['Space'] || keys[' '] || keys['ArrowUp'];
-    const downPress = keys['KeyC'] || keys['ShiftLeft'] || keys['ShiftRight'];
-    if (upPress) camera.position.y += 4 * dt;
-    else if (downPress) camera.position.y -= 4 * dt;
-    camera.position.y = Math.max(2.5, Math.min(22, camera.position.y));
+    const downPress = keys['KeyC'] || keys['ShiftLeft'] || keys['ShiftRight'] || keys['ArrowDown'];
+    if (upPress) camera.position.y += 5 * dt;
+    else if (downPress) camera.position.y -= 5 * dt;
+    camera.position.y = Math.max(2, Math.min(40, camera.position.y));
+    // Wide flight area to roam between planets
+    camera.position.x = Math.max(ALIEN_X - 80, Math.min(ALIEN_X + 80, camera.position.x));
+    camera.position.z = Math.max(-80, Math.min(80, camera.position.z));
     return;
   }
 
@@ -3851,25 +4035,7 @@ function checkHit() {
     if (ok) { registerHit(); return; }
   }
 
-  // Alien cake (only when in alien world)
-  if (inAlienWorld && alienCakeState.alive) {
-    const cw = new THREE.Vector3();
-    alienCakeGroup.getWorldPosition(cw);
-    cw.y += 0.45;
-    const dist = camera.position.distanceTo(cw);
-    const ok = dist <= 2.8
-      && (cw.y - camera.position.y <= 0.7)
-      && camDir.dot(cw.clone().sub(camera.position).normalize()) >= 0.4;
-    if (ok) {
-      if (alienLasersActive()) {
-        beep(160, 0.18, 'sawtooth', 0.12);
-        showUnlockMessage('🚨 Erst alle Aliens töten — die UFO-Laser schützen die Torte!');
-        return;
-      }
-      registerAlienCakeHit();
-      return;
-    }
-  }
+  // (Alien cake removed — pedestal is just a ladder base now)
 
   // Bonus cakes (in the cloud world)
   if (inBonusWorld && checkBonusCakeHit(camDir)) return;
@@ -4054,19 +4220,18 @@ function updateArrows(dt) {
         hit = true;
       }
     }
-    if (!hit && inAlienWorld && alienCakeState.alive) {
-      const cw = new THREE.Vector3();
-      alienCakeGroup.getWorldPosition(cw);
-      cw.y += 0.45;
-      if (a.pos.distanceTo(cw) < 0.7) {
-        if (alienLasersActive()) {
-          hit = true; // arrow blocked by laser
-        } else {
-          registerAlienCakeHit();
+    // Enemy ships (in UFO mode)
+    if (!hit && inAlienWorld && window.__enemyShips) {
+      for (const s of window.__enemyShips) {
+        if (!s.alive) continue;
+        if (a.pos.distanceTo(s.group.position) < 1.5) {
+          damageEnemyShip(s);
           hit = true;
+          break;
         }
       }
     }
+    // (alien cake gone — arrows go through where it used to be)
     // Boundary / out of world
     if (hit || a.life <= 0 || a.pos.y < 0 || Math.abs(a.pos.x) > 35 || Math.abs(a.pos.z) > 35) {
       scene.remove(a.group);
@@ -4118,6 +4283,16 @@ function updateMonsters(dt) {
     if (!m.alive) continue;
     // Only the active alien gets to attack/move aggressively in alien world
     const isPassive = inAlienWorld && m.isAlien && m !== activeAlien;
+    if (isPassive && gameState === 'playing') {
+      // Slow patrol so the player can see and target them
+      if (!m._homeX) { m._homeX = m.x; m._homeZ = m.z; }
+      m.x = m._homeX + Math.cos(t * 0.4 + m.phase) * 1.4;
+      m.z = m._homeZ + Math.sin(t * 0.55 + m.phase) * 1.4;
+      m.group.position.x = m.x;
+      m.group.position.z = m.z;
+      // face their movement direction
+      m.group.rotation.y = Math.atan2(-Math.sin(t * 0.4 + m.phase), Math.cos(t * 0.55 + m.phase) * 0.7);
+    }
 
     // Movement toward player when in playing state
     if (gameState === 'playing' && !isPassive) {
@@ -4168,9 +4343,9 @@ function updateMonsters(dt) {
 
 function alienLasersActive() {
   if (!inAlienWorld) return false;
-  // Wait until initial 8 aliens have been spawned
-  if (totalAliensSpawned < 8) return true;
-  // Any alien still alive?
+  if (inUfo) return false; // Once player is in the UFO, lasers shut down
+  // Wait until initial aliens have been spawned
+  if (totalAliensSpawned < MAX_ALIENS_TO_SPAWN) return true;
   for (const m of monsters) {
     if (m.alive && m.isAlien) return true;
   }
@@ -4535,9 +4710,9 @@ function teleportToAlienWorld() {
     abductionUfo = null;
   }
   abductionPhase = 0;
-  // Teleport player
-  camera.position.set(ALIEN_X + 9, PLAYER_HEIGHT, 8);
-  yaw = -Math.PI * 0.75;
+  // Teleport player — look directly at the pedestal so aliens are right in view
+  camera.position.set(ALIEN_X + 11, PLAYER_HEIGHT, 11);
+  yaw = Math.atan2(camera.position.x - ALIEN_X, camera.position.z - 0);
   pitch = -0.05;
   playerVy = 0;
   onGround = true;
@@ -4549,16 +4724,15 @@ function teleportToAlienWorld() {
   scene.fog.color.setHex(0x5a2810);
   scene.fog.near = 10;
   scene.fog.far = 40;
-  // Reset alien cake
-  alienCakeState.hp = alienCakeState.maxHp;
-  alienCakeState.alive = true;
-  for (const c of alienCakeGroup.children) c.visible = true;
-  // Spawn 3 robot-aliens around the pedestal — only one attacks at a time
+  // Alien cake disabled — UFO ladder is the goal now
+  alienCakeState.alive = false;
+  alienCakeGroup.visible = false;
+  // Spawn 5 robot-aliens spread out — all visible, only one attacks at a time
   totalAliensSpawned = 0;
   activeAlien = null;
-  for (let i = 0; i < 3; i++) {
-    const ang = (i / 3) * Math.PI * 2 + Math.random() * 0.2;
-    const rad = 10 + Math.random() * 4;
+  for (let i = 0; i < 5; i++) {
+    const ang = (i / 5) * Math.PI * 2 + Math.random() * 0.2;
+    const rad = 9 + Math.random() * 6;
     const ax = ALIEN_X + Math.cos(ang) * rad;
     const az = Math.sin(ang) * rad;
     monsters.push(makeHumanAlien(ax, 0, az, 0.95 + Math.random() * 0.2));
@@ -4813,9 +4987,7 @@ function startGame() {
   hammerGroup.visible = true;
   ufoEnterStandTime = 0;
   activeAlien = null;
-  alienCakeState.hp = alienCakeState.maxHp;
-  alienCakeState.alive = true;
-  // Cake stays hidden — using ladder/UFO entry instead
+  alienCakeState.alive = false; // never reactivate — pedestal is just the ladder base now
   cinematicAliens.length = 0;
   abductionPhase = 0;
   nextAlienSpawn = 0;
@@ -4927,8 +5099,34 @@ function retry() {
     hammerGroup.visible = true;
     ufoEnterStandTime = 0;
     activeAlien = null;
-    camera.position.set(ALIEN_X + 9, PLAYER_HEIGHT, 8);
-    yaw = -Math.PI * 0.75;
+    // Clean up old aliens and respawn them
+    for (let i = monsters.length - 1; i >= 0; i--) {
+      const m = monsters[i];
+      if (m.isAlien) {
+        if (m.group.parent) scene.remove(m.group);
+        m.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.dispose) o.material.dispose(); });
+        monsters.splice(i, 1);
+      }
+    }
+    totalAliensSpawned = 0;
+    for (let i = 0; i < 5; i++) {
+      const ang = (i / 5) * Math.PI * 2 + Math.random() * 0.2;
+      const rad = 9 + Math.random() * 6;
+      const ax = ALIEN_X + Math.cos(ang) * rad;
+      const az = Math.sin(ang) * rad;
+      monsters.push(makeHumanAlien(ax, 0, az, 0.95 + Math.random() * 0.2));
+      totalAliensSpawned++;
+    }
+    // Respawn enemy ships too
+    if (window.__enemyShips) {
+      for (const s of window.__enemyShips) {
+        if (!s.alive) {
+          // Skip — can't easily resurrect; just keep dead ones gone
+        }
+      }
+    }
+    camera.position.set(ALIEN_X + 11, PLAYER_HEIGHT, 11);
+    yaw = Math.atan2(camera.position.x - ALIEN_X, camera.position.z - 0);
     pitch = -0.05;
     playerVy = 0;
     onGround = true;
@@ -5079,6 +5277,7 @@ function animate() {
   updateCaveExit(dt);
   updateUfoEntry(dt);
   updateAutoEnter(dt);
+  updateEnemyShips(dt);
   // Grass rustling while moving in the garden
   const movingNow = gameState === 'playing' && onGround && (
     (isTouch && (joystickVec.x !== 0 || joystickVec.y !== 0)) ||
