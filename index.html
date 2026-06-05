@@ -2151,8 +2151,9 @@ const alienCraters = [];
 let abductionUfo = null;
 let abductionPhase = 0;
 let nextAlienSpawn = 0;
-const MAX_ALIENS = 10;
-const MAX_ALIENS_TO_SPAWN = 12;
+const MAX_ALIENS = 3;
+const MAX_ALIENS_TO_SPAWN = 3;
+let activeAlien = null;
 let totalAliensSpawned = 0;
 let hasBeenInAlienWorld = false;
 const alienLasers = [];
@@ -2590,6 +2591,36 @@ function makeAlien(x, y, z, scale) {
   acGem.position.y = 0.88;
   alienCakeGroup.add(acGem);
   scene.add(alienCakeGroup);
+  alienCakeGroup.visible = false; // Cake replaced by ladder to UFO
+
+  // Ladder from pedestal up to the UFO
+  const ladderWood = new THREE.MeshStandardMaterial({ color: 0xc89030, roughness: 0.6, metalness: 0.4, emissive: 0x553300, emissiveIntensity: 0.25 });
+  for (const sx of [-0.18, 0.18]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5.6, 8), ladderWood);
+    pole.position.set(ALIEN_X + sx, 4.0, 0);
+    pole.castShadow = true;
+    scene.add(pole);
+  }
+  for (let i = 0; i < 8; i++) {
+    const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.45, 6), ladderWood);
+    rung.position.set(ALIEN_X, 1.4 + i * 0.7, 0);
+    rung.rotation.z = Math.PI / 2;
+    rung.castShadow = true;
+    scene.add(rung);
+  }
+  // Glowing UFO entry portal at the top of the ladder
+  const portal = new THREE.Mesh(
+    new THREE.SphereGeometry(0.7, 14, 10),
+    new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.8, roughness: 0.4 })
+  );
+  portal.position.set(ALIEN_X, 6.6, 0);
+  portal.scale.y = 0.4;
+  scene.add(portal);
+  const portalLight = new THREE.PointLight(0xffd700, 1.5, 8);
+  portalLight.position.set(ALIEN_X, 6.7, 0);
+  scene.add(portalLight);
+  obstacles.push({ x: ALIEN_X, z: 0, halfW: 0.7, halfD: 0.7, top: 6.7, isUfoEntry: true });
+  ladderTriggers.push({ x: ALIEN_X, z: 0, halfW: 1.4, halfD: 1.4, top: 6.7, isAlienLadder: true });
 
   // Six red lasers from the UFO down to the ground forming a cage around the pedestal
   const laserMat = new THREE.MeshBasicMaterial({ color: 0xff3344, transparent: true, opacity: 0.7 });
@@ -2841,6 +2872,34 @@ const hammerRestPos = hammerGroup.position.clone();
 const hammerRestRot = hammerGroup.rotation.clone();
 camera.add(hammerGroup);
 
+// === Player UFO (visible when piloting the alien UFO) ===
+const playerUfoGroup = new THREE.Group();
+const pufoBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.3, 1.7, 0.32, 24),
+  new THREE.MeshStandardMaterial({ color: 0xb0b8c0, metalness: 0.75, roughness: 0.3 })
+);
+pufoBody.position.y = -0.9;
+playerUfoGroup.add(pufoBody);
+const pufoDome = new THREE.Mesh(
+  new THREE.SphereGeometry(0.75, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+  new THREE.MeshStandardMaterial({ color: 0x66ddff, transparent: true, opacity: 0.55, metalness: 0.5, roughness: 0.1 })
+);
+pufoDome.position.y = -0.75;
+playerUfoGroup.add(pufoDome);
+// LEDs around the rim
+const pufoLedColors = [0xff0044, 0xffff00, 0x00ffff, 0xff00ff, 0x88ff44, 0xff8800];
+for (let i = 0; i < 8; i++) {
+  const a = (i / 8) * Math.PI * 2;
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), new THREE.MeshBasicMaterial({ color: pufoLedColors[i % pufoLedColors.length] }));
+  led.position.set(Math.cos(a) * 1.5, -1.02, Math.sin(a) * 1.5);
+  playerUfoGroup.add(led);
+}
+playerUfoGroup.visible = false;
+camera.add(playerUfoGroup);
+
+let inUfo = false;
+let ufoEnterStandTime = 0;
+
 // === State ===
 const CAKE_MAX_HP = 8;
 const BOUNDARY = 29;
@@ -3022,6 +3081,43 @@ function updatePipeBtn() {
   const show = isOnPipe() || isNearLadder();
   if (show && !pipeBtn.classList.contains('show')) pipeBtn.classList.add('show');
   else if (!show && pipeBtn.classList.contains('show')) pipeBtn.classList.remove('show');
+}
+
+function enterUfoMode() {
+  if (inUfo) return;
+  inUfo = true;
+  playerUfoGroup.visible = true;
+  hammerGroup.visible = false;
+  showUnlockMessage('\u{1F6F8} Du steuerst jetzt das UFO! Leertaste hoch, C runter, WASD = bewegen');
+  beep(440, 0.2, 'sine', 0.15);
+  setTimeout(() => beep(660, 0.2, 'sine', 0.15), 150);
+  setTimeout(() => beep(880, 0.3, 'sine', 0.15), 300);
+  // After 8 seconds of free flight, trigger the final win
+  setTimeout(() => { if (inUfo) finalWin(); }, 8000);
+}
+
+function updateUfoEntry(dt) {
+  if (gameState !== 'playing' || !inAlienWorld || inUfo) {
+    ufoEnterStandTime = 0;
+    return;
+  }
+  let onPortal = false;
+  for (const o of obstacles) {
+    if (!o.isUfoEntry) continue;
+    const dx = camera.position.x - o.x;
+    const dz = camera.position.z - o.z;
+    const onTop = Math.abs(camera.position.y - PLAYER_HEIGHT - o.top) < 0.6;
+    if (Math.hypot(dx, dz) < 0.75 && onTop) { onPortal = true; break; }
+  }
+  if (onPortal) {
+    ufoEnterStandTime += dt;
+    if (ufoEnterStandTime > 0.6) {
+      ufoEnterStandTime = 0;
+      enterUfoMode();
+    }
+  } else {
+    ufoEnterStandTime = 0;
+  }
 }
 
 let caveExitStandTime = 0;
@@ -3418,6 +3514,16 @@ function updateMovement(dt) {
     }
     camera.position.x = Math.max(minX, Math.min(maxX, camera.position.x));
     camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
+  }
+
+  // UFO flight mode: no gravity, vertical via jump/crouch
+  if (inUfo) {
+    const upPress = keys['Space'] || keys[' '] || keys['ArrowUp'];
+    const downPress = keys['KeyC'] || keys['ShiftLeft'] || keys['ShiftRight'];
+    if (upPress) camera.position.y += 4 * dt;
+    else if (downPress) camera.position.y -= 4 * dt;
+    camera.position.y = Math.max(2.5, Math.min(22, camera.position.y));
+    return;
   }
 
   // Ladder climbing override
@@ -3927,11 +4033,27 @@ function showUnlockMessage(html) {
 
 function updateMonsters(dt) {
   const t = performance.now() / 1000;
+  // Determine the single active alien (closest one to player) — only it attacks
+  if (inAlienWorld) {
+    if (!activeAlien || !activeAlien.alive) {
+      activeAlien = null;
+      let bestD = Infinity;
+      for (const m of monsters) {
+        if (!m.alive || !m.isAlien) continue;
+        const d = Math.hypot(camera.position.x - m.x, camera.position.z - m.z);
+        if (d < bestD) { bestD = d; activeAlien = m; }
+      }
+    }
+  } else {
+    activeAlien = null;
+  }
   for (const m of monsters) {
     if (!m.alive) continue;
+    // Only the active alien gets to attack/move aggressively in alien world
+    const isPassive = inAlienWorld && m.isAlien && m !== activeAlien;
 
     // Movement toward player when in playing state
-    if (gameState === 'playing') {
+    if (gameState === 'playing' && !isPassive) {
       const dx = camera.position.x - m.x;
       const dz = camera.position.z - m.z;
       const distXZ = Math.hypot(dx, dz) || 0.001;
@@ -4364,11 +4486,12 @@ function teleportToAlienWorld() {
   alienCakeState.hp = alienCakeState.maxHp;
   alienCakeState.alive = true;
   for (const c of alienCakeGroup.children) c.visible = true;
-  // Spawn 8 robot-aliens around the pedestal (humanoid only now)
+  // Spawn 3 robot-aliens around the pedestal — only one attacks at a time
   totalAliensSpawned = 0;
-  for (let i = 0; i < 8; i++) {
-    const ang = (i / 8) * Math.PI * 2 + Math.random() * 0.3;
-    const rad = 8 + Math.random() * 7;
+  activeAlien = null;
+  for (let i = 0; i < 3; i++) {
+    const ang = (i / 3) * Math.PI * 2 + Math.random() * 0.2;
+    const rad = 10 + Math.random() * 4;
     const ax = ALIEN_X + Math.cos(ang) * rad;
     const az = Math.sin(ang) * rad;
     monsters.push(makeHumanAlien(ax, 0, az, 0.95 + Math.random() * 0.2));
@@ -4612,9 +4735,14 @@ function startGame() {
   if (inCaveWorld) { inCaveWorld = false; }
   // Reset alien world state
   inAlienWorld = false;
+  inUfo = false;
+  playerUfoGroup.visible = false;
+  hammerGroup.visible = true;
+  ufoEnterStandTime = 0;
+  activeAlien = null;
   alienCakeState.hp = alienCakeState.maxHp;
   alienCakeState.alive = true;
-  for (const c of alienCakeGroup.children) c.visible = true;
+  // Cake stays hidden — using ladder/UFO entry instead
   cinematicAliens.length = 0;
   abductionPhase = 0;
   nextAlienSpawn = 0;
@@ -4741,53 +4869,53 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// === Adaptive quality: drop shadows + pixel ratio when FPS tanks ===
-let qualityLevel = 'high';
+// === Adaptive quality: 7 fine-grained levels ===
+let qualityLevel = 7;
+const MAX_QUALITY = 7;
+const MIN_QUALITY = 1;
 const frameTimes = [];
 let qualityCheckAt = 0;
 
-function setQualityLevel(lvl) {
-  if (lvl === qualityLevel) return;
-  const oldLvl = qualityLevel;
-  qualityLevel = lvl;
-  if (lvl === 'high') {
-    renderer.shadowMap.enabled = true;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    for (const b of butterflies) b.group.visible = true;
-  } else if (lvl === 'medium') {
-    renderer.shadowMap.enabled = true;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.4));
-    for (const b of butterflies) b.group.visible = true;
-  } else {
-    renderer.shadowMap.enabled = false;
-    renderer.setPixelRatio(1);
-    for (let i = 0; i < butterflies.length; i++) {
-      butterflies[i].group.visible = (i < 3);
-    }
-  }
-  // Brief tooltip when quality drops (not when it goes back up)
-  if (oldLvl !== 'low' && (lvl === 'medium' || lvl === 'low')) {
-    const txt = (lvl === 'low')
-      ? '⚡ Niedrige Qualit&auml;t aktiviert (Schatten aus, weniger Effekte)'
-      : '⚡ Mittlere Qualit&auml;t aktiviert';
-    if (typeof showUnlockMessage === 'function') showUnlockMessage(txt);
-  }
+const QUALITY_CONFIG = [
+  null,
+  { px: 0.7,  shadow: false, butt: 0,  clouds: 3 }, // 1
+  { px: 0.85, shadow: false, butt: 1,  clouds: 4 }, // 2
+  { px: 1.0,  shadow: false, butt: 2,  clouds: 5 }, // 3
+  { px: 1.1,  shadow: true,  butt: 4,  clouds: 5 }, // 4
+  { px: 1.3,  shadow: true,  butt: 6,  clouds: 6 }, // 5
+  { px: 1.6,  shadow: true,  butt: 8,  clouds: 7 }, // 6
+  { px: 2.0,  shadow: true,  butt: 99, clouds: 99 } // 7
+];
+
+function applyQualityLevel() {
+  const c = QUALITY_CONFIG[qualityLevel];
+  if (!c) return;
+  renderer.shadowMap.enabled = c.shadow;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, c.px));
+  for (let i = 0; i < butterflies.length; i++) butterflies[i].group.visible = i < c.butt;
+  for (let i = 0; i < cloudGroups.length; i++) cloudGroups[i].group.visible = i < c.clouds;
 }
 
 function updateAdaptiveQuality(nowMs) {
   frameTimes.push(nowMs);
   if (frameTimes.length > 45) frameTimes.shift();
-  if (nowMs - qualityCheckAt < 1500) return;
+  if (nowMs - qualityCheckAt < 1200) return;
   qualityCheckAt = nowMs;
   if (frameTimes.length < 15) return;
   const span = frameTimes[frameTimes.length - 1] - frameTimes[0];
   const avgFps = (frameTimes.length - 1) / (span / 1000);
   let target = qualityLevel;
-  if (qualityLevel === 'high' && avgFps < 38) target = 'medium';
-  else if (qualityLevel === 'medium' && avgFps < 22) target = 'low';
-  else if (qualityLevel === 'low' && avgFps > 50) target = 'medium';
-  else if (qualityLevel === 'medium' && avgFps > 56) target = 'high';
-  if (target !== qualityLevel) setQualityLevel(target);
+  if (avgFps < 22 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 2);
+  else if (avgFps < 50 && qualityLevel > MIN_QUALITY) target = qualityLevel - 1;
+  else if (avgFps > 58 && qualityLevel < MAX_QUALITY) target = qualityLevel + 1;
+  if (target !== qualityLevel) {
+    const dropped = target < qualityLevel;
+    qualityLevel = target;
+    applyQualityLevel();
+    if (dropped && typeof showUnlockMessage === 'function') {
+      showUnlockMessage('⚡ Qualit&auml;t: Stufe ' + target + ' / 7');
+    }
+  }
 }
 
 let lastT = performance.now() / 1000;
@@ -4819,6 +4947,7 @@ function animate() {
   windUniform.value = performance.now() / 1000;
   updateButterflies(dt);
   updateCaveExit(dt);
+  updateUfoEntry(dt);
   // Grass rustling while moving in the garden
   const movingNow = gameState === 'playing' && onGround && (
     (isTouch && (joystickVec.x !== 0 || joystickVec.y !== 0)) ||
