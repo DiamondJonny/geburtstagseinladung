@@ -5624,10 +5624,10 @@ function applyQualityLevel() {
 
 function updateAdaptiveQuality(nowMs) {
   frameTimes.push(nowMs);
-  if (frameTimes.length > 45) frameTimes.shift();
-  if (nowMs - qualityCheckAt < 1000) return;
+  if (frameTimes.length > 30) frameTimes.shift();
+  if (nowMs - qualityCheckAt < 450) return;
   qualityCheckAt = nowMs;
-  if (frameTimes.length < 15) return;
+  if (frameTimes.length < 10) return;
   const span = frameTimes[frameTimes.length - 1] - frameTimes[0];
   const avgFps = (frameTimes.length - 1) / (span / 1000);
   let target = qualityLevel;
