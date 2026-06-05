@@ -2600,11 +2600,12 @@ function makeAlien(x, y, z, scale) {
   scene.add(ufoLight);
 
   // Alien pedestal
-  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0x6a3818, roughness: 0.8, metalness: 0.2 }));
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.95, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0x6a3818, roughness: 0.8, metalness: 0.2 }));
   ped.position.set(ALIEN_X, 0.6, 0);
   ped.castShadow = ped.receiveShadow = true;
   scene.add(ped);
-  obstacles.push({ x: ALIEN_X, z: 0, halfW: 0.9, halfD: 0.9 });
+  // Mark as climbable platform so you can jump on it and reach the ladder
+  obstacles.push({ x: ALIEN_X, z: 0, halfW: 0.7, halfD: 0.7, top: 1.2 });
 
   // The final Alien Cake (glowing)
   alienCakeGroup = new THREE.Group();
@@ -2687,8 +2688,8 @@ function makeAlien(x, y, z, scale) {
   const portalLight = new THREE.PointLight(0xffd700, 1.5, 8);
   portalLight.position.set(ALIEN_X, 6.7, 0);
   scene.add(portalLight);
-  obstacles.push({ x: ALIEN_X, z: 0, halfW: 0.7, halfD: 0.7, top: 6.7, isUfoEntry: true });
-  ladderTriggers.push({ x: ALIEN_X, z: 0, halfW: 1.4, halfD: 1.4, top: 6.7, isAlienLadder: true });
+  obstacles.push({ x: ALIEN_X, z: 0, halfW: 1.1, halfD: 1.1, top: 6.7, isUfoEntry: true });
+  ladderTriggers.push({ x: ALIEN_X, z: 0, halfW: 2.2, halfD: 2.2, top: 6.7, isAlienLadder: true });
 
   // Six red lasers from the UFO down to the ground forming a cage around the pedestal
   const laserMat = new THREE.MeshBasicMaterial({ color: 0xff3344, transparent: true, opacity: 0.7 });
@@ -3173,7 +3174,7 @@ function tryF() {
       if (!o.isAlienLadder) continue;
       const dx = camera.position.x - o.x;
       const dz = camera.position.z - o.z;
-      if (Math.hypot(dx, dz) < 2.5) {
+      if (Math.hypot(dx, dz) < 3.5) {
         camera.position.x = o.x;
         camera.position.z = o.z;
         camera.position.y = o.top + PLAYER_HEIGHT;
@@ -3393,9 +3394,9 @@ function updateAutoEnter(dt) {
       if (!o.isAlienLadder) continue;
       const dx = camera.position.x - o.x;
       const dz = camera.position.z - o.z;
-      if (Math.hypot(dx, dz) < 1.6) {
+      if (Math.hypot(dx, dz) < 2.6) {
         standOnLadderTime += dt;
-        if (standOnLadderTime > 0.7) {
+        if (standOnLadderTime > 0.5) {
           standOnLadderTime = 0;
           ladderClimbing = false;
           camera.position.x = o.x;
