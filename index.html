@@ -4741,13 +4741,64 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// === Adaptive quality: drop shadows + pixel ratio when FPS tanks ===
+let qualityLevel = 'high';
+const frameTimes = [];
+let qualityCheckAt = 0;
+
+function setQualityLevel(lvl) {
+  if (lvl === qualityLevel) return;
+  const oldLvl = qualityLevel;
+  qualityLevel = lvl;
+  if (lvl === 'high') {
+    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    for (const b of butterflies) b.group.visible = true;
+  } else if (lvl === 'medium') {
+    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.4));
+    for (const b of butterflies) b.group.visible = true;
+  } else {
+    renderer.shadowMap.enabled = false;
+    renderer.setPixelRatio(1);
+    for (let i = 0; i < butterflies.length; i++) {
+      butterflies[i].group.visible = (i < 3);
+    }
+  }
+  // Brief tooltip when quality drops (not when it goes back up)
+  if (oldLvl !== 'low' && (lvl === 'medium' || lvl === 'low')) {
+    const txt = (lvl === 'low')
+      ? '⚡ Niedrige Qualit&auml;t aktiviert (Schatten aus, weniger Effekte)'
+      : '⚡ Mittlere Qualit&auml;t aktiviert';
+    if (typeof showUnlockMessage === 'function') showUnlockMessage(txt);
+  }
+}
+
+function updateAdaptiveQuality(nowMs) {
+  frameTimes.push(nowMs);
+  if (frameTimes.length > 45) frameTimes.shift();
+  if (nowMs - qualityCheckAt < 1500) return;
+  qualityCheckAt = nowMs;
+  if (frameTimes.length < 15) return;
+  const span = frameTimes[frameTimes.length - 1] - frameTimes[0];
+  const avgFps = (frameTimes.length - 1) / (span / 1000);
+  let target = qualityLevel;
+  if (qualityLevel === 'high' && avgFps < 38) target = 'medium';
+  else if (qualityLevel === 'medium' && avgFps < 22) target = 'low';
+  else if (qualityLevel === 'low' && avgFps > 50) target = 'medium';
+  else if (qualityLevel === 'medium' && avgFps > 56) target = 'high';
+  if (target !== qualityLevel) setQualityLevel(target);
+}
+
 let lastT = performance.now() / 1000;
 let compassTick = 0;
 function animate() {
   requestAnimationFrame(animate);
-  const now = performance.now() / 1000;
+  const nowMs = performance.now();
+  const now = nowMs / 1000;
   const dt = Math.min(0.05, now - lastT);
   lastT = now;
+  updateAdaptiveQuality(nowMs);
   updateMovement(dt);
   updateHammer(dt);
   updateCake(dt);
