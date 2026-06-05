@@ -317,6 +317,20 @@ function safeStorageSet(key, value) {
     localStorage.setItem(key, value);
   } catch (e) {}
 }
+// Robuster Button-Click — funktioniert auf iPad/iOS zuverlaessig
+// (umgeht das iOS-Quirk wo der erste Tap nur die virtuelle Tastatur ausblendet)
+function bindRobustClick(btn, handler) {
+  if (!btn) return;
+  let lastAt = 0;
+  const trigger = (e) => {
+    const now = Date.now();
+    if (now - lastAt < 700) return; // verhindert Doppel-Trigger (touchend + click)
+    lastAt = now;
+    try { handler(e); } catch (err) { console.error(err); }
+  };
+  btn.addEventListener('touchend', (e) => { e.preventDefault(); trigger(e); }, { passive: false });
+  btn.addEventListener('click', trigger);
+}
 // Quality-Konstanten frueh deklariert (Settings-UI braucht sie)
 const MAX_QUALITY = 13;
 const MIN_QUALITY = 1;
@@ -345,8 +359,11 @@ const INVITED_NAMES = ['jonathan', 'samuel', 'mavi', 'daniel'];
 let playerName = '';
 let playerIsInvited = false;
 
-nameSubmit.addEventListener('click', () => {
-  const n = nameInput.value.trim();
+function handleNameSubmit() {
+  // Erst blur — auf iPad/iOS commited das den Input-Wert UND blendet die
+  // virtuelle Tastatur aus (vorher hat der erste Tipp NUR die Tastatur weggemacht)
+  try { nameInput.blur(); } catch (e) {}
+  const n = (nameInput.value || '').trim();
   if (!n) {
     nameInput.classList.add('shake');
     setTimeout(() => nameInput.classList.remove('shake'), 420);
@@ -356,9 +373,13 @@ nameSubmit.addEventListener('click', () => {
   playerIsInvited = INVITED_NAMES.includes(n.toLowerCase());
   nameScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
-});
+}
+bindRobustClick(nameSubmit, handleNameSubmit);
 nameInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') nameSubmit.click();
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleNameSubmit();
+  }
 });
 
 function showInvitation() {
@@ -5831,7 +5852,8 @@ const UPDATES = [
   { id: 'v10', name: 'Update 10', desc: 'Echter Star Destroyer + manuelle Qualität + Anleitung + nie stocken', new: ['Mutterschiff als Star-Destroyer-Keil mit zwei Brücken-Kuppeln', 'Pulsierender Beacon unter dem Schiff zum Finden', 'Hecken & Grashalme können bei schlechter FPS verschwinden', 'Stutter-Erkennung (jeder Spike senkt Qualität sofort)', 'Manuell Auto/1–13 in den Einstellungen wählbar', 'Anleitungs-Bildschirm erklärt Tunnel, UFO und Mutterschiff', 'Gewinnen NUR durch Andocken + alle Roboter im Hangar besiegen', 'Geheimer Map-Generator (URL ?dev=daniel)'] },
   { id: 'v11', name: 'Update 11', desc: 'Wirklich nie mehr stocken — sofort-Reaktion + niedrigere Pixel-Stufen', new: ['Sofort-Reaktion: jeder einzelne Spike (>35ms) senkt Quality SOFORT', 'Pixel-Ratio jetzt ab Stufe 1 (0.5) drastisch niedriger', 'iPad/Touch startet auf Stufe 6 (nicht 13) — kein Initial-Stocken', 'Stutter-Lock: 6 Sek lang nicht hochstufen nach Spike', 'Hochstufen erst nach 8 ruhigen Checks ohne Spike'] },
   { id: 'v12', name: 'Update 12', desc: 'Röhren niedriger + viel strengere Tests', new: ['Garten-Röhren nur noch 0.55–0.85 hoch (vorher 0.9–1.5)', 'Cave-Exit-Röhre auf 0.85 reduziert (vorher 1.1)', 'Spieler kann jetzt bequem auf alle Röhren springen', '5 neue Runtime-Tests: Loading-Hide, Click-Test, pickStartQuality isoliert', '2D-Canvas-Stub für jsdom-Runtime'] },
-  { id: 'v13', name: 'Update 13 (aktuell)', desc: 'KRITISCHE FIXES — Spiel lädt jetzt überall', new: ['localStorage-SecurityError gefixt (Private Mode, file://, opaque origins)', 'safeStorageGet/Set Helpers schützen vor allen localStorage-Fehlern', 'ReferenceError manualQualityLevel before initialization gefixt', 'ReferenceError MAX_QUALITY before initialization gefixt', 'Quality-Konstanten + Helpers früh deklariert (vor Settings-UI)', 'Verschärfte Runtime-Tests fangen ReferenceError/SecurityError'] }
+  { id: 'v13', name: 'Update 13', desc: 'KRITISCHE FIXES — Spiel lädt jetzt überall', new: ['localStorage-SecurityError gefixt (Private Mode, file://, opaque origins)', 'safeStorageGet/Set Helpers schützen vor allen localStorage-Fehlern', 'ReferenceError manualQualityLevel before initialization gefixt', 'ReferenceError MAX_QUALITY before initialization gefixt', 'Quality-Konstanten + Helpers früh deklariert (vor Settings-UI)', 'Verschärfte Runtime-Tests fangen ReferenceError/SecurityError'] },
+  { id: 'v14', name: 'Update 14 (aktuell)', desc: 'iPad-Knöpfe funktionieren JETZT zuverlässig', new: ['„Los geht\'s!"-Button reagiert auf JEDEN Tap (iOS Virtual-Keyboard-Quirk gefixt)', 'bindRobustClick: touchend + click + Doppel-Klick-Schutz', 'Auch Start/Restart/Retry/Settings/Hilfe/Weiter robust gemacht', 'nameInput.blur() vor Submit (Tastatur weg, Wert commited)', 'Enter-Taste löst auch sicher aus'] }
 ];
 
 let gameMode = safeStorageGet('geburtstag.mode', 'v7');
@@ -5893,18 +5915,14 @@ buildQualityChoices();
 const helpScreen = document.getElementById('helpScreen');
 const helpBtn = document.getElementById('helpBtn');
 const helpBackBtn = document.getElementById('helpBackBtn');
-if (helpBtn) {
-  helpBtn.addEventListener('click', () => {
-    startScreen.classList.add('hidden');
-    helpScreen.classList.remove('hidden');
-  });
-}
-if (helpBackBtn) {
-  helpBackBtn.addEventListener('click', () => {
-    helpScreen.classList.add('hidden');
-    startScreen.classList.remove('hidden');
-  });
-}
+bindRobustClick(helpBtn, () => {
+  startScreen.classList.add('hidden');
+  helpScreen.classList.remove('hidden');
+});
+bindRobustClick(helpBackBtn, () => {
+  helpScreen.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+});
 
 // === Map-Generator (versteckt, nur fuer Daniel) ===
 try {
@@ -6052,20 +6070,20 @@ if (mapGenCopyBtn) {
   });
 }
 
-settingsBtn.addEventListener('click', () => {
+bindRobustClick(settingsBtn, () => {
   startScreen.classList.add('hidden');
   settingsScreen.classList.remove('hidden');
   buildQualityChoices();
 });
-settingsBackBtn.addEventListener('click', () => {
+bindRobustClick(settingsBackBtn, () => {
   settingsScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
 });
 
-document.getElementById('startBtn').addEventListener('click', startGame);
-document.getElementById('restartBtn').addEventListener('click', startGame);
-document.getElementById('retryBtn').addEventListener('click', retry);
-document.getElementById('continueBtn').addEventListener('click', () => {
+bindRobustClick(document.getElementById('startBtn'), startGame);
+bindRobustClick(document.getElementById('restartBtn'), startGame);
+bindRobustClick(document.getElementById('retryBtn'), retry);
+bindRobustClick(document.getElementById('continueBtn'), () => {
   invitationScreen.classList.add('hidden');
   // Reset HP and cake state for the alien fight
   playerHp = getMaxHp();
