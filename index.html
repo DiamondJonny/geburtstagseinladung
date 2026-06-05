@@ -1432,7 +1432,8 @@ function makePipe(x, z, height) {
     const pz = (Math.random() - 0.5) * 44;
     if (collidesAny(px, pz, 1.5)) continue;
     if (Math.hypot(px - cakeSpot.x, pz - cakeSpot.z) < 6) continue;
-    const ph = 0.9 + Math.random() * 0.6;
+    // Niedrige Roehren — Spieler kann bequem draufspringen
+    const ph = 0.55 + Math.random() * 0.3;
     makePipe(px, pz, ph);
     placed++;
   }
@@ -1874,49 +1875,49 @@ const ladderTriggers = [];
   const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.04, 24), exitMatLight);
   disc.position.y = 0.02;
   exitG.add(disc);
-  // Shaft
-  const exitShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 1.1, 18), exitMat);
-  exitShaft.position.y = 0.6;
+  // Shaft (niedriger — Spieler kann draufspringen)
+  const exitShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.85, 18), exitMat);
+  exitShaft.position.y = 0.45;
   exitShaft.castShadow = true;
   exitG.add(exitShaft);
   // Rim
   const exitRim = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.26, 18), exitMatLight);
-  exitRim.position.y = 1.1;
+  exitRim.position.y = 0.85;
   exitG.add(exitRim);
   // Bright inner hole
   const exitHole = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 18), new THREE.MeshBasicMaterial({ color: 0xfffae0 }));
-  exitHole.position.y = 1.25;
+  exitHole.position.y = 0.95;
   exitG.add(exitHole);
-  // Floating arrow (cone) pointing UP above the pipe
+  // Floating arrow (cone) pointing UP above the pipe — auch tiefer
   const arrowShaft = new THREE.Mesh(
     new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8),
     new THREE.MeshBasicMaterial({ color: 0xffee44 })
   );
-  arrowShaft.position.y = 2.0;
+  arrowShaft.position.y = 1.55;
   exitG.add(arrowShaft);
   const arrowHead = new THREE.Mesh(
     new THREE.ConeGeometry(0.22, 0.4, 8),
     new THREE.MeshBasicMaterial({ color: 0xffee44 })
   );
-  arrowHead.position.y = 2.45;
+  arrowHead.position.y = 2.0;
   exitG.add(arrowHead);
   // "Garten" sign next to the pipe
   const signMat = new THREE.MeshStandardMaterial({ color: 0xfff5a0, emissive: 0xfff5a0, emissiveIntensity: 0.45 });
   const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 0.06), signMat);
-  sign.position.set(0, 1.8, 1.1);
+  sign.position.set(0, 1.4, 1.1);
   exitG.add(sign);
   // Two strong glow lights
   const exitLight = new THREE.PointLight(0xfff5a0, 1.8, 9);
-  exitLight.position.y = 1.5;
+  exitLight.position.y = 1.2;
   exitG.add(exitLight);
   const exitLight2 = new THREE.PointLight(0xffaa44, 1.2, 6);
-  exitLight2.position.y = 2.4;
+  exitLight2.position.y = 1.95;
   exitG.add(exitLight2);
   exitG.position.set(CAVE_X, 0, 0);
   scene.add(exitG);
   // Save for animation (pulsing arrow + lights)
   caveExitVisuals = { group: exitG, arrowShaft, arrowHead, light: exitLight };
-  obstacles.push({ x: CAVE_X, z: 0, halfW: 0.62, halfD: 0.62, top: 1.2, isCaveExit: true });
+  obstacles.push({ x: CAVE_X, z: 0, halfW: 0.62, halfD: 0.62, top: 0.95, isCaveExit: true });
 })();
 
 let pipeRideEnd = 0;
@@ -5801,7 +5802,8 @@ const UPDATES = [
   { id: 'v8',  name: 'Update 8', desc: 'UFO Touch-Steuerung + härtere Roboter + Auto-Tests', new: ['Hoch/Runter Knöpfe für UFO auf iPad', 'Roboter-Schuss macht 1 Herz Schaden', 'Schnellerer Quality-Wechsel (450ms)', '30 automatische Tests vor jedem Push'] },
   { id: 'v9',  name: 'Update 9', desc: 'Riesiges Star-Wars-Mutterschiff + UFO-Sprungtaste + Quality-Chip', new: ['Star-Wars-Mutterschiff mit Hangar-Bucht', 'Springtaste lässt UFO schweben', 'Quality-Chip oben rechts (kurz sichtbar)', 'Schnellerer Quality-Wechsel (350ms)', 'Roboter spawnen innen im Hangar', 'Größere Landeplattform 8×8'] },
   { id: 'v10', name: 'Update 10', desc: 'Echter Star Destroyer + manuelle Qualität + Anleitung + nie stocken', new: ['Mutterschiff als Star-Destroyer-Keil mit zwei Brücken-Kuppeln', 'Pulsierender Beacon unter dem Schiff zum Finden', 'Hecken & Grashalme können bei schlechter FPS verschwinden', 'Stutter-Erkennung (jeder Spike senkt Qualität sofort)', 'Manuell Auto/1–13 in den Einstellungen wählbar', 'Anleitungs-Bildschirm erklärt Tunnel, UFO und Mutterschiff', 'Gewinnen NUR durch Andocken + alle Roboter im Hangar besiegen', 'Geheimer Map-Generator (URL ?dev=daniel)'] },
-  { id: 'v11', name: 'Update 11 (aktuell)', desc: 'Wirklich nie mehr stocken — sofort-Reaktion + niedrigere Pixel-Stufen', new: ['Sofort-Reaktion: jeder einzelne Spike (>35ms) senkt Quality SOFORT', 'Pixel-Ratio jetzt ab Stufe 1 (0.5) drastisch niedriger', 'iPad/Touch startet auf Stufe 6 (nicht 13) — kein Initial-Stocken', 'Stutter-Lock: 6 Sek lang nicht hochstufen nach Spike', 'Hochstufen erst nach 8 ruhigen Checks ohne Spike'] }
+  { id: 'v11', name: 'Update 11', desc: 'Wirklich nie mehr stocken — sofort-Reaktion + niedrigere Pixel-Stufen', new: ['Sofort-Reaktion: jeder einzelne Spike (>35ms) senkt Quality SOFORT', 'Pixel-Ratio jetzt ab Stufe 1 (0.5) drastisch niedriger', 'iPad/Touch startet auf Stufe 6 (nicht 13) — kein Initial-Stocken', 'Stutter-Lock: 6 Sek lang nicht hochstufen nach Spike', 'Hochstufen erst nach 8 ruhigen Checks ohne Spike'] },
+  { id: 'v12', name: 'Update 12 (aktuell)', desc: 'Röhren niedriger + viel strengere Tests', new: ['Garten-Röhren nur noch 0.55–0.85 hoch (vorher 0.9–1.5)', 'Cave-Exit-Röhre auf 0.85 reduziert (vorher 1.1)', 'Spieler kann jetzt bequem auf alle Röhren springen', '5 neue Runtime-Tests: Loading-Hide, Click-Test, pickStartQuality isoliert', '2D-Canvas-Stub für jsdom-Runtime'] }
 ];
 
 let gameMode = (typeof localStorage !== 'undefined' && localStorage.getItem('geburtstag.mode')) || 'v7';
