@@ -71,6 +71,11 @@
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0a0a14; color: #ffd700; font-size: 1.2rem; z-index: 100; }
   #qualityChip { position: fixed; top: 14px; right: 16px; background: rgba(0,0,0,0.55); color: #cfe0ff; padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: bold; z-index: 8; opacity: 0; transition: opacity 0.25s; pointer-events: none; border: 1px solid rgba(207,224,255,0.25); }
   #qualityChip.show { opacity: 1; }
+  #charPreview { position: fixed; top: 14px; right: 16px; width: 92px; height: 120px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,215,0,0.6); border-radius: 10px; z-index: 7; display: none; pointer-events: none; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+  #charPreview.show { display: block; }
+  #charPreview canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+  /* Quality-Chip muss links neben dem Preview liegen wenn beide sichtbar sind */
+  body.has-char-preview #qualityChip { right: 120px; }
 
   #touchUI { position: fixed; inset: 0; pointer-events: none; z-index: 6; display: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   #touchUI.active { display: block; }
@@ -100,6 +105,7 @@
 <div id="loading">Lade Garten...</div>
 <canvas id="game"></canvas>
 <div id="qualityChip"></div>
+<div id="charPreview"><canvas id="charPreviewCanvas" width="92" height="120"></canvas></div>
 <div id="sunFlare"></div>
 <div id="crosshair"></div>
 
@@ -138,18 +144,7 @@
     <span class="inv-ico">&#x1FAA8;</span>
     <span class="inv-num" id="invStone">0</span>
   </div>
-  <div class="inv-slot locked" id="slotItemHammer">
-    <span class="inv-ico" style="color:#ffd700">&#x2692;</span>
-    <span class="inv-lbl">Gold</span>
-  </div>
-  <div class="inv-slot locked" id="slotItemShield">
-    <span class="inv-ico" style="color:#66aaff">&#x1F6E1;</span>
-    <span class="inv-lbl">Schild</span>
-  </div>
-  <div class="inv-slot locked" id="slotItemArmor">
-    <span class="inv-ico" style="color:#cdd2d8">&#x1F9E5;</span>
-    <span class="inv-lbl">R&uuml;st.</span>
-  </div>
+  <!-- Gold/Schild/Ruestung Slots entfernt — werden jetzt visuell ueber Charakter-Vorschau oben rechts angezeigt -->
 </div>
 
 <div id="touchUI">
@@ -166,8 +161,39 @@
 <div class="overlay" id="nameScreen">
   <h1>&#x1F382; Wer spielt hier?</h1>
   <p>Gib deinen Vornamen ein, um zu sehen, ob du eingeladen bist!</p>
-  <input type="text" id="nameInput" placeholder="Dein Vorname" maxlength="24" autocomplete="off" />
-  <button class="btn" id="nameSubmit">Los geht's!</button>
+  <form id="nameForm" style="display:flex; flex-direction:column; align-items:center; width:100%; margin:0; padding:0;">
+    <input type="text" id="nameInput" placeholder="Dein Vorname" maxlength="24" autocomplete="off" autocapitalize="words" enterkeyhint="go" />
+    <button class="btn" id="nameSubmit" type="submit">Los geht's!</button>
+  </form>
+</div>
+
+<div class="overlay hidden" id="charScreen">
+  <h1>&#x1F468;&#x200D;&#x1F3A8; Bau dir deinen Charakter</h1>
+  <p style="opacity:0.9; margin-bottom: 14px;">Tippe auf die Farben — du siehst sofort, wie du aussiehst!</p>
+  <div style="display:flex; gap:28px; align-items:flex-start; margin: 8px 0; flex-wrap: wrap; justify-content: center;">
+    <div style="background: rgba(255,255,255,0.05); border: 3px solid #ffd700; border-radius: 14px; padding: 12px;">
+      <canvas id="charBigPreview" width="200" height="280" style="background: linear-gradient(180deg, #354766, #1a2438); border-radius: 8px; display:block;"></canvas>
+    </div>
+    <div id="charControls" style="text-align:left; max-width: 380px; width: 100%;">
+      <div style="margin-bottom:18px;">
+        <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F9D1; Hautfarbe</div>
+        <div id="charSkinChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
+      </div>
+      <div style="margin-bottom:18px;">
+        <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F484; Haare</div>
+        <div id="charHairChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
+      </div>
+      <div style="margin-bottom:18px;">
+        <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F455; Shirt</div>
+        <div id="charShirtChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
+      </div>
+      <div>
+        <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F456; Hose</div>
+        <div id="charPantsChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
+      </div>
+    </div>
+  </div>
+  <button class="btn" id="charDoneBtn" style="margin-top: 18px;">&#x2705; Fertig &mdash; los geht's!</button>
 </div>
 
 <div class="overlay hidden" id="startScreen">
@@ -244,6 +270,11 @@
     <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">Grafik-Qualit&auml;t</div>
     <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Automatisch passt sich an dein Ger&auml;t an (stockt nie). Wenn du lieber selber w&auml;hlst, geht das auch.</p>
     <div id="qualityChoices" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+  </div>
+  <div id="dayNightSection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
+    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">Tag &amp; Nacht</div>
+    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Nur Tag, nur Nacht, oder beides im Wechsel (mit Sonnenauf- und untergang).</p>
+    <div id="dayNightChoices" style="display: flex; gap: 8px;"></div>
   </div>
   <p style="margin-top: 18px;">W&auml;hle, welche Version du spielen m&ouml;chtest:</p>
   <div id="versionList" style="max-width: 580px; width: 90%; margin-top: 8px; max-height: 40vh; overflow-y: auto; text-align: left;">
@@ -372,6 +403,155 @@ const INVITED_NAMES = ['jonathan', 'samuel', 'mavi', 'daniel'];
 let playerName = '';
 let playerIsInvited = false;
 
+// === Character Customization ===
+const CHAR_SKINS  = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524'];
+const CHAR_HAIRS  = ['#2b1d12', '#5b3a1c', '#a86b30', '#dfb56a', '#cc4422', '#ffffff'];
+const CHAR_SHIRTS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#ffffff'];
+const CHAR_PANTS  = ['#34495e', '#2c3e50', '#5d4037', '#1565c0', '#37474f', '#212121'];
+let charSkin  = CHAR_SKINS[0];
+let charHair  = CHAR_HAIRS[0];
+let charShirt = CHAR_SHIRTS[1]; // blau
+let charPants = CHAR_PANTS[0];
+// Laden aus localStorage
+{
+  const s = safeStorageGet('geburtstag.charSkin', null);  if (s && CHAR_SKINS.includes(s)) charSkin = s;
+  const h = safeStorageGet('geburtstag.charHair', null);  if (h && CHAR_HAIRS.includes(h)) charHair = h;
+  const sh = safeStorageGet('geburtstag.charShirt', null); if (sh && CHAR_SHIRTS.includes(sh)) charShirt = sh;
+  const p = safeStorageGet('geburtstag.charPants', null); if (p && CHAR_PANTS.includes(p)) charPants = p;
+}
+function saveCharColors() {
+  safeStorageSet('geburtstag.charSkin', charSkin);
+  safeStorageSet('geburtstag.charHair', charHair);
+  safeStorageSet('geburtstag.charShirt', charShirt);
+  safeStorageSet('geburtstag.charPants', charPants);
+}
+
+// Charakter zeichnen in ein Canvas — zeigt Ausstattung visuell an
+function drawCharacter(ctx, w, h, opts) {
+  opts = opts || {};
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2;
+  const scale = h / 220;
+  // Schatten am Boden
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(cx, h - 8 * scale, 28 * scale, 6 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Hose
+  ctx.fillStyle = charPants;
+  ctx.fillRect(cx - 18 * scale, h - 80 * scale, 14 * scale, 60 * scale);
+  ctx.fillRect(cx + 4 * scale, h - 80 * scale, 14 * scale, 60 * scale);
+  // Schuhe
+  ctx.fillStyle = '#222';
+  ctx.fillRect(cx - 19 * scale, h - 22 * scale, 16 * scale, 8 * scale);
+  ctx.fillRect(cx + 3 * scale, h - 22 * scale, 16 * scale, 8 * scale);
+  // Shirt/Torso
+  ctx.fillStyle = charShirt;
+  ctx.fillRect(cx - 22 * scale, h - 130 * scale, 44 * scale, 56 * scale);
+  // Ruestung (silbern, ueber Shirt)
+  if (hasArmor) {
+    ctx.fillStyle = '#cdd2d8';
+    ctx.fillRect(cx - 22 * scale, h - 130 * scale, 44 * scale, 36 * scale);
+    // Schulterplatten
+    ctx.fillStyle = '#9aa1ab';
+    ctx.fillRect(cx - 28 * scale, h - 125 * scale, 10 * scale, 14 * scale);
+    ctx.fillRect(cx + 18 * scale, h - 125 * scale, 10 * scale, 14 * scale);
+    // Verzierung Mitte
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(cx - 3 * scale, h - 120 * scale, 6 * scale, 18 * scale);
+  }
+  // Arme (Hautfarbe)
+  ctx.fillStyle = charSkin;
+  ctx.fillRect(cx - 30 * scale, h - 120 * scale, 8 * scale, 48 * scale);
+  ctx.fillRect(cx + 22 * scale, h - 120 * scale, 8 * scale, 48 * scale);
+  // Hammer in rechter Hand
+  const hammerColor = hasGoldHammer ? '#ffd700' : '#666';
+  const handleColor = '#6b3410';
+  ctx.fillStyle = handleColor;
+  ctx.fillRect(cx + 22 * scale, h - 75 * scale, 4 * scale, 25 * scale);
+  ctx.fillStyle = hammerColor;
+  ctx.fillRect(cx + 16 * scale, h - 80 * scale, 16 * scale, 12 * scale);
+  // Schild in linker Hand
+  if (hasShield) {
+    ctx.fillStyle = '#6688cc';
+    ctx.beginPath();
+    ctx.arc(cx - 32 * scale, h - 80 * scale, 12 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2 * scale;
+    ctx.stroke();
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath();
+    ctx.arc(cx - 32 * scale, h - 80 * scale, 3 * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Kopf (Haut)
+  ctx.fillStyle = charSkin;
+  ctx.beginPath();
+  ctx.arc(cx, h - 145 * scale, 18 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  // Haare
+  ctx.fillStyle = charHair;
+  ctx.beginPath();
+  ctx.arc(cx, h - 152 * scale, 18 * scale, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(cx - 18 * scale, h - 152 * scale, 36 * scale, 6 * scale);
+  // Augen
+  ctx.fillStyle = '#222';
+  ctx.fillRect(cx - 7 * scale, h - 146 * scale, 3 * scale, 3 * scale);
+  ctx.fillRect(cx + 4 * scale, h - 146 * scale, 3 * scale, 3 * scale);
+  // Mund
+  ctx.fillStyle = '#a04030';
+  ctx.fillRect(cx - 4 * scale, h - 138 * scale, 8 * scale, 2 * scale);
+}
+
+const charPreviewEl = document.getElementById('charPreview');
+const charPreviewCanvas = document.getElementById('charPreviewCanvas');
+const charBigPreview = document.getElementById('charBigPreview');
+function updateCharPreview() {
+  if (charPreviewCanvas) {
+    drawCharacter(charPreviewCanvas.getContext('2d'), 92, 120);
+  }
+}
+function updateCharBigPreview() {
+  if (charBigPreview) {
+    drawCharacter(charBigPreview.getContext('2d'), 160, 220);
+  }
+}
+function showCharPreview(on) {
+  if (!charPreviewEl) return;
+  charPreviewEl.classList.toggle('show', !!on);
+  document.body.classList.toggle('has-char-preview', !!on);
+}
+
+// Charakter-Erstellungs-Screen: Buttons
+const charScreen = document.getElementById('charScreen');
+function buildCharChoices() {
+  const sections = [
+    { id: 'charSkinChoices',  palette: CHAR_SKINS,  get: () => charSkin,  set: v => { charSkin = v; } },
+    { id: 'charHairChoices',  palette: CHAR_HAIRS,  get: () => charHair,  set: v => { charHair = v; } },
+    { id: 'charShirtChoices', palette: CHAR_SHIRTS, get: () => charShirt, set: v => { charShirt = v; } },
+    { id: 'charPantsChoices', palette: CHAR_PANTS,  get: () => charPants, set: v => { charPants = v; } }
+  ];
+  for (const sec of sections) {
+    const el = document.getElementById(sec.id);
+    if (!el) continue;
+    el.innerHTML = '';
+    for (const color of sec.palette) {
+      const btn = document.createElement('button');
+      btn.style.cssText = 'width: 32px; height: 32px; border-radius: 8px; cursor: pointer; background: ' + color + '; border: 3px solid ' + (sec.get() === color ? '#ffd700' : 'rgba(255,255,255,0.25)') + ';';
+      btn.addEventListener('click', () => {
+        sec.set(color);
+        saveCharColors();
+        buildCharChoices();
+        updateCharBigPreview();
+        updateCharPreview();
+      });
+      el.appendChild(btn);
+    }
+  }
+}
+
 function handleNameSubmit() {
   // Wert AUSLESEN bevor wir was anderes machen (auf iOS commited blur asynchron)
   const n = (nameInput.value || '').trim();
@@ -385,16 +565,39 @@ function handleNameSubmit() {
   playerIsInvited = INVITED_NAMES.includes(n.toLowerCase());
   // UI-Wechsel ZUERST, blur NACHHER (sonst kann iOS den Click verschlucken)
   nameScreen.classList.add('hidden');
-  startScreen.classList.remove('hidden');
+  // Bei erstem Spielen: Charakter-Erstellung; sonst gleich zum Start
+  const charDone = safeStorageGet('geburtstag.charDone', '') === '1';
+  if (!charDone && charScreen) {
+    charScreen.classList.remove('hidden');
+    buildCharChoices();
+    updateCharBigPreview();
+  } else {
+    startScreen.classList.remove('hidden');
+  }
   try { nameInput.blur(); } catch (e) {}
 }
-bindRobustClick(nameSubmit, handleNameSubmit);
-nameInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
+// Charakter-Erstellung "Fertig"-Button
+const charDoneBtn = document.getElementById('charDoneBtn');
+if (charDoneBtn) {
+  bindRobustClick(charDoneBtn, () => {
+    safeStorageSet('geburtstag.charDone', '1');
+    saveCharColors();
+    if (charScreen) charScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+    updateCharPreview();
+  });
+}
+// <form>-basiert: zuverlaessigste Methode auf JEDEM Geraet (iOS Done-Button + Mouse + Touch)
+const nameForm = document.getElementById('nameForm');
+if (nameForm) {
+  nameForm.addEventListener('submit', (e) => {
     e.preventDefault();
     handleNameSubmit();
-  }
-});
+    return false;
+  });
+}
+// Als doppelte Sicherheit: bindRobustClick direkt auf den Button
+bindRobustClick(nameSubmit, handleNameSubmit);
 
 function showInvitation() {
   document.getElementById('invitedContent').style.display = playerIsInvited ? '' : 'none';
@@ -489,6 +692,96 @@ const sunGlow = new THREE.Mesh(
 );
 sunGlow.position.copy(sunSphere.position);
 scene.add(sunGlow);
+
+// === Tag/Nacht-Cycle ===
+// Modus: 'day' = nur Tag, 'night' = nur Nacht, 'cycle' = Beides (Sonne wandert)
+let dayNightMode = safeStorageGet('geburtstag.dayNight', 'day');
+if (!['day', 'night', 'cycle'].includes(dayNightMode)) dayNightMode = 'day';
+let dayProgress = 0.25; // 0..1, 0.25 = Mittag
+// Mond (sichtbar bei Nacht)
+const moonSphere = new THREE.Mesh(
+  new THREE.SphereGeometry(2.2, 20, 14),
+  new THREE.MeshBasicMaterial({ color: 0xeef0ff })
+);
+moonSphere.visible = false;
+scene.add(moonSphere);
+const moonGlow = new THREE.Mesh(
+  new THREE.SphereGeometry(3.2, 16, 12),
+  new THREE.MeshBasicMaterial({ color: 0xccd6ff, transparent: true, opacity: 0.3 })
+);
+moonGlow.visible = false;
+scene.add(moonGlow);
+// Sterne (sichtbar bei Nacht)
+const starGroup = new THREE.Group();
+for (let i = 0; i < 80; i++) {
+  const star = new THREE.Mesh(
+    new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 5, 4),
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
+  );
+  const ang = Math.random() * Math.PI * 2;
+  const elev = 0.15 + Math.random() * 0.7;
+  const r = 50;
+  star.position.set(
+    Math.cos(ang) * r * Math.sqrt(1 - elev * elev),
+    elev * r * 0.7 + 8,
+    Math.sin(ang) * r * Math.sqrt(1 - elev * elev)
+  );
+  starGroup.add(star);
+}
+starGroup.visible = false;
+scene.add(starGroup);
+
+function updateDayNight(dt) {
+  // Nur im Garten anwenden, nicht in Cave/Bonus/Alien/Mothership
+  if (typeof inGarden !== 'undefined' && !inGarden) return;
+  let t;
+  if (dayNightMode === 'day') t = 0.25;
+  else if (dayNightMode === 'night') t = 0.75;
+  else {
+    dayProgress += dt * 0.012; // 1 Zyklus ~83 Sek
+    if (dayProgress > 1) dayProgress -= 1;
+    t = dayProgress;
+  }
+  // Sonne und Mond auf Kreisbahn (Sonne bei t=0.25 Mittag, t=0.75 unter Horizont)
+  const sunAngle = (t - 0.25) * Math.PI * 2; // bei t=0.25 → 0 (oben), t=0.5 → Sonnenuntergang
+  const radius = 40;
+  const sunX = Math.cos(sunAngle - Math.PI / 2) * radius * 0.8;
+  const sunY = Math.sin(Math.PI / 2 - sunAngle) * radius;
+  const sunZ = 14;
+  sun.position.set(sunX, sunY, sunZ);
+  sunSphere.position.set(sunX, sunY, sunZ);
+  sunGlow.position.set(sunX, sunY, sunZ);
+  // Mond gegenueber der Sonne
+  moonSphere.position.set(-sunX, -sunY, sunZ);
+  moonGlow.position.set(-sunX, -sunY, sunZ);
+  // Sichtbarkeit basierend auf Hoehe
+  const dayFactor = Math.max(0, Math.min(1, (sunY + 5) / 25));
+  sunSphere.visible = sunY > -2 && sunEnabled;
+  sunGlow.visible = sunY > -2 && sunEnabled;
+  moonSphere.visible = sunY < 5;
+  moonGlow.visible = sunY < 5;
+  starGroup.visible = dayFactor < 0.4;
+  // Himmel-Farbe (blau → orange → dunkelblau)
+  let r, g, b;
+  if (dayFactor > 0.65) {
+    r = 0.49; g = 0.75; b = 0.93;
+  } else if (dayFactor > 0.15) {
+    const t2 = (dayFactor - 0.15) / 0.5;
+    r = 0.49 * t2 + 0.95 * (1 - t2);
+    g = 0.75 * t2 + 0.50 * (1 - t2);
+    b = 0.93 * t2 + 0.35 * (1 - t2);
+  } else {
+    const t3 = dayFactor / 0.15;
+    r = 0.95 * t3 + 0.06 * (1 - t3);
+    g = 0.50 * t3 + 0.09 * (1 - t3);
+    b = 0.35 * t3 + 0.18 * (1 - t3);
+  }
+  if (typeof inGarden === 'undefined' || inGarden) {
+    if (scene.background && scene.background.setRGB) scene.background.setRGB(r, g, b);
+    if (scene.fog) scene.fog.color.setRGB(r * 0.85, g * 0.85, b * 0.95);
+  }
+  sun.intensity = 0.25 + dayFactor * 1.45;
+}
 
 // Fluffy white clouds floating in the sky (animated)
 const cloudWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, emissive: 0xeef4ff, emissiveIntensity: 0.08 });
@@ -3421,6 +3714,62 @@ const hammerRestPos = hammerGroup.position.clone();
 const hammerRestRot = hammerGroup.rotation.clone();
 camera.add(hammerGroup);
 
+// === Schild (linke Seite, sichtbar wenn hasShield) ===
+const shieldGroup = new THREE.Group();
+shieldGroup.position.set(-0.42, -0.28, -0.55);
+shieldGroup.rotation.set(0.0, 0.15, -0.15);
+const shieldBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.22, 0.22, 0.05, 18),
+  new THREE.MeshStandardMaterial({ color: 0x6688cc, metalness: 0.7, roughness: 0.35 })
+);
+shieldBase.rotation.x = Math.PI / 2;
+shieldGroup.add(shieldBase);
+// Schild-Rand (golden)
+const shieldRim = new THREE.Mesh(
+  new THREE.TorusGeometry(0.22, 0.025, 8, 24),
+  new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.85, roughness: 0.25 })
+);
+shieldRim.rotation.x = Math.PI / 2;
+shieldGroup.add(shieldRim);
+// Schild-Mittelboss
+const shieldBoss = new THREE.Mesh(
+  new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+  new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.85, roughness: 0.2 })
+);
+shieldBoss.position.z = 0.03;
+shieldGroup.add(shieldBoss);
+// Stern auf dem Schild (Geburtstags-Theme)
+for (let i = 0; i < 5; i++) {
+  const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+  const pt = new THREE.Mesh(
+    new THREE.SphereGeometry(0.025, 6, 5),
+    new THREE.MeshBasicMaterial({ color: 0xffeb88 })
+  );
+  pt.position.set(Math.cos(a) * 0.13, Math.sin(a) * 0.13, 0.03);
+  shieldGroup.add(pt);
+}
+shieldGroup.visible = false;
+camera.add(shieldGroup);
+
+// Gold-Material fuer Hammer-Head (wird bei hasGoldHammer aktiviert)
+const hammerHeadMatNormal = head.material;
+const hammerHeadMatGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.95, roughness: 0.18, emissive: 0x664400, emissiveIntensity: 0.25 });
+const hammerHeadDetailMatGold = new THREE.MeshStandardMaterial({ color: 0xffee44, metalness: 0.95, roughness: 0.15 });
+const hammerHeadDetailMatNormal = headDetail.material;
+
+function updateHammerVisuals() {
+  if (hasGoldHammer) {
+    head.material = hammerHeadMatGold;
+    headDetail.material = hammerHeadDetailMatGold;
+  } else {
+    head.material = hammerHeadMatNormal;
+    headDetail.material = hammerHeadDetailMatNormal;
+  }
+}
+function updateShieldVisuals() {
+  shieldGroup.visible = hasShield && gameState === 'playing' && !inUfo;
+}
+
 // === Player UFO (visible when piloting the alien UFO) ===
 const playerUfoGroup = new THREE.Group();
 const pufoBody = new THREE.Mesh(
@@ -3684,6 +4033,7 @@ function dockToMothership() {
   inUfo = false;
   playerUfoGroup.visible = false;
   hammerGroup.visible = true;
+  updateShieldVisuals();
   ufoUpBtn.classList.remove('show');
   ufoDownBtn.classList.remove('show');
   ufoUpHold = false;
@@ -3738,6 +4088,7 @@ function enterUfoMode() {
   inUfo = true;
   playerUfoGroup.visible = true;
   hammerGroup.visible = false;
+  shieldGroup.visible = false;
   // Show UFO control buttons on touch devices
   if (isTouch) {
     ufoUpBtn.classList.add('show');
@@ -4639,6 +4990,9 @@ function tryCraft(cs) {
   }
   updateInventory();
   updateHearts();
+  updateHammerVisuals();
+  updateShieldVisuals();
+  updateCharPreview();
   // Crafting sparkle
   for (let i = 0; i < 25; i++) {
     const sz = 0.04 + Math.random() * 0.05;
@@ -4799,8 +5153,33 @@ function tryShoot() {
   if (shootCooldown > 0) return;
   shootCooldown = 0.45;
 
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  let dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
   const startPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
+
+  // Auto-Aim: dreht den Pfeil leicht (max 15 Grad) zum naehesten Monster im Schuss-Kegel
+  let bestMonster = null, bestScore = -1;
+  const cosThreshold = 0.92; // ca 23 Grad Kegel
+  for (const mon of monsters) {
+    if (!mon.alive) continue;
+    const monPos = (mon.group && mon.group.position) ? mon.group.position : null;
+    if (!monPos) continue;
+    const toM = monPos.clone().sub(camera.position);
+    const dist = toM.length();
+    if (dist < 0.5 || dist > 25) continue;
+    toM.normalize();
+    const align = toM.dot(dir);
+    if (align < cosThreshold) continue;
+    // Score: bevorzugt naehe + gute Ausrichtung
+    const score = align * (1.0 - dist / 30);
+    if (score > bestScore) { bestScore = score; bestMonster = mon; }
+  }
+  if (bestMonster) {
+    const monPos = bestMonster.group.position.clone();
+    monPos.y += 0.6; // Treffer in Mitte des Monsters
+    const aimDir = monPos.sub(startPos).normalize();
+    // Mische nur leicht: 65% urspruengliche Richtung + 35% Auto-Aim
+    dir = dir.clone().multiplyScalar(0.65).add(aimDir.multiplyScalar(0.35)).normalize();
+  }
 
   const shaft = new THREE.Mesh(
     new THREE.CylinderGeometry(0.018, 0.018, 0.55, 6),
@@ -5519,15 +5898,8 @@ function updateInventory() {
   document.getElementById('invStone').textContent = stoneCount;
   slotBow.classList.toggle('locked', !bowUnlocked);
   slotBow.classList.toggle('ready', bowUnlocked);
-  const slotItemHammer = document.getElementById('slotItemHammer');
-  const slotItemShield = document.getElementById('slotItemShield');
-  const slotItemArmor = document.getElementById('slotItemArmor');
-  slotItemHammer.classList.toggle('locked', !hasGoldHammer);
-  slotItemHammer.classList.toggle('ready', hasGoldHammer);
-  slotItemShield.classList.toggle('locked', !hasShield);
-  slotItemShield.classList.toggle('ready', hasShield);
-  slotItemArmor.classList.toggle('locked', !hasArmor);
-  slotItemArmor.classList.toggle('ready', hasArmor);
+  // Gold/Schild/Ruestung werden jetzt VISUELL ueber Charakter-Vorschau (oben rechts) angezeigt
+  updateCharPreview();
   const maxJ = getMaxJumps();
   let icon = '\u{1F45F}', txt = '×1';
   if (maxJ >= 4) { icon = '⚡'; txt = '×4'; }
@@ -5637,6 +6009,7 @@ function startGame() {
   inUfo = false;
   playerUfoGroup.visible = false;
   hammerGroup.visible = true;
+  updateShieldVisuals();
   ufoUpBtn.classList.remove('show');
   ufoDownBtn.classList.remove('show');
   ufoUpHold = false;
@@ -5736,6 +6109,11 @@ function startGame() {
   } else {
     canvas.requestPointerLock();
   }
+  // Charakter-Vorschau oben rechts anzeigen + zeichnen
+  showCharPreview(true);
+  updateHammerVisuals();
+  updateShieldVisuals();
+  updateCharPreview();
 }
 
 if (isTouch) {
@@ -5891,10 +6269,24 @@ const UPDATES = [
   { id: 'v13', name: 'Update 13', desc: 'KRITISCHE FIXES — Spiel lädt jetzt überall', new: ['localStorage-SecurityError gefixt (Private Mode, file://, opaque origins)', 'safeStorageGet/Set Helpers schützen vor allen localStorage-Fehlern', 'ReferenceError manualQualityLevel before initialization gefixt', 'ReferenceError MAX_QUALITY before initialization gefixt', 'Quality-Konstanten + Helpers früh deklariert (vor Settings-UI)', 'Verschärfte Runtime-Tests fangen ReferenceError/SecurityError'] },
   { id: 'v14', name: 'Update 14', desc: 'iPad-Knöpfe funktionieren JETZT zuverlässig', new: ['„Los geht\'s!"-Button reagiert auf JEDEN Tap (iOS Virtual-Keyboard-Quirk gefixt)', 'bindRobustClick: touchend + click + Doppel-Klick-Schutz', 'Auch Start/Restart/Retry/Settings/Hilfe/Weiter robust gemacht', 'nameInput.blur() vor Submit (Tastatur weg, Wert commited)', 'Enter-Taste löst auch sicher aus'] },
   { id: 'v15', name: 'Update 15', desc: 'Büsche und Hecken sind wieder überall da', new: ['Hecken jetzt auf ALLEN Quality-Stufen sichtbar (auch Stufe 1)', '32 Büsche statt 18 — viel grüner und dichter Garten', 'Garten fühlt sich voller und natürlicher an'] },
-  { id: 'v16', name: 'Update 16 (aktuell)', desc: 'TIE-Fighter + Gras zurück + Los-geht\'s-Button RICHTIG gefixt', new: ['Enemy-Ships sind jetzt richtige TIE-Fighter (Imperiale Farben, hexagonale Flügel)', '5 statt 3 TIE-Fighter — näher beim Spieler und entlang des Wegs zum Mutterschiff', 'Gras schon ab Quality-Stufe 3 sichtbar (vorher erst ab 5)', 'pointerdown-Strategie: „Los geht\'s" reagiert auf JEDEN Tap, kein Doppeltipp mehr nötig', 'blur() NACH UI-Wechsel (verhindert dass iOS den Click verschluckt)'] }
+  { id: 'v16', name: 'Update 16', desc: 'TIE-Fighter + Gras zurück + Los-geht\'s-Button RICHTIG gefixt', new: ['Enemy-Ships sind jetzt richtige TIE-Fighter (Imperiale Farben, hexagonale Flügel)', '5 statt 3 TIE-Fighter — näher beim Spieler und entlang des Wegs zum Mutterschiff', 'Gras schon ab Quality-Stufe 3 sichtbar (vorher erst ab 5)', 'pointerdown-Strategie: „Los geht\'s" reagiert auf JEDEN Tap, kein Doppeltipp mehr nötig', 'blur() NACH UI-Wechsel (verhindert dass iOS den Click verschluckt)'] },
+  { id: 'v17', name: 'Update 17 (aktuell)', desc: 'Eigener Charakter + Schild + Gold-Hammer + Tag/Nacht + Auto-Aim', new: ['Charakter-Vorschau oben rechts (zeigt aktuelle Ausrüstung)', 'Charakter-Erstellung am Anfang: Haut, Haare, Shirt, Hose wählbar', 'Schild jetzt SICHTBAR links in der Hand (mit goldenem Stern)', 'Gold-Hammer-Kopf wird wirklich golden wenn gekauft', 'Inventory-Slots für Gold/Schild/Rüstung entfernt — alles visuell über Charakter', 'Bow Auto-Aim: Pfeil zielt leicht auf Monster in der Nähe (65/35 Mix)', 'Tag/Nacht-Cycle in den Einstellungen: Nur Tag / Nur Nacht / Beides', 'Sonne wandert mit Sonnenauf- und untergang, Sterne + Mond bei Nacht', 'gameMode-Default repariert: immer aktuelles Update vorausgewählt'] }
 ];
 
-let gameMode = safeStorageGet('geburtstag.mode', 'v7');
+// gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
+// falls gespeicherte Version sehr alt ist (Daniel hatte "v4" gespeichert).
+const CURRENT_UPDATE_ID = UPDATES[UPDATES.length - 1].id;
+const CURRENT_UPDATE_NUM = parseInt(CURRENT_UPDATE_ID.replace('v', ''), 10);
+let gameMode = safeStorageGet('geburtstag.mode', CURRENT_UPDATE_ID);
+{
+  const storedNum = parseInt(String(gameMode).replace('v', ''), 10);
+  const isValid = UPDATES.some(u => u.id === gameMode);
+  // Wenn ungueltig, oder >2 Versionen alt → auf aktuell setzen
+  if (!isValid || isNaN(storedNum) || (CURRENT_UPDATE_NUM - storedNum > 2)) {
+    gameMode = CURRENT_UPDATE_ID;
+    safeStorageSet('geburtstag.mode', CURRENT_UPDATE_ID);
+  }
+}
 
 function buildVersionList() {
   versionList.innerHTML = '';
@@ -5948,6 +6340,34 @@ function buildQualityChoices() {
   }
 }
 buildQualityChoices();
+
+// === Tag/Nacht-Auswahl ===
+const dayNightChoicesEl = document.getElementById('dayNightChoices');
+function buildDayNightChoices() {
+  if (!dayNightChoicesEl) return;
+  dayNightChoicesEl.innerHTML = '';
+  const options = [
+    { val: 'day',   label: '☀️ Nur Tag' },
+    { val: 'night', label: '\u{1F319} Nur Nacht' },
+    { val: 'cycle', label: '\u{1F305} Beides (Wechsel)' }
+  ];
+  for (const opt of options) {
+    const b = document.createElement('button');
+    b.textContent = opt.label;
+    const active = dayNightMode === opt.val;
+    b.style.cssText = 'padding: 10px 14px; font-weight: bold; border-radius: 8px; cursor: pointer; border: 2px solid ' +
+      (active ? '#ffd700' : 'rgba(255,255,255,0.25)') + '; background: ' +
+      (active ? 'linear-gradient(135deg,#ffd700,#ffa500)' : 'rgba(255,255,255,0.08)') + '; color: ' +
+      (active ? '#1a1a2e' : '#fff') + ';';
+    b.addEventListener('click', () => {
+      dayNightMode = opt.val;
+      safeStorageSet('geburtstag.dayNight', opt.val);
+      buildDayNightChoices();
+    });
+    dayNightChoicesEl.appendChild(b);
+  }
+}
+buildDayNightChoices();
 
 // === Hilfe / Anleitung ===
 const helpScreen = document.getElementById('helpScreen');
@@ -6112,6 +6532,7 @@ bindRobustClick(settingsBtn, () => {
   startScreen.classList.add('hidden');
   settingsScreen.classList.remove('hidden');
   buildQualityChoices();
+  buildDayNightChoices();
 });
 bindRobustClick(settingsBackBtn, () => {
   settingsScreen.classList.add('hidden');
@@ -6315,6 +6736,7 @@ function animate() {
   updateAutoEnter(dt);
   updateEnemyShips(dt);
   updateDocking(dt);
+  updateDayNight(dt);
   // Mutterschiff: pulsierender Beacon + leichte Schwebe-Animation
   if (window.__mothershipBeacon) {
     window.__mothershipBeacon.material.opacity = 0.22 + 0.18 * (0.5 + 0.5 * Math.sin(nowMs * 0.003));
