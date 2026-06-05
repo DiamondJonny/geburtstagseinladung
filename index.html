@@ -1159,7 +1159,7 @@ for (let i = 0; i < 12; i++) {
   }
 }
 
-for (let i = 0; i < 18; i++) {
+for (let i = 0; i < 32; i++) {
   let x, z, tries = 0;
   do { x = (Math.random() - 0.5) * 52; z = (Math.random() - 0.5) * 52; tries++; }
   while ((tooCloseToCake(x, z, 3) || collidesAny(x, z, 1.5)) && tries < 30);
@@ -5853,7 +5853,8 @@ const UPDATES = [
   { id: 'v11', name: 'Update 11', desc: 'Wirklich nie mehr stocken — sofort-Reaktion + niedrigere Pixel-Stufen', new: ['Sofort-Reaktion: jeder einzelne Spike (>35ms) senkt Quality SOFORT', 'Pixel-Ratio jetzt ab Stufe 1 (0.5) drastisch niedriger', 'iPad/Touch startet auf Stufe 6 (nicht 13) — kein Initial-Stocken', 'Stutter-Lock: 6 Sek lang nicht hochstufen nach Spike', 'Hochstufen erst nach 8 ruhigen Checks ohne Spike'] },
   { id: 'v12', name: 'Update 12', desc: 'Röhren niedriger + viel strengere Tests', new: ['Garten-Röhren nur noch 0.55–0.85 hoch (vorher 0.9–1.5)', 'Cave-Exit-Röhre auf 0.85 reduziert (vorher 1.1)', 'Spieler kann jetzt bequem auf alle Röhren springen', '5 neue Runtime-Tests: Loading-Hide, Click-Test, pickStartQuality isoliert', '2D-Canvas-Stub für jsdom-Runtime'] },
   { id: 'v13', name: 'Update 13', desc: 'KRITISCHE FIXES — Spiel lädt jetzt überall', new: ['localStorage-SecurityError gefixt (Private Mode, file://, opaque origins)', 'safeStorageGet/Set Helpers schützen vor allen localStorage-Fehlern', 'ReferenceError manualQualityLevel before initialization gefixt', 'ReferenceError MAX_QUALITY before initialization gefixt', 'Quality-Konstanten + Helpers früh deklariert (vor Settings-UI)', 'Verschärfte Runtime-Tests fangen ReferenceError/SecurityError'] },
-  { id: 'v14', name: 'Update 14 (aktuell)', desc: 'iPad-Knöpfe funktionieren JETZT zuverlässig', new: ['„Los geht\'s!"-Button reagiert auf JEDEN Tap (iOS Virtual-Keyboard-Quirk gefixt)', 'bindRobustClick: touchend + click + Doppel-Klick-Schutz', 'Auch Start/Restart/Retry/Settings/Hilfe/Weiter robust gemacht', 'nameInput.blur() vor Submit (Tastatur weg, Wert commited)', 'Enter-Taste löst auch sicher aus'] }
+  { id: 'v14', name: 'Update 14', desc: 'iPad-Knöpfe funktionieren JETZT zuverlässig', new: ['„Los geht\'s!"-Button reagiert auf JEDEN Tap (iOS Virtual-Keyboard-Quirk gefixt)', 'bindRobustClick: touchend + click + Doppel-Klick-Schutz', 'Auch Start/Restart/Retry/Settings/Hilfe/Weiter robust gemacht', 'nameInput.blur() vor Submit (Tastatur weg, Wert commited)', 'Enter-Taste löst auch sicher aus'] },
+  { id: 'v15', name: 'Update 15 (aktuell)', desc: 'Büsche und Hecken sind wieder überall da', new: ['Hecken jetzt auf ALLEN Quality-Stufen sichtbar (auch Stufe 1)', '32 Büsche statt 18 — viel grüner und dichter Garten', 'Garten fühlt sich voller und natürlicher an'] }
 ];
 
 let gameMode = safeStorageGet('geburtstag.mode', 'v7');
@@ -6130,8 +6131,8 @@ let stutterLockUntil = 0;
 // PARALLEL dazu Pixel-Ratio aggressiv senken (damit's NIE stockt — Bewegung > Auflösung).
 const QUALITY_CONFIG = [
   null,
-  { px: 0.5,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: false, fogNear: 10, fogFar: 22 }, // 1 — Notfall
-  { px: 0.6,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: false, fogNear: 12, fogFar: 28 }, // 2
+  { px: 0.5,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 10, fogFar: 22 }, // 1 — Notfall (Hecken bleiben, fuers Spiel-Gefuehl)
+  { px: 0.6,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 12, fogFar: 28 }, // 2
   { px: 0.7,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 14, fogFar: 32 }, // 3
   { px: 0.85, shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 16, fogFar: 38 }, // 4
   { px: 1.0,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 18, fogFar: 46 }, // 5
