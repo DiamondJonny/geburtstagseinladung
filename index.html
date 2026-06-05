@@ -177,6 +177,16 @@
     <span class="key">ESC</span> &nbsp;Maus freigeben
   </div>
   <button class="btn" id="startBtn">Garten betreten</button>
+  <button class="btn" id="settingsBtn" style="margin-top:10px; background: linear-gradient(135deg, #88aacc, #4477aa); font-size: 0.95rem; padding: 10px 26px;">&#x2699; Einstellungen / Updates</button>
+</div>
+
+<div class="overlay hidden" id="settingsScreen">
+  <h1>&#x2699; Einstellungen</h1>
+  <p>W&auml;hle, welche Version du spielen m&ouml;chtest:</p>
+  <div id="versionList" style="max-width: 580px; width: 90%; margin-top: 14px; max-height: 60vh; overflow-y: auto; text-align: left;">
+    <!-- filled by JS -->
+  </div>
+  <button class="btn" id="settingsBackBtn" style="margin-top:18px;">Zur&uuml;ck</button>
 </div>
 
 <div class="overlay hidden" id="deathScreen">
@@ -2823,55 +2833,48 @@ function makeAlien(x, y, z, scale) {
 
   // === Mutterschiff (Endgegner) ===
   const motherG = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x666b75, metalness: 0.85, roughness: 0.25 });
-  const lowerMat = new THREE.MeshStandardMaterial({ color: 0x40454d, metalness: 0.8, roughness: 0.35 });
-  const domeMat = new THREE.MeshStandardMaterial({ color: 0x44aaff, transparent: true, opacity: 0.55, metalness: 0.5, roughness: 0.1, emissive: 0x2266aa, emissiveIntensity: 0.4 });
-  // Huge saucer
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(8, 11, 1.4, 36), bodyMat);
-  body.castShadow = true;
-  motherG.add(body);
-  // Dome on top
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(5, 28, 18, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
-  dome.position.y = 0.5;
-  motherG.add(dome);
-  // Lower ring
-  const lower = new THREE.Mesh(new THREE.CylinderGeometry(9, 6, 1.8, 36), lowerMat);
-  lower.position.y = -1.6;
-  motherG.add(lower);
-  // 16 rim LEDs
+  const motherBodyMat = new THREE.MeshStandardMaterial({ color: 0x666b75, metalness: 0.85, roughness: 0.25 });
+  const motherLowerMat = new THREE.MeshStandardMaterial({ color: 0x40454d, metalness: 0.8, roughness: 0.35 });
+  const motherDomeMat = new THREE.MeshStandardMaterial({ color: 0x44aaff, transparent: true, opacity: 0.55, metalness: 0.5, roughness: 0.1, emissive: 0x2266aa, emissiveIntensity: 0.4 });
+  const motherBody = new THREE.Mesh(new THREE.CylinderGeometry(8, 11, 1.4, 36), motherBodyMat);
+  motherBody.castShadow = true;
+  motherG.add(motherBody);
+  const motherDome = new THREE.Mesh(new THREE.SphereGeometry(5, 28, 18, 0, Math.PI * 2, 0, Math.PI / 2), motherDomeMat);
+  motherDome.position.y = 0.5;
+  motherG.add(motherDome);
+  const motherLower = new THREE.Mesh(new THREE.CylinderGeometry(9, 6, 1.8, 36), motherLowerMat);
+  motherLower.position.y = -1.6;
+  motherG.add(motherLower);
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
-    const led = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff2244 : 0xffee44 }));
-    led.position.set(Math.cos(a) * 10, -0.7, Math.sin(a) * 10);
-    motherG.add(led);
+    const motherLed = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff2244 : 0xffee44 }));
+    motherLed.position.set(Math.cos(a) * 10, -0.7, Math.sin(a) * 10);
+    motherG.add(motherLed);
   }
-  // Landing platform underneath
-  const platform = new THREE.Mesh(
+  const motherPlatform = new THREE.Mesh(
     new THREE.BoxGeometry(6, 0.25, 6),
     new THREE.MeshStandardMaterial({ color: 0x888c95, metalness: 0.7, emissive: 0x444a55, emissiveIntensity: 0.35 })
   );
-  platform.position.y = -2.8;
-  platform.castShadow = platform.receiveShadow = true;
-  motherG.add(platform);
-  // Glowing rails around the platform
-  const railMat = new THREE.MeshBasicMaterial({ color: 0x44ddff });
+  motherPlatform.position.y = -2.8;
+  motherPlatform.castShadow = motherPlatform.receiveShadow = true;
+  motherG.add(motherPlatform);
+  const motherRailMat = new THREE.MeshBasicMaterial({ color: 0x44ddff });
   for (let i = 0; i < 4; i++) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(6.1, 0.06, 0.06), railMat);
-    rail.position.set(0, -2.6, [-3, 3, 0, 0][i]);
+    const motherRail = new THREE.Mesh(new THREE.BoxGeometry(6.1, 0.06, 0.06), motherRailMat);
+    motherRail.position.set(0, -2.6, [-3, 3, 0, 0][i]);
     if (i >= 2) {
-      rail.rotation.y = Math.PI / 2;
-      rail.position.x = (i === 2 ? -3 : 3);
-      rail.position.z = 0;
+      motherRail.rotation.y = Math.PI / 2;
+      motherRail.position.x = (i === 2 ? -3 : 3);
+      motherRail.position.z = 0;
     }
-    motherG.add(rail);
+    motherG.add(motherRail);
   }
-  // Big lights
-  const ml1 = new THREE.PointLight(0x88ddff, 3, 35);
-  ml1.position.y = -0.5;
-  motherG.add(ml1);
-  const ml2 = new THREE.PointLight(0xff8888, 1.5, 18);
-  ml2.position.y = -2;
-  motherG.add(ml2);
+  const motherLight1 = new THREE.PointLight(0x88ddff, 3, 35);
+  motherLight1.position.y = -0.5;
+  motherG.add(motherLight1);
+  const motherLight2 = new THREE.PointLight(0xff8888, 1.5, 18);
+  motherLight2.position.y = -2;
+  motherG.add(motherLight2);
   motherG.position.set(MOTHERSHIP_X, MOTHERSHIP_Y, MOTHERSHIP_Z);
   scene.add(motherG);
   window.__mothershipGroup = motherG;
@@ -5499,6 +5502,52 @@ function retry() {
   startGame();
 }
 
+// === Settings / Updates ===
+const settingsScreen = document.getElementById('settingsScreen');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsBackBtn = document.getElementById('settingsBackBtn');
+const versionList = document.getElementById('versionList');
+
+const UPDATES = [
+  { id: 'v1',  name: 'Update 1', desc: 'Klassisches Garten-Spiel mit Hammer und Torte', new: ['Garten', 'Tortenzerstören mit Hammer', 'Sprung'] },
+  { id: 'v2',  name: 'Update 2', desc: 'Cupcake-Monster und Kronen', new: ['Cupcake-Monster', 'Kronen sammeln', 'Mehrfachsprung'] },
+  { id: 'v3',  name: 'Update 3', desc: 'Pfeil & Bogen + Touch-Steuerung', new: ['Pfeil & Bogen', 'Touch-Joystick', 'Schmetterlinge'] },
+  { id: 'v4',  name: 'Update 4', desc: 'Höhle, Wolkenwelt und Crafting', new: ['Höhle mit Holzbalken', 'Wolkenwelt', 'Stein-Mining', 'Werkbänke + Items'] },
+  { id: 'v5',  name: 'Update 5', desc: 'Alien-Planet mit Robotern', new: ['Alien-Planet', 'Roboter mit Pistolen', 'UFO-Entführung'] },
+  { id: 'v6',  name: 'Update 6', desc: 'UFO-Flug und Mutterschiff', new: ['UFO selbst steuern', 'Andere Planeten', 'Mutterschiff als Endgegner'] },
+  { id: 'v7',  name: 'Update 7 (aktuell)', desc: 'Vulkane schöner + Sichtbare Aliens + adaptive Qualität', new: ['Roter Marker über Robotern', 'Wind im Gras', 'Sonnen-Blendeffekt', '13 Qualitätsstufen'] }
+];
+
+let gameMode = (typeof localStorage !== 'undefined' && localStorage.getItem('geburtstag.mode')) || 'v7';
+
+function buildVersionList() {
+  versionList.innerHTML = '';
+  for (const u of UPDATES) {
+    const el = document.createElement('div');
+    el.style.cssText = 'background: rgba(255,255,255,0.08); border: 2px solid ' + (u.id === gameMode ? '#ffd700' : 'rgba(255,255,255,0.15)') + '; border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; cursor: pointer;';
+    el.innerHTML = '<div style="font-weight:bold;color:' + (u.id === gameMode ? '#ffd700' : '#fff') + ';">' + u.name + (u.id === gameMode ? ' ✓' : '') + '</div>' +
+      '<div style="font-size:0.9em;opacity:0.85;margin-top:4px;">' + u.desc + '</div>' +
+      '<div style="font-size:0.8em;opacity:0.7;margin-top:6px;">Neu: ' + u.new.join(' · ') + '</div>';
+    el.addEventListener('click', () => {
+      gameMode = u.id;
+      try { localStorage.setItem('geburtstag.mode', u.id); } catch (e) {}
+      buildVersionList();
+      showUnlockMessage(u.name + ' ausgewählt — startet beim nächsten Spiel');
+    });
+    versionList.appendChild(el);
+  }
+}
+buildVersionList();
+
+settingsBtn.addEventListener('click', () => {
+  startScreen.classList.add('hidden');
+  settingsScreen.classList.remove('hidden');
+});
+settingsBackBtn.addEventListener('click', () => {
+  settingsScreen.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+});
+
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
 document.getElementById('retryBtn').addEventListener('click', retry);
@@ -5533,21 +5582,22 @@ const MIN_QUALITY = 1;
 const frameTimes = [];
 let qualityCheckAt = 0;
 
-// Quality: drop EFFECTS first (wind, sun, birds, grass-noise), keep pixels sharp
+// Quality strategy: SCHMETTERLINGE first, then other effects, pixel ratio LAST.
+// Movement always stays smooth.
 const QUALITY_CONFIG = [
   null,
-  { px: 0.85, shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, fogNear: 14, fogFar: 32 }, // 1
-  { px: 0.9,  shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, fogNear: 16, fogFar: 38 }, // 2
-  { px: 0.95, shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: true,  grass: false, fogNear: 18, fogFar: 45 }, // 3
-  { px: 1.0,  shadow: false, butt: 1,  clouds: 3, wind: false, sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 50 }, // 4
-  { px: 1.0,  shadow: false, butt: 2,  clouds: 4, wind: true,  sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 60 }, // 5
-  { px: 1.0,  shadow: true,  butt: 3,  clouds: 5, wind: true,  sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 6
-  { px: 1.1,  shadow: true,  butt: 4,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 7
-  { px: 1.2,  shadow: true,  butt: 5,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 8
-  { px: 1.35, shadow: true,  butt: 6,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 9
-  { px: 1.5,  shadow: true,  butt: 7,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 10
-  { px: 1.65, shadow: true,  butt: 8,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 11
-  { px: 1.85, shadow: true,  butt: 9,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 12
+  { px: 0.75, shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, fogNear: 12, fogFar: 28 }, // 1
+  { px: 0.9,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, fogNear: 14, fogFar: 34 }, // 2
+  { px: 1.0,  shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, fogNear: 16, fogFar: 40 }, // 3
+  { px: 1.2,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, fogNear: 18, fogFar: 50 }, // 4
+  { px: 1.4,  shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, fogNear: 20, fogFar: 60 }, // 5
+  { px: 1.7,  shadow: false, butt: 0,  clouds: 4, wind: false, sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 6
+  { px: 2.0,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 7
+  { px: 2.0,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 8
+  { px: 2.0,  shadow: true,  butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 9
+  { px: 2.0,  shadow: true,  butt: 2,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 10
+  { px: 2.0,  shadow: true,  butt: 4,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 11
+  { px: 2.0,  shadow: true,  butt: 7,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 12
   { px: 2.0,  shadow: true,  butt: 99, clouds: 99, wind: true, sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 } // 13
 ];
 
