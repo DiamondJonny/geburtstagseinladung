@@ -2312,32 +2312,80 @@ function updateAlienProjectiles(dt) {
 
 function makeVolcano(x, z, h, r) {
   const g = new THREE.Group();
-  const rockMat = new THREE.MeshStandardMaterial({ color: 0x4a2820, roughness: 0.95 });
-  const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 16, 6, true), rockMat);
-  cone.position.y = h / 2;
-  cone.castShadow = true;
-  cone.receiveShadow = true;
-  g.add(cone);
-  // Lava in crater on top
-  const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff5500, emissive: 0xff3300, emissiveIntensity: 0.9, roughness: 0.5 });
-  const lava = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.5, r * 0.42, 0.12, 14), lavaMat);
-  lava.position.y = h - 0.06;
-  g.add(lava);
-  // Lava drips down sides
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + Math.random() * 0.3;
-    const drip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.13, 0.5 + Math.random() * 0.7, 0.13),
-      lavaMat
-    );
-    const sideR = r * (0.55 + Math.random() * 0.3);
-    drip.position.set(Math.cos(a) * sideR, h * (0.4 + Math.random() * 0.3), Math.sin(a) * sideR);
-    g.add(drip);
+  const rockDark = new THREE.MeshStandardMaterial({ color: 0x2a160e, roughness: 0.98 });
+  const rockMid = new THREE.MeshStandardMaterial({ color: 0x4a2820, roughness: 0.95 });
+  const rockHot = new THREE.MeshStandardMaterial({ color: 0x6a2820, roughness: 0.85, emissive: 0xff2200, emissiveIntensity: 0.15 });
+  const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff3300, emissiveIntensity: 1.1, roughness: 0.4 });
+  const lavaBright = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 1.4, roughness: 0.3 });
+
+  // Layered cone — broader base, narrower upper part
+  const baseCone = new THREE.Mesh(new THREE.ConeGeometry(r * 1.1, h * 0.45, 18, 4, true), rockDark);
+  baseCone.position.y = h * 0.225;
+  baseCone.castShadow = baseCone.receiveShadow = true;
+  g.add(baseCone);
+  const midCone = new THREE.Mesh(new THREE.ConeGeometry(r * 0.85, h * 0.4, 18, 4, true), rockMid);
+  midCone.position.y = h * 0.6;
+  midCone.castShadow = midCone.receiveShadow = true;
+  g.add(midCone);
+  const topCone = new THREE.Mesh(new THREE.ConeGeometry(r * 0.6, h * 0.25, 18, 3, true), rockHot);
+  topCone.position.y = h * 0.875;
+  topCone.castShadow = topCone.receiveShadow = true;
+  g.add(topCone);
+
+  // Big bright lava pool at the top crater
+  const lavaPool = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.45, r * 0.38, 0.15, 16), lavaBright);
+  lavaPool.position.y = h - 0.07;
+  g.add(lavaPool);
+  // Bubbling spots in the lava
+  for (let i = 0; i < 5; i++) {
+    const bub = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 8, 6), lavaMat);
+    const a = Math.random() * Math.PI * 2;
+    const rr = Math.random() * r * 0.35;
+    bub.position.set(Math.cos(a) * rr, h - 0.02 + Math.random() * 0.05, Math.sin(a) * rr);
+    g.add(bub);
   }
-  // Glowing point light at the top
-  const lt = new THREE.PointLight(0xff4400, 1.1, 9);
-  lt.position.y = h;
-  g.add(lt);
+  // Lava drips streaming down the sides
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + Math.random() * 0.2;
+    const len = 0.6 + Math.random() * 1.2;
+    const drip = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.07, len, 6), lavaMat);
+    const sideR = r * (0.55 + Math.random() * 0.3);
+    drip.position.set(Math.cos(a) * sideR, h * (0.3 + Math.random() * 0.45), Math.sin(a) * sideR);
+    drip.rotation.x = (Math.random() - 0.5) * 0.2;
+    drip.rotation.z = (Math.random() - 0.5) * 0.2;
+    g.add(drip);
+    // Glowing droplet at the bottom of each drip
+    const drop = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), lavaBright);
+    drop.position.set(drip.position.x * 1.05, drip.position.y - len * 0.5, drip.position.z * 1.05);
+    g.add(drop);
+  }
+  // Cracked rocks at the base showing lava beneath
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.random() * 0.3;
+    const dist = r * (0.9 + Math.random() * 0.4);
+    const crack = new THREE.Mesh(new THREE.BoxGeometry(0.4 + Math.random() * 0.3, 0.05, 0.1), lavaBright);
+    crack.position.set(Math.cos(a) * dist, 0.03, Math.sin(a) * dist);
+    crack.rotation.y = a + Math.PI / 2;
+    g.add(crack);
+  }
+  // Small rocks rolling around the base
+  for (let i = 0; i < 5; i++) {
+    const sx = (Math.random() - 0.5) * r * 2.5;
+    const sz = (Math.random() - 0.5) * r * 2.5;
+    if (Math.hypot(sx, sz) < r * 0.7) continue;
+    const stone = new THREE.Mesh(new THREE.BoxGeometry(0.25 + Math.random() * 0.2, 0.18, 0.25 + Math.random() * 0.2), rockMid);
+    stone.position.set(sx, 0.09, sz);
+    stone.rotation.y = Math.random() * Math.PI;
+    stone.castShadow = stone.receiveShadow = true;
+    g.add(stone);
+  }
+  // Strong lava glow
+  const lt1 = new THREE.PointLight(0xff4400, 1.4, 12);
+  lt1.position.y = h;
+  g.add(lt1);
+  const lt2 = new THREE.PointLight(0xff6600, 0.6, 6);
+  lt2.position.y = h * 0.5;
+  g.add(lt2);
   g.position.set(x, 0, z);
   scene.add(g);
   obstacles.push({ x, z, halfW: r * 0.85, halfD: r * 0.85 });
@@ -2826,11 +2874,14 @@ function exitBonusWorld() {
   if (!inBonusWorld) return;
   inBonusWorld = false;
   if (bonusReturnPos) {
-    camera.position.copy(bonusReturnPos);
-    camera.position.y = PLAYER_HEIGHT + 0.5;
+    // Spawn a bit away from the ladder so the cloud gate doesn't immediately re-trigger
+    const offX = bonusReturnPos.x >= 0 ? 2.5 : -2.5;
+    const offZ = bonusReturnPos.z >= 0 ? 2.5 : -2.5;
+    camera.position.set(bonusReturnPos.x + offX, PLAYER_HEIGHT + 0.5, bonusReturnPos.z + offZ);
     playerVy = 0;
     onGround = false;
   }
+  ladderUsedRecently = true;
   scene.background = new THREE.Color(0x7ec0ee);
   scene.fog.color.setHex(0xb5dcef);
   scene.fog.near = 20;
@@ -3247,9 +3298,11 @@ function damageEnemyShip(s) {
 }
 
 let ufoBlockedHintTime = 0;
+let ufoBlockedAccum = 0;
 function updateUfoEntry(dt) {
   if (gameState !== 'playing' || !inAlienWorld || inUfo) {
     ufoEnterStandTime = 0;
+    ufoBlockedAccum = 0;
     return;
   }
   let onPortal = false;
@@ -3262,16 +3315,29 @@ function updateUfoEntry(dt) {
   }
   if (onPortal) {
     if (alienLasersActive()) {
-      // Block UFO entry while lasers are up
+      // Block UFO entry — but if player insists for 4s, force-kill remaining aliens
+      ufoBlockedAccum += dt;
       ufoBlockedHintTime -= dt;
       if (ufoBlockedHintTime <= 0) {
-        showUnlockMessage('🚨 Erst alle Roboter besiegen — die Laser schützen das UFO!');
-        ufoBlockedHintTime = 3.0;
+        const rem = 4 - ufoBlockedAccum;
+        if (rem > 0.5) {
+          showUnlockMessage('🚨 Erst alle Roboter besiegen — oder ' + Math.ceil(rem) + ' Sek warten…');
+        }
+        ufoBlockedHintTime = 1.5;
+      }
+      if (ufoBlockedAccum > 4.0) {
+        // Player insisted long enough — auto-kill any aliens still wandering around
+        for (const m of monsters) {
+          if (m.alive && m.isAlien) killMonster(m);
+        }
+        ufoBlockedAccum = 0;
+        showUnlockMessage('🛸 Die Laser fallen aus!');
       }
       ufoEnterStandTime = 0;
       return;
     }
     ufoEnterStandTime += dt;
+    ufoBlockedAccum = 0;
     if (ufoEnterStandTime > 0.6) {
       ufoEnterStandTime = 0;
       enterUfoMode();
@@ -3279,6 +3345,7 @@ function updateUfoEntry(dt) {
   } else {
     ufoEnterStandTime = 0;
     ufoBlockedHintTime = 0;
+    ufoBlockedAccum = 0;
   }
 }
 
@@ -3609,9 +3676,8 @@ function birdTweet() {
 function scheduleBirds() {
   const wait = 2500 + Math.random() * 5500;
   setTimeout(() => {
-    if (Math.random() < 0.85 && audioCtx) {
+    if (birdsEnabled && Math.random() < 0.85 && audioCtx) {
       birdTweet();
-      // Sometimes a second tweet right after (like a real bird)
       if (Math.random() < 0.4) setTimeout(birdTweet, 250 + Math.random() * 200);
     }
     scheduleBirds();
@@ -3645,7 +3711,7 @@ function ensureGrassNoise() {
 function updateGrassNoise(moving) {
   if (!grassNoiseGain) return;
   const inGarden = gameState === 'playing' && !inAlienWorld && !inCaveWorld && !inBonusWorld;
-  const target = (moving && inGarden) ? 0.025 : 0;
+  const target = (moving && inGarden && grassNoiseEnabled) ? 0.025 : 0;
   try { grassNoiseGain.gain.linearRampToValueAtTime(target, audioCtx.currentTime + 0.3); } catch (e) {}
 }
 
@@ -3783,13 +3849,21 @@ function updateMovement(dt) {
     if (ax > ladderObj.halfW + 0.4 || az > ladderObj.halfD + 0.4) {
       ladderClimbing = false;
     } else {
-      camera.position.y += 3.0 * dt;
+      camera.position.y += 4.0 * dt;
       playerVy = 0;
       onGround = false;
+      // Garden ladder leads to the cloud world — once you're more than half way up, jump in
+      const gardenLadder = ladderObj.top > 6 && !inAlienWorld;
+      if (gardenLadder && camera.position.y > ladderObj.top * 0.55 + PLAYER_HEIGHT) {
+        ladderClimbing = false;
+        ladderUsedRecently = true;
+        enterBonusWorld();
+        return;
+      }
       if (camera.position.y >= ladderObj.top + PLAYER_HEIGHT) {
         camera.position.y = ladderObj.top + PLAYER_HEIGHT;
         ladderClimbing = false;
-        ladderUsedRecently = true; // don't auto-climb again until player leaves area
+        ladderUsedRecently = true;
       }
       return;
     }
@@ -3841,17 +3915,27 @@ function updateMovement(dt) {
       }
     }
   }
-  // Fell into an alien crater
-  if (inAlienWorld && camera.position.y < -2) {
-    damagePlayer();
-    if (playerHp > 0) {
-      camera.position.set(ALIEN_X + 9, PLAYER_HEIGHT, 8);
-      yaw = -Math.PI * 0.75;
-      playerVy = 0;
-      onGround = true;
-      jumpsUsed = 0;
-      showUnlockMessage('\u{1F525} Aua! In einen Krater gefallen!');
+  // Fell into an alien crater — always lose a heart (bypass invulnerability)
+  if (inAlienWorld && !inUfo && camera.position.y < -2) {
+    const dmg = hasShield ? 0.5 : 1;
+    playerHp = Math.max(0, playerHp - dmg);
+    invulnerableUntil = performance.now() + 1400;
+    updateHearts();
+    hearts.classList.add('hurt');
+    setTimeout(() => hearts.classList.remove('hurt'), 460);
+    shakeAmount = 0.2;
+    beep(120, 0.25, 'sawtooth', 0.18);
+    setTimeout(() => beep(80, 0.2, 'sawtooth', 0.14), 60);
+    if (playerHp <= 0) {
+      triggerDeath();
+      return;
     }
+    camera.position.set(ALIEN_X + 11, PLAYER_HEIGHT, 11);
+    yaw = Math.atan2(camera.position.x - ALIEN_X, camera.position.z - 0);
+    playerVy = 0;
+    onGround = true;
+    jumpsUsed = 0;
+    showUnlockMessage('\u{1F525} Aua! In einen Krater gefallen! -' + (dmg === 0.5 ? '½' : '1') + ' Herz');
   }
 }
 
@@ -5191,22 +5275,25 @@ const MIN_QUALITY = 1;
 const frameTimes = [];
 let qualityCheckAt = 0;
 
+// Quality: drop EFFECTS first (wind, sun, birds, grass-noise), keep pixels sharp
 const QUALITY_CONFIG = [
   null,
-  { px: 0.35, shadow: false, butt: 0,  clouds: 0, fogNear: 8,  fogFar: 22 }, // 1 (Notfall)
-  { px: 0.45, shadow: false, butt: 0,  clouds: 0, fogNear: 10, fogFar: 28 }, // 2
-  { px: 0.55, shadow: false, butt: 0,  clouds: 1, fogNear: 12, fogFar: 35 }, // 3
-  { px: 0.65, shadow: false, butt: 0,  clouds: 2, fogNear: 15, fogFar: 45 }, // 4
-  { px: 0.75, shadow: false, butt: 1,  clouds: 3, fogNear: 18, fogFar: 55 }, // 5
-  { px: 0.85, shadow: false, butt: 2,  clouds: 4, fogNear: 20, fogFar: 60 }, // 6
-  { px: 1.0,  shadow: false, butt: 3,  clouds: 5, fogNear: 20, fogFar: 70 }, // 7
-  { px: 1.1,  shadow: true,  butt: 4,  clouds: 5, fogNear: 20, fogFar: 70 }, // 8
-  { px: 1.25, shadow: true,  butt: 5,  clouds: 6, fogNear: 20, fogFar: 70 }, // 9
-  { px: 1.4,  shadow: true,  butt: 6,  clouds: 6, fogNear: 20, fogFar: 70 }, // 10
-  { px: 1.6,  shadow: true,  butt: 8,  clouds: 7, fogNear: 20, fogFar: 70 }, // 11
-  { px: 1.8,  shadow: true,  butt: 9,  clouds: 7, fogNear: 20, fogFar: 70 }, // 12
-  { px: 2.0,  shadow: true,  butt: 99, clouds: 99, fogNear: 20, fogFar: 70 } // 13
+  { px: 0.85, shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, fogNear: 14, fogFar: 32 }, // 1
+  { px: 0.9,  shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, fogNear: 16, fogFar: 38 }, // 2
+  { px: 0.95, shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: true,  grass: false, fogNear: 18, fogFar: 45 }, // 3
+  { px: 1.0,  shadow: false, butt: 1,  clouds: 3, wind: false, sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 50 }, // 4
+  { px: 1.0,  shadow: false, butt: 2,  clouds: 4, wind: true,  sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 60 }, // 5
+  { px: 1.0,  shadow: true,  butt: 3,  clouds: 5, wind: true,  sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 6
+  { px: 1.1,  shadow: true,  butt: 4,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 7
+  { px: 1.2,  shadow: true,  butt: 5,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 8
+  { px: 1.35, shadow: true,  butt: 6,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 9
+  { px: 1.5,  shadow: true,  butt: 7,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 10
+  { px: 1.65, shadow: true,  butt: 8,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 11
+  { px: 1.85, shadow: true,  butt: 9,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 12
+  { px: 2.0,  shadow: true,  butt: 99, clouds: 99, wind: true, sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 } // 13
 ];
+
+let windEnabled = true, sunEnabled = true, birdsEnabled = true, grassNoiseEnabled = true;
 
 function applyQualityLevel() {
   const c = QUALITY_CONFIG[qualityLevel];
@@ -5215,11 +5302,16 @@ function applyQualityLevel() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, c.px));
   for (let i = 0; i < butterflies.length; i++) butterflies[i].group.visible = i < c.butt;
   for (let i = 0; i < cloudGroups.length; i++) cloudGroups[i].group.visible = i < c.clouds;
-  // Tighter fog at lower levels — render less in the distance
   if (!inCaveWorld && !inAlienWorld && !inBonusWorld && scene.fog) {
     scene.fog.near = c.fogNear;
     scene.fog.far = c.fogFar;
   }
+  windEnabled = c.wind;
+  sunEnabled = c.sun;
+  birdsEnabled = c.birds;
+  grassNoiseEnabled = c.grass;
+  if (typeof sunSphere !== 'undefined' && sunSphere) sunSphere.visible = c.sun;
+  if (typeof sunGlow !== 'undefined' && sunGlow) sunGlow.visible = c.sun;
 }
 
 function updateAdaptiveQuality(nowMs) {
@@ -5271,8 +5363,9 @@ function animate() {
   updateLasers();
   updatePipeRide(dt);
   updateClouds(dt);
-  updateSunFlare();
-  windUniform.value = performance.now() / 1000;
+  if (sunEnabled) updateSunFlare();
+  else sunFlare.style.opacity = '0';
+  if (windEnabled) windUniform.value = performance.now() / 1000; // freeze wind otherwise
   updateButterflies(dt);
   updateCaveExit(dt);
   updateUfoEntry(dt);
