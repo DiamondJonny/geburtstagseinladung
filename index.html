@@ -83,6 +83,11 @@
   #bowBtn.show { display: flex; align-items: center; justify-content: center; }
   #bowBtn:active { transform: scale(0.92); }
   #pipeBtn { position: absolute; bottom: 184px; right: 168px; width: 76px; height: 76px; background: rgba(0,170,80,0.7); border: 2px solid #00ff88; border-radius: 50%; color: #fff; font-size: 1.7rem; pointer-events: auto; touch-action: manipulation; cursor: pointer; padding: 0; line-height: 1; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: none; animation: pipePulse 1.5s ease-in-out infinite; }
+  #ufoUpBtn, #ufoDownBtn { position: absolute; right: 50px; width: 86px; height: 86px; background: rgba(40,40,100,0.6); border: 3px solid #88ccff; border-radius: 50%; color: #fff; font-size: 2.2rem; font-weight: bold; pointer-events: auto; touch-action: manipulation; cursor: pointer; padding: 0; line-height: 1; box-shadow: 0 4px 14px rgba(0,0,0,0.4); display: none; }
+  #ufoUpBtn { bottom: 290px; }
+  #ufoDownBtn { bottom: 190px; }
+  #ufoUpBtn.show, #ufoDownBtn.show { display: flex; align-items: center; justify-content: center; }
+  #ufoUpBtn:active, #ufoDownBtn:active { transform: scale(0.92); background: rgba(80,140,255,0.85); }
   #pipeBtn.show { display: flex; align-items: center; justify-content: center; }
   #pipeBtn:active { transform: scale(0.92); animation: none; }
   @keyframes pipePulse { 0%, 100% { box-shadow: 0 4px 14px rgba(0,255,136,0.5); } 50% { box-shadow: 0 4px 26px rgba(0,255,136,0.95); } }
@@ -150,6 +155,8 @@
   <button id="jumpBtn" type="button">&#x2B06;</button>
   <button id="bowBtn" type="button">&#x1F3F9;</button>
   <button id="pipeBtn" type="button">&#x1F573;</button>
+  <button id="ufoUpBtn" type="button">&#x2B06;</button>
+  <button id="ufoDownBtn" type="button">&#x2B07;</button>
   <button id="hitBtn" type="button">&#x2692;</button>
 </div>
 
@@ -304,6 +311,10 @@ const runBtn = document.getElementById('runBtn');
 const jumpBtn = document.getElementById('jumpBtn');
 const bowBtn = document.getElementById('bowBtn');
 const pipeBtn = document.getElementById('pipeBtn');
+const ufoUpBtn = document.getElementById('ufoUpBtn');
+const ufoDownBtn = document.getElementById('ufoDownBtn');
+let ufoUpHold = false;
+let ufoDownHold = false;
 
 const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 let joystickVec = { x: 0, y: 0 };
@@ -2327,8 +2338,8 @@ function updateAlienProjectiles(dt) {
     p.mesh.position.copy(p.pos);
     p.life -= dt;
     let hit = false;
-    if (gameState === 'playing' && p.pos.distanceTo(camera.position) < 0.55) {
-      damagePlayer(0.5);
+    if (gameState === 'playing' && p.pos.distanceTo(camera.position) < 0.75) {
+      damagePlayer(1);
       hit = true;
     }
     if (hit || p.life <= 0 || p.pos.y < -2 || p.pos.y > 30) {
@@ -3348,6 +3359,10 @@ function dockToMothership() {
   inUfo = false;
   playerUfoGroup.visible = false;
   hammerGroup.visible = true;
+  ufoUpBtn.classList.remove('show');
+  ufoDownBtn.classList.remove('show');
+  ufoUpHold = false;
+  ufoDownHold = false;
   // Teleport onto the landing platform
   camera.position.set(MOTHERSHIP_X + 2, MOTHERSHIP_Y - 2.55 + PLAYER_HEIGHT, MOTHERSHIP_Z);
   yaw = Math.atan2(camera.position.x - MOTHERSHIP_X, camera.position.z - MOTHERSHIP_Z);
@@ -3398,6 +3413,11 @@ function enterUfoMode() {
   inUfo = true;
   playerUfoGroup.visible = true;
   hammerGroup.visible = false;
+  // Show UFO control buttons on touch devices
+  if (isTouch) {
+    ufoUpBtn.classList.add('show');
+    ufoDownBtn.classList.add('show');
+  }
   // Unlock the bow so the UFO can shoot at the remaining robots
   if (!bowUnlocked) {
     bowUnlocked = true;
@@ -3676,6 +3696,7 @@ function joystickFromTouch(t) {
 function isUIElement(el) {
   return el === joystick || el === joystickKnob || joystick.contains(el)
       || el === hitBtn || el === runBtn || el === jumpBtn || el === bowBtn || el === pipeBtn
+      || el === ufoUpBtn || el === ufoDownBtn
       || el.closest && el.closest('.overlay, .btn');
 }
 
@@ -3770,6 +3791,14 @@ jumpBtn.addEventListener('touchstart', e => {
   e.stopPropagation();
   tryJump();
 }, { passive: false });
+
+// UFO up/down buttons — hold while pressed
+ufoUpBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); ufoUpHold = true; }, { passive: false });
+ufoUpBtn.addEventListener('touchend',   e => { e.preventDefault(); e.stopPropagation(); ufoUpHold = false; }, { passive: false });
+ufoUpBtn.addEventListener('touchcancel', e => { ufoUpHold = false; });
+ufoDownBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); ufoDownHold = true; }, { passive: false });
+ufoDownBtn.addEventListener('touchend',   e => { e.preventDefault(); e.stopPropagation(); ufoDownHold = false; }, { passive: false });
+ufoDownBtn.addEventListener('touchcancel', e => { ufoDownHold = false; });
 
 bowBtn.addEventListener('touchstart', e => {
   e.preventDefault();
@@ -4034,9 +4063,9 @@ function updateMovement(dt) {
       camera.position.x += dx * 7 * dt;
       camera.position.z += dz * 7 * dt;
     }
-    // Vertical: Space = up, C/Shift = down
-    const upPress = keys['Space'] || keys[' '] || keys['ArrowUp'];
-    const downPress = keys['KeyC'] || keys['ShiftLeft'] || keys['ShiftRight'] || keys['ArrowDown'];
+    // Vertical: Space = up, C/Shift = down — plus touch hold buttons
+    const upPress = keys['Space'] || keys[' '] || keys['ArrowUp'] || ufoUpHold;
+    const downPress = keys['KeyC'] || keys['ShiftLeft'] || keys['ShiftRight'] || keys['ArrowDown'] || ufoDownHold;
     if (upPress) camera.position.y += 5 * dt;
     else if (downPress) camera.position.y -= 5 * dt;
     camera.position.y = Math.max(2, Math.min(40, camera.position.y));
@@ -5274,6 +5303,10 @@ function startGame() {
   inUfo = false;
   playerUfoGroup.visible = false;
   hammerGroup.visible = true;
+  ufoUpBtn.classList.remove('show');
+  ufoDownBtn.classList.remove('show');
+  ufoUpHold = false;
+  ufoDownHold = false;
   ufoEnterStandTime = 0;
   activeAlien = null;
   alienCakeState.alive = false; // never reactivate — pedestal is just the ladder base now
