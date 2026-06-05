@@ -69,6 +69,8 @@
   #nameInput.shake { animation: nameShake 0.4s; }
   @keyframes nameShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0a0a14; color: #ffd700; font-size: 1.2rem; z-index: 100; }
+  #qualityChip { position: fixed; top: 14px; right: 16px; background: rgba(0,0,0,0.55); color: #cfe0ff; padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: bold; z-index: 8; opacity: 0; transition: opacity 0.25s; pointer-events: none; border: 1px solid rgba(207,224,255,0.25); }
+  #qualityChip.show { opacity: 1; }
 
   #touchUI { position: fixed; inset: 0; pointer-events: none; z-index: 6; display: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   #touchUI.active { display: block; }
@@ -97,6 +99,7 @@
 
 <div id="loading">Lade Garten...</div>
 <canvas id="game"></canvas>
+<div id="qualityChip"></div>
 <div id="sunFlare"></div>
 <div id="crosshair"></div>
 
@@ -2842,50 +2845,129 @@ function makeAlien(x, y, z, scale) {
   makeEnemyShip(ALIEN_X - 30, 22, 35);
   window.__enemyShips = enemyShips;
 
-  // === Mutterschiff (Endgegner) ===
+  // === Mutterschiff (Endgegner — Star-Wars-Stil) ===
   const motherG = new THREE.Group();
-  const motherBodyMat = new THREE.MeshStandardMaterial({ color: 0x666b75, metalness: 0.85, roughness: 0.25 });
-  const motherLowerMat = new THREE.MeshStandardMaterial({ color: 0x40454d, metalness: 0.8, roughness: 0.35 });
-  const motherDomeMat = new THREE.MeshStandardMaterial({ color: 0x44aaff, transparent: true, opacity: 0.55, metalness: 0.5, roughness: 0.1, emissive: 0x2266aa, emissiveIntensity: 0.4 });
-  const motherBody = new THREE.Mesh(new THREE.CylinderGeometry(8, 11, 1.4, 36), motherBodyMat);
-  motherBody.castShadow = true;
-  motherG.add(motherBody);
-  const motherDome = new THREE.Mesh(new THREE.SphereGeometry(5, 28, 18, 0, Math.PI * 2, 0, Math.PI / 2), motherDomeMat);
-  motherDome.position.y = 0.5;
-  motherG.add(motherDome);
-  const motherLower = new THREE.Mesh(new THREE.CylinderGeometry(9, 6, 1.8, 36), motherLowerMat);
-  motherLower.position.y = -1.6;
-  motherG.add(motherLower);
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2;
-    const motherLed = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff2244 : 0xffee44 }));
-    motherLed.position.set(Math.cos(a) * 10, -0.7, Math.sin(a) * 10);
-    motherG.add(motherLed);
+  const hullMat = new THREE.MeshStandardMaterial({ color: 0x5e6770, metalness: 0.88, roughness: 0.22 });
+  const hullDark = new THREE.MeshStandardMaterial({ color: 0x32363d, metalness: 0.85, roughness: 0.3 });
+  const hullAccent = new THREE.MeshStandardMaterial({ color: 0x4a525d, metalness: 0.9, roughness: 0.2 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x66ddff, transparent: true, opacity: 0.55, metalness: 0.6, roughness: 0.08, emissive: 0x2288cc, emissiveIntensity: 0.7 });
+  const engineGlow = new THREE.MeshBasicMaterial({ color: 0xff7733 });
+  const engineCore = new THREE.MeshBasicMaterial({ color: 0xffee88 });
+
+  // Massive main saucer (3-layer disc)
+  const saucerTop = new THREE.Mesh(new THREE.CylinderGeometry(14, 20, 2.5, 48), hullMat);
+  saucerTop.position.y = 0.5;
+  saucerTop.castShadow = true;
+  motherG.add(saucerTop);
+  const saucerMid = new THREE.Mesh(new THREE.CylinderGeometry(20, 22, 1.4, 48), hullAccent);
+  saucerMid.position.y = -0.9;
+  saucerMid.castShadow = true;
+  motherG.add(saucerMid);
+  const saucerBottom = new THREE.Mesh(new THREE.CylinderGeometry(22, 16, 2.2, 48), hullDark);
+  saucerBottom.position.y = -2.8;
+  saucerBottom.castShadow = true;
+  motherG.add(saucerBottom);
+
+  // Central bridge tower on top
+  const bridge = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 2.2, 16), hullMat);
+  bridge.position.y = 2.8;
+  bridge.castShadow = true;
+  motherG.add(bridge);
+  const bridgeDome = new THREE.Mesh(new THREE.SphereGeometry(2.4, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), glassMat);
+  bridgeDome.position.y = 3.9;
+  motherG.add(bridgeDome);
+  // Antennas
+  for (let i = 0; i < 3; i++) {
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.5, 6), hullDark);
+    ant.position.set([-1.5, 0, 1.5][i], 5.2, [0, -1.6, 0][i]);
+    motherG.add(ant);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3344 }));
+    tip.position.set([-1.5, 0, 1.5][i], 6.45, [0, -1.6, 0][i]);
+    motherG.add(tip);
   }
+
+  // 6 engine nacelles on the back
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 4, 16), hullDark);
+    nacelle.position.set(Math.cos(a) * 16, -2, Math.sin(a) * 16);
+    nacelle.rotation.z = Math.PI / 2;
+    nacelle.rotation.y = -a;
+    nacelle.castShadow = true;
+    motherG.add(nacelle);
+    const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.6, 0.8, 16), engineGlow);
+    exhaust.position.set(Math.cos(a) * 18.5, -2, Math.sin(a) * 18.5);
+    exhaust.rotation.z = Math.PI / 2;
+    exhaust.rotation.y = -a;
+    motherG.add(exhaust);
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.5, 12), engineCore);
+    core.position.set(Math.cos(a) * 19.0, -2, Math.sin(a) * 19.0);
+    core.rotation.z = Math.PI / 2;
+    core.rotation.y = -a;
+    motherG.add(core);
+    // Engine light
+    const eLight = new THREE.PointLight(0xff7733, 1.4, 8);
+    eLight.position.set(Math.cos(a) * 18, -2, Math.sin(a) * 18);
+    motherG.add(eLight);
+  }
+
+  // 24 rim window strips on the saucer (alternating)
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    const w = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.4, 0.06), new THREE.MeshBasicMaterial({ color: i % 3 === 0 ? 0xffee88 : 0x88ddff }));
+    w.position.set(Math.cos(a) * 19.5, -1.5, Math.sin(a) * 19.5);
+    w.rotation.y = -a;
+    motherG.add(w);
+  }
+  // 12 rim LEDs (slow flashing colors)
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), new THREE.MeshBasicMaterial({ color: [0xff3344, 0xffcc44, 0x44ddff, 0xff66ff][i % 4] }));
+    led.position.set(Math.cos(a) * 21, -1.6, Math.sin(a) * 21);
+    motherG.add(led);
+  }
+
+  // Hangar bay underneath — square opening with glowing entrance
+  const bayMat = new THREE.MeshStandardMaterial({ color: 0x1a1d22, roughness: 0.85 });
+  const bay = new THREE.Mesh(new THREE.BoxGeometry(12, 0.3, 12), bayMat);
+  bay.position.y = -3.85;
+  bay.castShadow = bay.receiveShadow = true;
+  motherG.add(bay);
+  // Glowing bay walls
+  const bayGlow = new THREE.MeshBasicMaterial({ color: 0x66ccff });
+  for (const offs of [{ x: -6, z: 0 }, { x: 6, z: 0 }, { x: 0, z: -6 }, { x: 0, z: 6 }]) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(offs.x === 0 ? 12 : 0.15, 0.12, offs.z === 0 ? 12 : 0.15), bayGlow);
+    strip.position.set(offs.x, -3.75, offs.z);
+    motherG.add(strip);
+  }
+  // Landing platform inside the bay
   const motherPlatform = new THREE.Mesh(
-    new THREE.BoxGeometry(6, 0.25, 6),
-    new THREE.MeshStandardMaterial({ color: 0x888c95, metalness: 0.7, emissive: 0x444a55, emissiveIntensity: 0.35 })
+    new THREE.BoxGeometry(8, 0.25, 8),
+    new THREE.MeshStandardMaterial({ color: 0x9095a0, metalness: 0.75, emissive: 0x445566, emissiveIntensity: 0.35 })
   );
-  motherPlatform.position.y = -2.8;
+  motherPlatform.position.y = -3.7;
   motherPlatform.castShadow = motherPlatform.receiveShadow = true;
   motherG.add(motherPlatform);
-  const motherRailMat = new THREE.MeshBasicMaterial({ color: 0x44ddff });
+  // Yellow caution markings around the platform edge
   for (let i = 0; i < 4; i++) {
-    const motherRail = new THREE.Mesh(new THREE.BoxGeometry(6.1, 0.06, 0.06), motherRailMat);
-    motherRail.position.set(0, -2.6, [-3, 3, 0, 0][i]);
-    if (i >= 2) {
-      motherRail.rotation.y = Math.PI / 2;
-      motherRail.position.x = (i === 2 ? -3 : 3);
-      motherRail.position.z = 0;
-    }
-    motherG.add(motherRail);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 0.18), new THREE.MeshBasicMaterial({ color: 0xffdd00 }));
+    if (i < 2) strip.position.set(0, -3.55, i === 0 ? -3.8 : 3.8);
+    else { strip.position.set(i === 2 ? -3.8 : 3.8, -3.55, 0); strip.rotation.y = Math.PI / 2; }
+    motherG.add(strip);
   }
-  const motherLight1 = new THREE.PointLight(0x88ddff, 3, 35);
-  motherLight1.position.y = -0.5;
+  // Big interior light
+  const bayLight = new THREE.PointLight(0xaadcff, 3, 22);
+  bayLight.position.y = -3;
+  motherG.add(bayLight);
+
+  // Powerful exterior lights
+  const motherLight1 = new THREE.PointLight(0x88ddff, 4, 50);
+  motherLight1.position.y = 0;
   motherG.add(motherLight1);
-  const motherLight2 = new THREE.PointLight(0xff8888, 1.5, 18);
+  const motherLight2 = new THREE.PointLight(0xffaa55, 2, 30);
   motherLight2.position.y = -2;
   motherG.add(motherLight2);
+
   motherG.position.set(MOTHERSHIP_X, MOTHERSHIP_Y, MOTHERSHIP_Z);
   scene.add(motherG);
   window.__mothershipGroup = motherG;
@@ -3342,9 +3424,9 @@ function updatePipeBtn() {
 
 function spawnMothershipRobots() {
   for (let i = 0; i < 4; i++) {
-    const ang = (i / 4) * Math.PI * 2;
-    const rx = MOTHERSHIP_X + Math.cos(ang) * 2.2;
-    const rz = MOTHERSHIP_Z + Math.sin(ang) * 2.2;
+    const ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const rx = MOTHERSHIP_X + Math.cos(ang) * 3.0;
+    const rz = MOTHERSHIP_Z + Math.sin(ang) * 3.0;
     const robot = makeHumanAlien(rx, MOTHERSHIP_Y - 2.7, rz, 0.9);
     robot._onMothership = true;
     monsters.push(robot);
@@ -3789,8 +3871,18 @@ runBtn.addEventListener('touchstart', e => {
 jumpBtn.addEventListener('touchstart', e => {
   e.preventDefault();
   e.stopPropagation();
-  tryJump();
+  if (inUfo) {
+    ufoUpHold = true; // hold to climb in UFO
+  } else {
+    tryJump();
+  }
 }, { passive: false });
+jumpBtn.addEventListener('touchend', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (inUfo) ufoUpHold = false;
+});
+jumpBtn.addEventListener('touchcancel', () => { if (inUfo) ufoUpHold = false; });
 
 // UFO up/down buttons — hold while pressed
 ufoUpBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); ufoUpHold = true; }, { passive: false });
@@ -4028,8 +4120,8 @@ function updateMovement(dt) {
       minX = CAVE_X - 19; maxX = CAVE_X + 19;
       minZ = -19; maxZ = 19;
     } else if (onMothership) {
-      minX = MOTHERSHIP_X - 2.8; maxX = MOTHERSHIP_X + 2.8;
-      minZ = MOTHERSHIP_Z - 2.8; maxZ = MOTHERSHIP_Z + 2.8;
+      minX = MOTHERSHIP_X - 3.8; maxX = MOTHERSHIP_X + 3.8;
+      minZ = MOTHERSHIP_Z - 3.8; maxZ = MOTHERSHIP_Z + 3.8;
     }
     camera.position.x = Math.max(minX, Math.min(maxX, camera.position.x));
     camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
@@ -5549,7 +5641,8 @@ const UPDATES = [
   { id: 'v5',  name: 'Update 5', desc: 'Alien-Planet mit Robotern', new: ['Alien-Planet', 'Roboter mit Pistolen', 'UFO-Entführung'] },
   { id: 'v6',  name: 'Update 6', desc: 'UFO-Flug und Mutterschiff', new: ['UFO selbst steuern', 'Andere Planeten', 'Mutterschiff als Endgegner'] },
   { id: 'v7',  name: 'Update 7', desc: 'Vulkane schöner + Sichtbare Aliens + adaptive Qualität', new: ['Roter Marker über Robotern', 'Wind im Gras', 'Sonnen-Blendeffekt', '13 Qualitätsstufen'] },
-  { id: 'v8',  name: 'Update 8 (aktuell)', desc: 'UFO Touch-Steuerung + härtere Roboter + Auto-Tests', new: ['Hoch/Runter Knöpfe für UFO auf iPad', 'Roboter-Schuss macht 1 Herz Schaden', 'Schnellerer Quality-Wechsel (450ms)', '30 automatische Tests vor jedem Push'] }
+  { id: 'v8',  name: 'Update 8', desc: 'UFO Touch-Steuerung + härtere Roboter + Auto-Tests', new: ['Hoch/Runter Knöpfe für UFO auf iPad', 'Roboter-Schuss macht 1 Herz Schaden', 'Schnellerer Quality-Wechsel (450ms)', '30 automatische Tests vor jedem Push'] },
+  { id: 'v9',  name: 'Update 9 (aktuell)', desc: 'Riesiges Star-Wars-Mutterschiff + UFO-Sprungtaste + Quality-Chip', new: ['Star-Wars-Mutterschiff mit Hangar-Bucht', 'Springtaste lässt UFO schweben', 'Quality-Chip oben rechts (kurz sichtbar)', 'Schnellerer Quality-Wechsel (350ms)', 'Roboter spawnen innen im Hangar', 'Größere Landeplattform 8×8'] }
 ];
 
 let gameMode = (typeof localStorage !== 'undefined' && localStorage.getItem('geburtstag.mode')) || 'v7';
@@ -5656,27 +5749,36 @@ function applyQualityLevel() {
   if (typeof sunGlow !== 'undefined' && sunGlow) sunGlow.visible = c.sun;
 }
 
+const qualityChip = document.getElementById('qualityChip');
+let qualityChipHideAt = 0;
+function showQualityChip(level) {
+  qualityChip.textContent = '⚡ Qualität: ' + level;
+  qualityChip.classList.add('show');
+  qualityChipHideAt = performance.now() + 1500;
+}
+
 function updateAdaptiveQuality(nowMs) {
   frameTimes.push(nowMs);
   if (frameTimes.length > 30) frameTimes.shift();
-  if (nowMs - qualityCheckAt < 450) return;
+  if (qualityChipHideAt > 0 && nowMs > qualityChipHideAt) {
+    qualityChip.classList.remove('show');
+    qualityChipHideAt = 0;
+  }
+  if (nowMs - qualityCheckAt < 350) return;
   qualityCheckAt = nowMs;
-  if (frameTimes.length < 10) return;
+  if (frameTimes.length < 8) return;
   const span = frameTimes[frameTimes.length - 1] - frameTimes[0];
   const avgFps = (frameTimes.length - 1) / (span / 1000);
   let target = qualityLevel;
-  // Drop more aggressively the worse the FPS
-  if (avgFps < 15 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 3);
-  else if (avgFps < 25 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 2);
-  else if (avgFps < 52 && qualityLevel > MIN_QUALITY) target = qualityLevel - 1;
+  // Aggressive drops on low FPS, prompt recovery on good FPS
+  if (avgFps < 18 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 3);
+  else if (avgFps < 32 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 2);
+  else if (avgFps < 54 && qualityLevel > MIN_QUALITY) target = qualityLevel - 1;
   else if (avgFps > 58 && qualityLevel < MAX_QUALITY) target = qualityLevel + 1;
   if (target !== qualityLevel) {
-    const dropped = target < qualityLevel;
     qualityLevel = target;
     applyQualityLevel();
-    if (dropped && typeof showUnlockMessage === 'function') {
-      showUnlockMessage('⚡ Qualit&auml;t: Stufe ' + target + ' / 13');
-    }
+    showQualityChip(target);
   }
 }
 
