@@ -799,8 +799,17 @@ starGroup.visible = false;
 scene.add(starGroup);
 
 function updateDayNight(dt) {
-  // Nur im Garten anwenden, nicht in Cave/Bonus/Alien/Mothership
-  if (typeof inGarden !== 'undefined' && !inGarden) return;
+  // STRENG nur im Garten — nicht im Weltall, Hoehle, Alien-Welt, Bonus-Welt oder Mutterschiff
+  const isInGarden = !inAlienWorld && !inCaveWorld && !inBonusWorld && !inUfo && !onMothership;
+  if (!isInGarden) {
+    // Sonne/Mond/Sterne unsichtbar machen, damit man im Weltall keinen Tag/Nacht-Wechsel sieht
+    sunSphere.visible = false;
+    sunGlow.visible = false;
+    moonSphere.visible = false;
+    moonGlow.visible = false;
+    starGroup.visible = false;
+    return;
+  }
   let t;
   if (dayNightMode === 'day') t = 0.25;
   else if (dayNightMode === 'night') t = 0.75;
@@ -845,10 +854,9 @@ function updateDayNight(dt) {
     g = 0.50 * t3 + 0.09 * (1 - t3);
     b = 0.35 * t3 + 0.18 * (1 - t3);
   }
-  if (typeof inGarden === 'undefined' || inGarden) {
-    if (scene.background && scene.background.setRGB) scene.background.setRGB(r, g, b);
-    if (scene.fog) scene.fog.color.setRGB(r * 0.85, g * 0.85, b * 0.95);
-  }
+  // Background + Fog nur im Garten setzen (isInGarden bereits geprueft oben)
+  if (scene.background && scene.background.setRGB) scene.background.setRGB(r, g, b);
+  if (scene.fog) scene.fog.color.setRGB(r * 0.85, g * 0.85, b * 0.95);
   sun.intensity = 0.25 + dayFactor * 1.45;
 }
 
@@ -4764,7 +4772,10 @@ function updateMovement(dt) {
     moveZ = back - fwd;
     moveX = right - left;
   }
-  if (moveZ !== 0 || moveX !== 0) {
+  // Im UFO: Boundary-Logic ueberspringen (Spieler darf frei zum Mutterschiff fliegen)
+  if (inUfo) {
+    // UFO-Bewegung wird unten ausgewertet — hier nur fruehe Rueckkehr
+  } else if (moveZ !== 0 || moveX !== 0) {
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
     let dx = fx * -moveZ + rx * moveX;
@@ -5425,17 +5436,23 @@ function updateMonsters(dt) {
           m.baseY = Math.max(BONUS_Y - 3, Math.min(BONUS_Y + 12, m.baseY));
         }
       }
-      // Humanoid aliens shoot from a distance — but only ONE alien shoots at a time globally
-      if (m.isHuman && distXZ > 1.8 && distXZ < 14 && performance.now() > m.nextShoot) {
-        if (performance.now() - lastAlienShotTime > ALIEN_SHOT_GAP) {
+      // Humanoid aliens shoot from a distance
+      // Mutterschiff-Roboter: AGGRESSIV (schiessen auch nah, viel oefter, ohne globalen Gap)
+      const isMothershipBot = m._onMothership;
+      const minShootDist = isMothershipBot ? 0.5 : 1.8;
+      const maxShootDist = isMothershipBot ? 12 : 14;
+      const shotGap = isMothershipBot ? 0 : ALIEN_SHOT_GAP;
+      const nextShootDelay = isMothershipBot ? (1200 + Math.random() * 1500) : (6000 + Math.random() * 4000);
+      if (m.isHuman && distXZ > minShootDist && distXZ < maxShootDist && performance.now() > m.nextShoot) {
+        if (performance.now() - lastAlienShotTime > shotGap) {
           alienShoot(m);
-          lastAlienShotTime = performance.now();
-          m.nextShoot = performance.now() + 6000 + Math.random() * 4000;
+          if (!isMothershipBot) lastAlienShotTime = performance.now();
+          m.nextShoot = performance.now() + nextShootDelay;
         }
       }
-      // Contact damage (humanoid aliens only do half a heart on contact, less aggressive)
+      // Contact damage — Mutterschiff-Roboter: mehr Kontaktschaden
       if (distXZ < 0.9 && Math.abs(camera.position.y - PLAYER_HEIGHT - m.group.position.y) < 1.4) {
-        damagePlayer(m.isHuman ? 0.5 : (m.isAlien ? 1 : 0.5));
+        damagePlayer(isMothershipBot ? 1 : (m.isHuman ? 0.5 : (m.isAlien ? 1 : 0.5)));
       }
     }
 
@@ -6365,7 +6382,8 @@ const UPDATES = [
   { id: 'v15', name: 'Update 15', desc: 'Büsche und Hecken sind wieder überall da', new: ['Hecken jetzt auf ALLEN Quality-Stufen sichtbar (auch Stufe 1)', '32 Büsche statt 18 — viel grüner und dichter Garten', 'Garten fühlt sich voller und natürlicher an'] },
   { id: 'v16', name: 'Update 16', desc: 'TIE-Fighter + Gras zurück + Los-geht\'s-Button RICHTIG gefixt', new: ['Enemy-Ships sind jetzt richtige TIE-Fighter (Imperiale Farben, hexagonale Flügel)', '5 statt 3 TIE-Fighter — näher beim Spieler und entlang des Wegs zum Mutterschiff', 'Gras schon ab Quality-Stufe 3 sichtbar (vorher erst ab 5)', 'pointerdown-Strategie: „Los geht\'s" reagiert auf JEDEN Tap, kein Doppeltipp mehr nötig', 'blur() NACH UI-Wechsel (verhindert dass iOS den Click verschluckt)'] },
   { id: 'v17', name: 'Update 17', desc: 'Eigener Charakter + Schild + Gold-Hammer + Tag/Nacht + Auto-Aim', new: ['Charakter-Vorschau oben rechts (zeigt aktuelle Ausrüstung)', 'Charakter-Erstellung am Anfang: Haut, Haare, Shirt, Hose wählbar', 'Schild jetzt SICHTBAR links in der Hand (mit goldenem Stern)', 'Gold-Hammer-Kopf wird wirklich golden wenn gekauft', 'Bow Auto-Aim: Pfeil zielt leicht auf Monster in der Nähe (65/35 Mix)', 'Tag/Nacht-Cycle in den Einstellungen: Nur Tag / Nur Nacht / Beides', 'Sonne wandert mit Sonnenauf- und untergang, Sterne + Mond bei Nacht', 'gameMode-Default repariert: immer aktuelles Update vorausgewählt'] },
-  { id: 'v18', name: 'Update 18 (aktuell)', desc: 'Animierter Avatar + Andocken fixt + Slots zurück + Form-Submit', new: ['Avatar oben rechts ist jetzt ANIMIERT (läuft, springt, schlägt mit dir)', 'Spielername unter dem Avatar angezeigt', 'Gold/Schild/Rüstung Slots zurück (grau wenn nicht gekauft, gold wenn gekauft)', 'Mutterschiff-Andocken: grüner Knopf erscheint jetzt auch bei Mutterschiff-Nähe', '„Los geht\'s" jetzt als HTML-Form (zuverlässigste Methode + iOS-Go-Button)', 'Sonne UND Mond nicht mehr gleichzeitig sichtbar — exklusiv', 'Avatar-Editor klarer mit Emoji-Icons und größerer Vorschau'] }
+  { id: 'v18', name: 'Update 18', desc: 'Animierter Avatar + Andocken fixt + Slots zurück + Form-Submit', new: ['Avatar oben rechts ist jetzt ANIMIERT (läuft, springt, schlägt mit dir)', 'Spielername unter dem Avatar angezeigt', 'Gold/Schild/Rüstung Slots zurück (grau wenn nicht gekauft, gold wenn gekauft)', 'Mutterschiff-Andocken: grüner Knopf erscheint jetzt auch bei Mutterschiff-Nähe', '„Los geht\'s" jetzt als HTML-Form (zuverlässigste Methode + iOS-Go-Button)', 'Sonne UND Mond nicht mehr gleichzeitig sichtbar — exklusiv', 'Avatar-Editor klarer mit Emoji-Icons und größerer Vorschau'] },
+  { id: 'v19', name: 'Update 19 (aktuell)', desc: 'Tag/Nacht nur im Garten + UFO darf zum Mutterschiff + Roboter greifen an', new: ['Tag/Nacht-Cycle STRENG nur im Garten (Höhle/Alien/Weltall haben keinen Wechsel)', 'Sonne/Mond/Sterne nur sichtbar im Garten', 'UFO darf jetzt über die Alien-Welt-Boundary hinausfliegen zum Mutterschiff', 'Mutterschiff-Roboter greifen jetzt AGGRESSIV an — schießen alle 1.5–2.5s', 'Roboter im Hangar machen 1 Herz Kontaktschaden (vorher 0.5)', 'Schießen bereits ab 0.5 Einheiten Distanz (vorher 1.8)'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
