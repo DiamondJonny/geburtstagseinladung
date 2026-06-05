@@ -144,7 +144,19 @@
     <span class="inv-ico">&#x1FAA8;</span>
     <span class="inv-num" id="invStone">0</span>
   </div>
-  <!-- Gold/Schild/Ruestung Slots entfernt — werden jetzt visuell ueber Charakter-Vorschau oben rechts angezeigt -->
+  <!-- Gold/Schild/Ruestung Slots: locked = noch nicht gekauft (grau), ready = bereits gekauft (gold) -->
+  <div class="inv-slot locked" id="slotItemHammer">
+    <span class="inv-ico" style="color:#ffd700">&#x2692;</span>
+    <span class="inv-lbl">Gold</span>
+  </div>
+  <div class="inv-slot locked" id="slotItemShield">
+    <span class="inv-ico" style="color:#66aaff">&#x1F6E1;</span>
+    <span class="inv-lbl">Schild</span>
+  </div>
+  <div class="inv-slot locked" id="slotItemArmor">
+    <span class="inv-ico" style="color:#cdd2d8">&#x1F9E5;</span>
+    <span class="inv-lbl">R&uuml;st.</span>
+  </div>
 </div>
 
 <div id="touchUI">
@@ -426,96 +438,151 @@ function saveCharColors() {
   safeStorageSet('geburtstag.charPants', charPants);
 }
 
-// Charakter zeichnen in ein Canvas — zeigt Ausstattung visuell an
+// Charakter zeichnen — mit Animation (laufen/springen/schlagen)
 function drawCharacter(ctx, w, h, opts) {
   opts = opts || {};
   ctx.clearRect(0, 0, w, h);
   const cx = w / 2;
   const scale = h / 220;
+  // Animations-Parameter (animFrame ist globaler Animations-Cycle 0..1)
+  const t = (typeof animFrame === 'number') ? animFrame : 0;
+  const walking = opts.walking || false;
+  const jumping = opts.jumping || false;
+  const attacking = opts.attacking || false;
+  const inUfoState = opts.inUfo || false;
+  // Laufen: Beine wippen
+  const walkAmp = walking ? Math.sin(t * Math.PI * 8) : 0;
+  const legL = walkAmp * 8 * scale;
+  const legR = -walkAmp * 8 * scale;
+  // Springen: leichter Body-Lift
+  const jumpLift = jumping ? -8 * scale : 0;
+  // Schlagen: Hammer-Arm hochziehen
+  const attackPhase = attacking ? (1 - (opts.attackProgress || 0)) : 0;
+  const armAngle = attackPhase * 1.4;
+  // Wenn im UFO: zeige UFO statt Beine
   // Schatten am Boden
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
   ctx.ellipse(cx, h - 8 * scale, 28 * scale, 6 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Hose
-  ctx.fillStyle = charPants;
-  ctx.fillRect(cx - 18 * scale, h - 80 * scale, 14 * scale, 60 * scale);
-  ctx.fillRect(cx + 4 * scale, h - 80 * scale, 14 * scale, 60 * scale);
-  // Schuhe
-  ctx.fillStyle = '#222';
-  ctx.fillRect(cx - 19 * scale, h - 22 * scale, 16 * scale, 8 * scale);
-  ctx.fillRect(cx + 3 * scale, h - 22 * scale, 16 * scale, 8 * scale);
+  if (inUfoState) {
+    // UFO unter dem Charakter
+    ctx.fillStyle = '#9aa3ad';
+    ctx.beginPath();
+    ctx.ellipse(cx, h - 30 * scale, 35 * scale, 10 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#66ccff';
+    ctx.beginPath();
+    ctx.ellipse(cx, h - 32 * scale, 16 * scale, 5 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Hose mit Lauf-Animation
+    ctx.fillStyle = charPants;
+    ctx.fillRect(cx - 18 * scale, h - 80 * scale + jumpLift, 14 * scale, 60 * scale - legL);
+    ctx.fillRect(cx + 4 * scale, h - 80 * scale + jumpLift, 14 * scale, 60 * scale - legR);
+    // Schuhe
+    ctx.fillStyle = '#222';
+    ctx.fillRect(cx - 19 * scale, h - 22 * scale + jumpLift - legL, 16 * scale, 8 * scale);
+    ctx.fillRect(cx + 3 * scale, h - 22 * scale + jumpLift - legR, 16 * scale, 8 * scale);
+  }
   // Shirt/Torso
   ctx.fillStyle = charShirt;
-  ctx.fillRect(cx - 22 * scale, h - 130 * scale, 44 * scale, 56 * scale);
+  ctx.fillRect(cx - 22 * scale, h - 130 * scale + jumpLift, 44 * scale, 56 * scale);
   // Ruestung (silbern, ueber Shirt)
   if (hasArmor) {
     ctx.fillStyle = '#cdd2d8';
-    ctx.fillRect(cx - 22 * scale, h - 130 * scale, 44 * scale, 36 * scale);
-    // Schulterplatten
+    ctx.fillRect(cx - 22 * scale, h - 130 * scale + jumpLift, 44 * scale, 36 * scale);
     ctx.fillStyle = '#9aa1ab';
-    ctx.fillRect(cx - 28 * scale, h - 125 * scale, 10 * scale, 14 * scale);
-    ctx.fillRect(cx + 18 * scale, h - 125 * scale, 10 * scale, 14 * scale);
-    // Verzierung Mitte
+    ctx.fillRect(cx - 28 * scale, h - 125 * scale + jumpLift, 10 * scale, 14 * scale);
+    ctx.fillRect(cx + 18 * scale, h - 125 * scale + jumpLift, 10 * scale, 14 * scale);
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(cx - 3 * scale, h - 120 * scale, 6 * scale, 18 * scale);
+    ctx.fillRect(cx - 3 * scale, h - 120 * scale + jumpLift, 6 * scale, 18 * scale);
   }
-  // Arme (Hautfarbe)
+  // Linker Arm (Schild-Seite)
   ctx.fillStyle = charSkin;
-  ctx.fillRect(cx - 30 * scale, h - 120 * scale, 8 * scale, 48 * scale);
-  ctx.fillRect(cx + 22 * scale, h - 120 * scale, 8 * scale, 48 * scale);
-  // Hammer in rechter Hand
-  const hammerColor = hasGoldHammer ? '#ffd700' : '#666';
-  const handleColor = '#6b3410';
-  ctx.fillStyle = handleColor;
-  ctx.fillRect(cx + 22 * scale, h - 75 * scale, 4 * scale, 25 * scale);
-  ctx.fillStyle = hammerColor;
-  ctx.fillRect(cx + 16 * scale, h - 80 * scale, 16 * scale, 12 * scale);
+  ctx.fillRect(cx - 30 * scale, h - 120 * scale + jumpLift, 8 * scale, 48 * scale);
   // Schild in linker Hand
   if (hasShield) {
     ctx.fillStyle = '#6688cc';
     ctx.beginPath();
-    ctx.arc(cx - 32 * scale, h - 80 * scale, 12 * scale, 0, Math.PI * 2);
+    ctx.arc(cx - 32 * scale, h - 80 * scale + jumpLift, 12 * scale, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#ffd700';
     ctx.lineWidth = 2 * scale;
     ctx.stroke();
     ctx.fillStyle = '#ffd700';
     ctx.beginPath();
-    ctx.arc(cx - 32 * scale, h - 80 * scale, 3 * scale, 0, Math.PI * 2);
+    ctx.arc(cx - 32 * scale, h - 80 * scale + jumpLift, 3 * scale, 0, Math.PI * 2);
     ctx.fill();
   }
+  // Rechter Arm (Hammer-Seite) — mit Attack-Animation
+  ctx.save();
+  ctx.translate(cx + 26 * scale, h - 120 * scale + jumpLift);
+  ctx.rotate(-armAngle);
+  ctx.fillStyle = charSkin;
+  ctx.fillRect(-4 * scale, 0, 8 * scale, 48 * scale);
+  // Hammer
+  const hammerColor = hasGoldHammer ? '#ffd700' : '#666';
+  const handleColor = '#6b3410';
+  ctx.fillStyle = handleColor;
+  ctx.fillRect(-2 * scale, 38 * scale, 4 * scale, 25 * scale);
+  ctx.fillStyle = hammerColor;
+  ctx.fillRect(-8 * scale, 33 * scale, 16 * scale, 12 * scale);
+  ctx.restore();
   // Kopf (Haut)
   ctx.fillStyle = charSkin;
   ctx.beginPath();
-  ctx.arc(cx, h - 145 * scale, 18 * scale, 0, Math.PI * 2);
+  ctx.arc(cx, h - 145 * scale + jumpLift, 18 * scale, 0, Math.PI * 2);
   ctx.fill();
   // Haare
   ctx.fillStyle = charHair;
   ctx.beginPath();
-  ctx.arc(cx, h - 152 * scale, 18 * scale, Math.PI, 0);
+  ctx.arc(cx, h - 152 * scale + jumpLift, 18 * scale, Math.PI, 0);
   ctx.fill();
-  ctx.fillRect(cx - 18 * scale, h - 152 * scale, 36 * scale, 6 * scale);
+  ctx.fillRect(cx - 18 * scale, h - 152 * scale + jumpLift, 36 * scale, 6 * scale);
   // Augen
   ctx.fillStyle = '#222';
-  ctx.fillRect(cx - 7 * scale, h - 146 * scale, 3 * scale, 3 * scale);
-  ctx.fillRect(cx + 4 * scale, h - 146 * scale, 3 * scale, 3 * scale);
+  ctx.fillRect(cx - 7 * scale, h - 146 * scale + jumpLift, 3 * scale, 3 * scale);
+  ctx.fillRect(cx + 4 * scale, h - 146 * scale + jumpLift, 3 * scale, 3 * scale);
   // Mund
   ctx.fillStyle = '#a04030';
-  ctx.fillRect(cx - 4 * scale, h - 138 * scale, 8 * scale, 2 * scale);
+  ctx.fillRect(cx - 4 * scale, h - 138 * scale + jumpLift, 8 * scale, 2 * scale);
+  // Spielername unter dem Avatar (auf der Char-Preview, klein)
+  if (opts.showName && playerName) {
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold ' + Math.floor(11 * scale) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(playerName.substring(0, 10), cx, h - 3 * scale);
+    ctx.textAlign = 'start';
+  }
 }
+let animFrame = 0;
 
 const charPreviewEl = document.getElementById('charPreview');
 const charPreviewCanvas = document.getElementById('charPreviewCanvas');
 const charBigPreview = document.getElementById('charBigPreview');
+let lastAttackAt = 0;
+function getCharAnimState() {
+  // Bestimme ob Spieler laeuft / springt / attackiert
+  const movingKeys = (typeof keys !== 'undefined') && (keys['KeyW'] || keys['KeyA'] || keys['KeyS'] || keys['KeyD'] || keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight']);
+  const joyMove = (typeof joystickVec !== 'undefined') && (Math.abs(joystickVec.x) > 0.1 || Math.abs(joystickVec.y) > 0.1);
+  const walking = (gameState === 'playing') && !inUfo && (movingKeys || joyMove);
+  const jumping = (gameState === 'playing') && !inUfo && (typeof onGround !== 'undefined') && !onGround;
+  const now = performance.now();
+  const attacking = (now - lastAttackAt) < 350;
+  const attackProgress = attacking ? (now - lastAttackAt) / 350 : 0;
+  return { walking, jumping, attacking, attackProgress, inUfo: !!inUfo };
+}
 function updateCharPreview() {
   if (charPreviewCanvas) {
-    drawCharacter(charPreviewCanvas.getContext('2d'), 92, 120);
+    const st = getCharAnimState();
+    st.showName = true;
+    drawCharacter(charPreviewCanvas.getContext('2d'), 92, 120, st);
   }
 }
 function updateCharBigPreview() {
   if (charBigPreview) {
-    drawCharacter(charBigPreview.getContext('2d'), 160, 220);
+    drawCharacter(charBigPreview.getContext('2d'), 200, 280, { walking: false, jumping: false, attacking: false });
   }
 }
 function showCharPreview(on) {
@@ -754,13 +821,15 @@ function updateDayNight(dt) {
   // Mond gegenueber der Sonne
   moonSphere.position.set(-sunX, -sunY, sunZ);
   moonGlow.position.set(-sunX, -sunY, sunZ);
-  // Sichtbarkeit basierend auf Hoehe
+  // Sichtbarkeit basierend auf Hoehe — Sonne UND Mond niemals gleichzeitig
   const dayFactor = Math.max(0, Math.min(1, (sunY + 5) / 25));
-  sunSphere.visible = sunY > -2 && sunEnabled;
-  sunGlow.visible = sunY > -2 && sunEnabled;
-  moonSphere.visible = sunY < 5;
-  moonGlow.visible = sunY < 5;
-  starGroup.visible = dayFactor < 0.4;
+  const showSun = sunY > 0 && sunEnabled;
+  const showMoon = !showSun && sunY < 0;
+  sunSphere.visible = showSun;
+  sunGlow.visible = showSun;
+  moonSphere.visible = showMoon;
+  moonGlow.visible = showMoon;
+  starGroup.visible = dayFactor < 0.3;
   // Himmel-Farbe (blau → orange → dunkelblau)
   let r, g, b;
   if (dayFactor > 0.65) {
@@ -4003,9 +4072,16 @@ function isOnPipe() {
   return false;
 }
 
+function isNearMothership() {
+  if (!inUfo || onMothership) return false;
+  const dx = camera.position.x - MOTHERSHIP_X;
+  const dy = camera.position.y - (MOTHERSHIP_Y - 2.5);
+  const dz = camera.position.z - MOTHERSHIP_Z;
+  return Math.hypot(dx, dy, dz) < 8;
+}
 function updatePipeBtn() {
   if (!isTouch) return;
-  const show = isOnPipe() || isNearLadder();
+  const show = isOnPipe() || isNearLadder() || isNearMothership();
   if (show && !pipeBtn.classList.contains('show')) pipeBtn.classList.add('show');
   else if (!show && pipeBtn.classList.contains('show')) pipeBtn.classList.remove('show');
 }
@@ -4438,6 +4514,7 @@ function triggerSwing() {
   swing.active = true;
   swing.t = 0;
   swing.hit = false;
+  lastAttackAt = performance.now();
   beep(120, 0.08, 'sawtooth', 0.06);
   setTimeout(() => beep(70, 0.1, 'sawtooth', 0.04), 30);
   ensureGrassNoise();
@@ -4527,6 +4604,7 @@ document.addEventListener('mousedown', e => {
     swing.active = true;
     swing.t = 0;
     swing.hit = false;
+    lastAttackAt = performance.now();
     // Whoosh sound when swinging
     beep(120, 0.08, 'sawtooth', 0.06);
     setTimeout(() => beep(70, 0.1, 'sawtooth', 0.04), 30);
@@ -5898,7 +5976,23 @@ function updateInventory() {
   document.getElementById('invStone').textContent = stoneCount;
   slotBow.classList.toggle('locked', !bowUnlocked);
   slotBow.classList.toggle('ready', bowUnlocked);
-  // Gold/Schild/Ruestung werden jetzt VISUELL ueber Charakter-Vorschau (oben rechts) angezeigt
+  // Slots fuer Gold/Schild/Ruestung — locked wenn nicht gekauft (grau), ready wenn gekauft (gold)
+  const slotItemHammer = document.getElementById('slotItemHammer');
+  const slotItemShield = document.getElementById('slotItemShield');
+  const slotItemArmor = document.getElementById('slotItemArmor');
+  if (slotItemHammer) {
+    slotItemHammer.classList.toggle('locked', !hasGoldHammer);
+    slotItemHammer.classList.toggle('ready', hasGoldHammer);
+  }
+  if (slotItemShield) {
+    slotItemShield.classList.toggle('locked', !hasShield);
+    slotItemShield.classList.toggle('ready', hasShield);
+  }
+  if (slotItemArmor) {
+    slotItemArmor.classList.toggle('locked', !hasArmor);
+    slotItemArmor.classList.toggle('ready', hasArmor);
+  }
+  // Charakter-Vorschau oben rechts mit aktueller Ausruestung
   updateCharPreview();
   const maxJ = getMaxJumps();
   let icon = '\u{1F45F}', txt = '×1';
@@ -6270,7 +6364,8 @@ const UPDATES = [
   { id: 'v14', name: 'Update 14', desc: 'iPad-Knöpfe funktionieren JETZT zuverlässig', new: ['„Los geht\'s!"-Button reagiert auf JEDEN Tap (iOS Virtual-Keyboard-Quirk gefixt)', 'bindRobustClick: touchend + click + Doppel-Klick-Schutz', 'Auch Start/Restart/Retry/Settings/Hilfe/Weiter robust gemacht', 'nameInput.blur() vor Submit (Tastatur weg, Wert commited)', 'Enter-Taste löst auch sicher aus'] },
   { id: 'v15', name: 'Update 15', desc: 'Büsche und Hecken sind wieder überall da', new: ['Hecken jetzt auf ALLEN Quality-Stufen sichtbar (auch Stufe 1)', '32 Büsche statt 18 — viel grüner und dichter Garten', 'Garten fühlt sich voller und natürlicher an'] },
   { id: 'v16', name: 'Update 16', desc: 'TIE-Fighter + Gras zurück + Los-geht\'s-Button RICHTIG gefixt', new: ['Enemy-Ships sind jetzt richtige TIE-Fighter (Imperiale Farben, hexagonale Flügel)', '5 statt 3 TIE-Fighter — näher beim Spieler und entlang des Wegs zum Mutterschiff', 'Gras schon ab Quality-Stufe 3 sichtbar (vorher erst ab 5)', 'pointerdown-Strategie: „Los geht\'s" reagiert auf JEDEN Tap, kein Doppeltipp mehr nötig', 'blur() NACH UI-Wechsel (verhindert dass iOS den Click verschluckt)'] },
-  { id: 'v17', name: 'Update 17 (aktuell)', desc: 'Eigener Charakter + Schild + Gold-Hammer + Tag/Nacht + Auto-Aim', new: ['Charakter-Vorschau oben rechts (zeigt aktuelle Ausrüstung)', 'Charakter-Erstellung am Anfang: Haut, Haare, Shirt, Hose wählbar', 'Schild jetzt SICHTBAR links in der Hand (mit goldenem Stern)', 'Gold-Hammer-Kopf wird wirklich golden wenn gekauft', 'Inventory-Slots für Gold/Schild/Rüstung entfernt — alles visuell über Charakter', 'Bow Auto-Aim: Pfeil zielt leicht auf Monster in der Nähe (65/35 Mix)', 'Tag/Nacht-Cycle in den Einstellungen: Nur Tag / Nur Nacht / Beides', 'Sonne wandert mit Sonnenauf- und untergang, Sterne + Mond bei Nacht', 'gameMode-Default repariert: immer aktuelles Update vorausgewählt'] }
+  { id: 'v17', name: 'Update 17', desc: 'Eigener Charakter + Schild + Gold-Hammer + Tag/Nacht + Auto-Aim', new: ['Charakter-Vorschau oben rechts (zeigt aktuelle Ausrüstung)', 'Charakter-Erstellung am Anfang: Haut, Haare, Shirt, Hose wählbar', 'Schild jetzt SICHTBAR links in der Hand (mit goldenem Stern)', 'Gold-Hammer-Kopf wird wirklich golden wenn gekauft', 'Bow Auto-Aim: Pfeil zielt leicht auf Monster in der Nähe (65/35 Mix)', 'Tag/Nacht-Cycle in den Einstellungen: Nur Tag / Nur Nacht / Beides', 'Sonne wandert mit Sonnenauf- und untergang, Sterne + Mond bei Nacht', 'gameMode-Default repariert: immer aktuelles Update vorausgewählt'] },
+  { id: 'v18', name: 'Update 18 (aktuell)', desc: 'Animierter Avatar + Andocken fixt + Slots zurück + Form-Submit', new: ['Avatar oben rechts ist jetzt ANIMIERT (läuft, springt, schlägt mit dir)', 'Spielername unter dem Avatar angezeigt', 'Gold/Schild/Rüstung Slots zurück (grau wenn nicht gekauft, gold wenn gekauft)', 'Mutterschiff-Andocken: grüner Knopf erscheint jetzt auch bei Mutterschiff-Nähe', '„Los geht\'s" jetzt als HTML-Form (zuverlässigste Methode + iOS-Go-Button)', 'Sonne UND Mond nicht mehr gleichzeitig sichtbar — exklusiv', 'Avatar-Editor klarer mit Emoji-Icons und größerer Vorschau'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
@@ -6737,6 +6832,9 @@ function animate() {
   updateEnemyShips(dt);
   updateDocking(dt);
   updateDayNight(dt);
+  // Avatar-Animation Frame + Vorschau aktualisieren
+  animFrame += dt;
+  if (charPreviewEl && charPreviewEl.classList.contains('show')) updateCharPreview();
   // Mutterschiff: pulsierender Beacon + leichte Schwebe-Animation
   if (window.__mothershipBeacon) {
     window.__mothershipBeacon.material.opacity = 0.22 + 0.18 * (0.5 + 0.5 * Math.sin(nowMs * 0.003));
