@@ -2155,6 +2155,14 @@ let nextAlienSpawn = 0;
 const MAX_ALIENS = 5;
 const MAX_ALIENS_TO_SPAWN = 5;
 let activeAlien = null;
+// === Mothership ===
+const MOTHERSHIP_X = -260;
+const MOTHERSHIP_Y = 22;
+const MOTHERSHIP_Z = -45;
+let onMothership = false;
+let hasReachedMothership = false;
+let dockHintTime = 0;
+const mothershipRobots = [];
 let totalAliensSpawned = 0;
 let hasBeenInAlienWorld = false;
 const alienLasers = [];
@@ -2812,6 +2820,61 @@ function makeAlien(x, y, z, scale) {
   makeEnemyShip(ALIEN_X + 25, 18, 28);
   makeEnemyShip(ALIEN_X - 30, 22, 35);
   window.__enemyShips = enemyShips;
+
+  // === Mutterschiff (Endgegner) ===
+  const motherG = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x666b75, metalness: 0.85, roughness: 0.25 });
+  const lowerMat = new THREE.MeshStandardMaterial({ color: 0x40454d, metalness: 0.8, roughness: 0.35 });
+  const domeMat = new THREE.MeshStandardMaterial({ color: 0x44aaff, transparent: true, opacity: 0.55, metalness: 0.5, roughness: 0.1, emissive: 0x2266aa, emissiveIntensity: 0.4 });
+  // Huge saucer
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(8, 11, 1.4, 36), bodyMat);
+  body.castShadow = true;
+  motherG.add(body);
+  // Dome on top
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(5, 28, 18, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+  dome.position.y = 0.5;
+  motherG.add(dome);
+  // Lower ring
+  const lower = new THREE.Mesh(new THREE.CylinderGeometry(9, 6, 1.8, 36), lowerMat);
+  lower.position.y = -1.6;
+  motherG.add(lower);
+  // 16 rim LEDs
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff2244 : 0xffee44 }));
+    led.position.set(Math.cos(a) * 10, -0.7, Math.sin(a) * 10);
+    motherG.add(led);
+  }
+  // Landing platform underneath
+  const platform = new THREE.Mesh(
+    new THREE.BoxGeometry(6, 0.25, 6),
+    new THREE.MeshStandardMaterial({ color: 0x888c95, metalness: 0.7, emissive: 0x444a55, emissiveIntensity: 0.35 })
+  );
+  platform.position.y = -2.8;
+  platform.castShadow = platform.receiveShadow = true;
+  motherG.add(platform);
+  // Glowing rails around the platform
+  const railMat = new THREE.MeshBasicMaterial({ color: 0x44ddff });
+  for (let i = 0; i < 4; i++) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(6.1, 0.06, 0.06), railMat);
+    rail.position.set(0, -2.6, [-3, 3, 0, 0][i]);
+    if (i >= 2) {
+      rail.rotation.y = Math.PI / 2;
+      rail.position.x = (i === 2 ? -3 : 3);
+      rail.position.z = 0;
+    }
+    motherG.add(rail);
+  }
+  // Big lights
+  const ml1 = new THREE.PointLight(0x88ddff, 3, 35);
+  ml1.position.y = -0.5;
+  motherG.add(ml1);
+  const ml2 = new THREE.PointLight(0xff8888, 1.5, 18);
+  ml2.position.y = -2;
+  motherG.add(ml2);
+  motherG.position.set(MOTHERSHIP_X, MOTHERSHIP_Y, MOTHERSHIP_Z);
+  scene.add(motherG);
+  window.__mothershipGroup = motherG;
 })();
 
 function killBonusCake(bc) {
@@ -3168,6 +3231,16 @@ function isNearLadder() {
 }
 
 function tryF() {
+  // In UFO near mothership: dock
+  if (inUfo) {
+    const dx = camera.position.x - MOTHERSHIP_X;
+    const dy = camera.position.y - (MOTHERSHIP_Y - 2.5);
+    const dz = camera.position.z - MOTHERSHIP_Z;
+    if (Math.hypot(dx, dy, dz) < 7) {
+      dockToMothership();
+      return;
+    }
+  }
   // In alien world with no aliens left: F = direct teleport into UFO
   if (inAlienWorld && !inUfo && !alienLasersActive()) {
     for (const o of ladderTriggers) {
@@ -3251,6 +3324,70 @@ function updatePipeBtn() {
   const show = isOnPipe() || isNearLadder();
   if (show && !pipeBtn.classList.contains('show')) pipeBtn.classList.add('show');
   else if (!show && pipeBtn.classList.contains('show')) pipeBtn.classList.remove('show');
+}
+
+function spawnMothershipRobots() {
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2;
+    const rx = MOTHERSHIP_X + Math.cos(ang) * 2.2;
+    const rz = MOTHERSHIP_Z + Math.sin(ang) * 2.2;
+    const robot = makeHumanAlien(rx, MOTHERSHIP_Y - 2.7, rz, 0.9);
+    robot._onMothership = true;
+    monsters.push(robot);
+    mothershipRobots.push(robot);
+  }
+}
+
+function dockToMothership() {
+  if (!inUfo || onMothership) return;
+  onMothership = true;
+  hasReachedMothership = true;
+  inUfo = false;
+  playerUfoGroup.visible = false;
+  hammerGroup.visible = true;
+  // Teleport onto the landing platform
+  camera.position.set(MOTHERSHIP_X + 2, MOTHERSHIP_Y - 2.55 + PLAYER_HEIGHT, MOTHERSHIP_Z);
+  yaw = Math.atan2(camera.position.x - MOTHERSHIP_X, camera.position.z - MOTHERSHIP_Z);
+  pitch = 0;
+  playerVy = 0;
+  onGround = true;
+  jumpsUsed = 0;
+  playerHp = getMaxHp();
+  invulnerableUntil = 0;
+  updateHearts();
+  spawnMothershipRobots();
+  showUnlockMessage('🛸 Du bist auf dem Mutterschiff! Besiege alle Roboter!');
+  beep(500, 0.2, 'sine', 0.15);
+  setTimeout(() => beep(700, 0.2, 'sine', 0.15), 200);
+  setTimeout(() => beep(900, 0.25, 'sine', 0.15), 400);
+}
+
+function checkMothershipWin() {
+  if (!onMothership) return;
+  const anyAlive = mothershipRobots.some(r => r.alive);
+  if (!anyAlive) {
+    onMothership = false;
+    finalWin();
+  }
+}
+
+function updateDocking(dt) {
+  if (gameState !== 'playing' || !inUfo || onMothership) {
+    dockHintTime = 0;
+    return;
+  }
+  const dx = camera.position.x - MOTHERSHIP_X;
+  const dy = camera.position.y - (MOTHERSHIP_Y - 2.5);
+  const dz = camera.position.z - MOTHERSHIP_Z;
+  const dist = Math.hypot(dx, dy, dz);
+  if (dist < 6.5) {
+    dockHintTime += dt;
+    if (dockHintTime > 0.4 && dockHintTime < 0.6) {
+      showUnlockMessage('🛸 Andocken: F oder grüner Knopf!');
+    }
+  } else {
+    dockHintTime = 0;
+  }
 }
 
 function enterUfoMode() {
@@ -3788,6 +3925,13 @@ function collides(x, z, r, py) {
 
 function getGroundHeightAt(x, z) {
   let h = 0;
+  // On the mothership platform, ground is up high
+  if (onMothership) {
+    if (Math.abs(x - MOTHERSHIP_X) < 3 && Math.abs(z - MOTHERSHIP_Z) < 3) {
+      return MOTHERSHIP_Y - 2.55;
+    }
+    return -100; // off the platform = fall (we'll catch this)
+  }
   // Alien craters open the floor (player falls in)
   if (inAlienWorld) {
     for (const c of alienCraters) {
@@ -3851,6 +3995,9 @@ function updateMovement(dt) {
     } else if (inCaveWorld) {
       minX = CAVE_X - 19; maxX = CAVE_X + 19;
       minZ = -19; maxZ = 19;
+    } else if (onMothership) {
+      minX = MOTHERSHIP_X - 2.8; maxX = MOTHERSHIP_X + 2.8;
+      minZ = MOTHERSHIP_Z - 2.8; maxZ = MOTHERSHIP_Z + 2.8;
     }
     camera.position.x = Math.max(minX, Math.min(maxX, camera.position.x));
     camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
@@ -4237,6 +4384,7 @@ function killMonster(m) {
   monstersKilled++;
   updateInventory();
   checkUnlockBow();
+  if (m._onMothership) setTimeout(checkMothershipWin, 200);
   // Every 3 kills: heal half a heart (if not full)
   if (monstersKilled % 3 === 0 && playerHp < getMaxHp()) {
     playerHp = Math.min(getMaxHp(), playerHp + 0.5);
@@ -5126,6 +5274,15 @@ function startGame() {
   ufoEnterStandTime = 0;
   activeAlien = null;
   alienCakeState.alive = false; // never reactivate — pedestal is just the ladder base now
+  onMothership = false;
+  hasReachedMothership = false;
+  for (let i = monsters.length - 1; i >= 0; i--) {
+    if (monsters[i]._onMothership) {
+      if (monsters[i].group.parent) scene.remove(monsters[i].group);
+      monsters.splice(i, 1);
+    }
+  }
+  mothershipRobots.length = 0;
   cinematicAliens.length = 0;
   abductionPhase = 0;
   nextAlienSpawn = 0;
@@ -5226,6 +5383,53 @@ if (isTouch) {
 }
 
 function retry() {
+  // Mothership has the highest spawn priority once you've docked once
+  if (hasReachedMothership) {
+    deathScreen.classList.add('hidden');
+    inAlienWorld = false;
+    inBonusWorld = false;
+    inCaveWorld = false;
+    inUfo = false;
+    onMothership = true;
+    playerUfoGroup.visible = false;
+    hammerGroup.visible = true;
+    // Remove old mothership robots, respawn fresh
+    for (let i = monsters.length - 1; i >= 0; i--) {
+      if (monsters[i]._onMothership) {
+        const m = monsters[i];
+        if (m.group.parent) scene.remove(m.group);
+        m.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.dispose) o.material.dispose(); });
+        monsters.splice(i, 1);
+      }
+    }
+    mothershipRobots.length = 0;
+    spawnMothershipRobots();
+    camera.position.set(MOTHERSHIP_X + 2, MOTHERSHIP_Y - 2.55 + PLAYER_HEIGHT, MOTHERSHIP_Z);
+    yaw = Math.atan2(camera.position.x - MOTHERSHIP_X, camera.position.z - MOTHERSHIP_Z);
+    pitch = 0;
+    playerVy = 0;
+    onGround = true;
+    jumpsUsed = 0;
+    playerHp = getMaxHp();
+    invulnerableUntil = 0;
+    updateHearts();
+    scene.background = new THREE.Color(0x1a1a2e);
+    scene.fog.color.setHex(0x1a1a2e);
+    scene.fog.near = 8;
+    scene.fog.far = 50;
+    gameState = 'playing';
+    hud.style.display = 'block';
+    hearts.classList.add('show');
+    inventory.classList.add('show');
+    if (isTouch) {
+      touchUI.classList.add('active');
+      crosshair.style.display = 'block';
+    } else {
+      canvas.requestPointerLock();
+    }
+    showUnlockMessage('🛸 Du bist wieder auf dem Mutterschiff!');
+    return;
+  }
   // If the player has reached the alien world before, respawn them there
   if (hasBeenInAlienWorld) {
     deathScreen.classList.add('hidden');
@@ -5425,6 +5629,7 @@ function animate() {
   updateUfoEntry(dt);
   updateAutoEnter(dt);
   updateEnemyShips(dt);
+  updateDocking(dt);
   // Grass rustling while moving in the garden
   const movingNow = gameState === 'playing' && onGround && (
     (isTouch && (joystickVec.x !== 0 || joystickVec.y !== 0)) ||
