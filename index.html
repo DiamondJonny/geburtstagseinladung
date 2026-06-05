@@ -317,18 +317,31 @@ function safeStorageSet(key, value) {
     localStorage.setItem(key, value);
   } catch (e) {}
 }
-// Robuster Button-Click — funktioniert auf iPad/iOS zuverlaessig
-// (umgeht das iOS-Quirk wo der erste Tap nur die virtuelle Tastatur ausblendet)
+// SUPER-Robuster Button-Click — funktioniert auf JEDEM Geraet:
+// - pointerdown feuert SOFORT (Maus + Touch + Pen) — kein iOS-300ms-Delay
+// - click als Fallback fuer Tastatur-Aktivierung + alte Browser
+// - 400ms Doppel-Trigger-Schutz
+// KEIN preventDefault — lass den Browser die Tastatur korrekt ausblenden
 function bindRobustClick(btn, handler) {
   if (!btn) return;
   let lastAt = 0;
   const trigger = (e) => {
     const now = Date.now();
-    if (now - lastAt < 700) return; // verhindert Doppel-Trigger (touchend + click)
+    if (now - lastAt < 400) return;
     lastAt = now;
-    try { handler(e); } catch (err) { console.error(err); }
+    try { handler(e); } catch (err) { console.error('bindRobustClick handler error:', err); }
   };
-  btn.addEventListener('touchend', (e) => { e.preventDefault(); trigger(e); }, { passive: false });
+  // pointerdown fires earliest (before click) on ALL devices — Mouse, Touch, Pen
+  if ('onpointerdown' in window) {
+    btn.addEventListener('pointerdown', (e) => {
+      // Nur primary button (linke Maustaste / erster Touch)
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      trigger(e);
+    });
+  } else {
+    // Fallback fuer alte Browser ohne Pointer-Events
+    btn.addEventListener('touchstart', trigger, { passive: true });
+  }
   btn.addEventListener('click', trigger);
 }
 // Quality-Konstanten frueh deklariert (Settings-UI braucht sie)
@@ -360,19 +373,20 @@ let playerName = '';
 let playerIsInvited = false;
 
 function handleNameSubmit() {
-  // Erst blur — auf iPad/iOS commited das den Input-Wert UND blendet die
-  // virtuelle Tastatur aus (vorher hat der erste Tipp NUR die Tastatur weggemacht)
-  try { nameInput.blur(); } catch (e) {}
+  // Wert AUSLESEN bevor wir was anderes machen (auf iOS commited blur asynchron)
   const n = (nameInput.value || '').trim();
   if (!n) {
     nameInput.classList.add('shake');
     setTimeout(() => nameInput.classList.remove('shake'), 420);
+    try { nameInput.focus(); } catch (e) {}
     return;
   }
   playerName = n;
   playerIsInvited = INVITED_NAMES.includes(n.toLowerCase());
+  // UI-Wechsel ZUERST, blur NACHHER (sonst kann iOS den Click verschlucken)
   nameScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
+  try { nameInput.blur(); } catch (e) {}
 }
 bindRobustClick(nameSubmit, handleNameSubmit);
 nameInput.addEventListener('keydown', e => {
@@ -2917,38 +2931,60 @@ function makeAlien(x, y, z, scale) {
   greenPlanet.position.set(ALIEN_X + 5, 38, -60);
   scene.add(greenPlanet);
 
-  // Patrolling enemy spaceships (small UFOs)
+  // TIE-Fighter Patrouille (kleine Imperiale Jaeger — passend zum Star Destroyer)
   const enemyShips = [];
   function makeEnemyShip(x, y, z) {
     const g = new THREE.Group();
-    const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.9, 1.2, 0.3, 16),
-      new THREE.MeshStandardMaterial({ color: 0x884444, metalness: 0.7, roughness: 0.4, emissive: 0x441111, emissiveIntensity: 0.3 })
-    );
-    g.add(body);
-    const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(0.55, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0xff6666, transparent: true, opacity: 0.7, emissive: 0xff3333, emissiveIntensity: 0.6 })
-    );
-    dome.position.y = 0.1;
-    g.add(dome);
-    // Underside lights
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2;
-      const led = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08, 6, 5),
-        new THREE.MeshBasicMaterial({ color: 0xff2200 })
-      );
-      led.position.set(Math.cos(a) * 1.0, -0.15, Math.sin(a) * 1.0);
-      g.add(led);
+    const hullMatTie = new THREE.MeshStandardMaterial({ color: 0x6b7480, metalness: 0.75, roughness: 0.35 });
+    const hullDarkTie = new THREE.MeshStandardMaterial({ color: 0x2f343b, metalness: 0.8, roughness: 0.45 });
+    const cockpitGlass = new THREE.MeshStandardMaterial({ color: 0x222a33, metalness: 0.4, roughness: 0.15, emissive: 0xff5544, emissiveIntensity: 0.6 });
+    // Mittel-Kugel (Cockpit)
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), hullMatTie);
+    ball.castShadow = true;
+    g.add(ball);
+    // Cockpit-Fenster (sechseckig — typisch TIE-Fighter)
+    const window1 = new THREE.Mesh(new THREE.CircleGeometry(0.32, 6), cockpitGlass);
+    window1.position.set(0, 0, 0.56);
+    g.add(window1);
+    // Verbindungsstreben links und rechts
+    for (const side of [-1, 1]) {
+      const strut = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.15, 0.15), hullDarkTie);
+      strut.position.set(side * 0.7, 0, 0);
+      g.add(strut);
+      // Hexagonales Fluegel-Panel (typisch TIE)
+      const wingGeo = new THREE.CylinderGeometry(0.95, 0.95, 0.08, 6);
+      const wing = new THREE.Mesh(wingGeo, hullDarkTie);
+      wing.rotation.z = Math.PI / 2;
+      wing.position.set(side * 1.15, 0, 0);
+      wing.castShadow = true;
+      g.add(wing);
+      // Innerer Rahmen am Fluegel
+      const wingInner = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.78, 0.085, 6), hullMatTie);
+      wingInner.rotation.z = Math.PI / 2;
+      wingInner.position.set(side * 1.15, 0, 0);
+      g.add(wingInner);
+      // Streben innerhalb des Fluegels (radial)
+      for (let i = 0; i < 3; i++) {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.7, 0.06), hullDarkTie);
+        bar.rotation.x = (i / 3) * Math.PI;
+        bar.position.set(side * 1.15, 0, 0);
+        g.add(bar);
+      }
     }
+    // Rotes Glow-Licht in der Mitte (TIE-typisches Cockpit-Glow)
+    const glow = new THREE.PointLight(0xff6644, 0.8, 4);
+    glow.position.set(0, 0, 0.5);
+    g.add(glow);
     g.position.set(x, y, z);
     scene.add(g);
     enemyShips.push({ group: g, baseX: x, baseY: y, baseZ: z, phase: Math.random() * Math.PI * 2, speed: 0.3 + Math.random() * 0.3, alive: true, hp: 3 });
   }
-  makeEnemyShip(ALIEN_X - 20, 16, -25);
-  makeEnemyShip(ALIEN_X + 25, 18, 28);
-  makeEnemyShip(ALIEN_X - 30, 22, 35);
+  // 5 TIE-Fighter — naeher beim Spieler-UFO-Spawn und auf dem Weg zum Mutterschiff
+  makeEnemyShip(ALIEN_X - 12, 14, -10);
+  makeEnemyShip(ALIEN_X + 8, 18, 12);
+  makeEnemyShip(ALIEN_X - 22, 22, 4);
+  makeEnemyShip(ALIEN_X - 45, 20, -20);   // Halbweg zum Mutterschiff
+  makeEnemyShip(ALIEN_X - 90, 22, -25);   // Naeher am Mutterschiff
   window.__enemyShips = enemyShips;
 
   // === Mutterschiff (Star Destroyer — Keilform a la Imperial Class) ===
@@ -5854,7 +5890,8 @@ const UPDATES = [
   { id: 'v12', name: 'Update 12', desc: 'Röhren niedriger + viel strengere Tests', new: ['Garten-Röhren nur noch 0.55–0.85 hoch (vorher 0.9–1.5)', 'Cave-Exit-Röhre auf 0.85 reduziert (vorher 1.1)', 'Spieler kann jetzt bequem auf alle Röhren springen', '5 neue Runtime-Tests: Loading-Hide, Click-Test, pickStartQuality isoliert', '2D-Canvas-Stub für jsdom-Runtime'] },
   { id: 'v13', name: 'Update 13', desc: 'KRITISCHE FIXES — Spiel lädt jetzt überall', new: ['localStorage-SecurityError gefixt (Private Mode, file://, opaque origins)', 'safeStorageGet/Set Helpers schützen vor allen localStorage-Fehlern', 'ReferenceError manualQualityLevel before initialization gefixt', 'ReferenceError MAX_QUALITY before initialization gefixt', 'Quality-Konstanten + Helpers früh deklariert (vor Settings-UI)', 'Verschärfte Runtime-Tests fangen ReferenceError/SecurityError'] },
   { id: 'v14', name: 'Update 14', desc: 'iPad-Knöpfe funktionieren JETZT zuverlässig', new: ['„Los geht\'s!"-Button reagiert auf JEDEN Tap (iOS Virtual-Keyboard-Quirk gefixt)', 'bindRobustClick: touchend + click + Doppel-Klick-Schutz', 'Auch Start/Restart/Retry/Settings/Hilfe/Weiter robust gemacht', 'nameInput.blur() vor Submit (Tastatur weg, Wert commited)', 'Enter-Taste löst auch sicher aus'] },
-  { id: 'v15', name: 'Update 15 (aktuell)', desc: 'Büsche und Hecken sind wieder überall da', new: ['Hecken jetzt auf ALLEN Quality-Stufen sichtbar (auch Stufe 1)', '32 Büsche statt 18 — viel grüner und dichter Garten', 'Garten fühlt sich voller und natürlicher an'] }
+  { id: 'v15', name: 'Update 15', desc: 'Büsche und Hecken sind wieder überall da', new: ['Hecken jetzt auf ALLEN Quality-Stufen sichtbar (auch Stufe 1)', '32 Büsche statt 18 — viel grüner und dichter Garten', 'Garten fühlt sich voller und natürlicher an'] },
+  { id: 'v16', name: 'Update 16 (aktuell)', desc: 'TIE-Fighter + Gras zurück + Los-geht\'s-Button RICHTIG gefixt', new: ['Enemy-Ships sind jetzt richtige TIE-Fighter (Imperiale Farben, hexagonale Flügel)', '5 statt 3 TIE-Fighter — näher beim Spieler und entlang des Wegs zum Mutterschiff', 'Gras schon ab Quality-Stufe 3 sichtbar (vorher erst ab 5)', 'pointerdown-Strategie: „Los geht\'s" reagiert auf JEDEN Tap, kein Doppeltipp mehr nötig', 'blur() NACH UI-Wechsel (verhindert dass iOS den Click verschluckt)'] }
 ];
 
 let gameMode = safeStorageGet('geburtstag.mode', 'v7');
@@ -6133,8 +6170,8 @@ const QUALITY_CONFIG = [
   null,
   { px: 0.5,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 10, fogFar: 22 }, // 1 — Notfall (Hecken bleiben, fuers Spiel-Gefuehl)
   { px: 0.6,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 12, fogFar: 28 }, // 2
-  { px: 0.7,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 14, fogFar: 32 }, // 3
-  { px: 0.85, shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 16, fogFar: 38 }, // 4
+  { px: 0.7,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 14, fogFar: 32 }, // 3 (Gras zurueck)
+  { px: 0.85, shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 16, fogFar: 38 }, // 4
   { px: 1.0,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 18, fogFar: 46 }, // 5
   { px: 1.2,  shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 56 }, // 6
   { px: 1.4,  shadow: false, butt: 0,  clouds: 4, wind: true,  sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 66 }, // 7
