@@ -181,7 +181,7 @@
 
 <div class="overlay hidden" id="deathScreen">
   <h1>Du bist gefallen!</h1>
-  <p>Die Cupcake-Monster waren diesmal st&auml;rker. Versuch's nochmal.</p>
+  <p id="deathMsg">Versuch's nochmal.</p>
   <button class="btn" id="retryBtn">Nochmal versuchen</button>
 </div>
 
@@ -3088,12 +3088,18 @@ function enterUfoMode() {
   inUfo = true;
   playerUfoGroup.visible = true;
   hammerGroup.visible = false;
-  showUnlockMessage('\u{1F6F8} Du steuerst jetzt das UFO! Leertaste hoch, C runter, WASD = bewegen');
+  // Unlock the bow so the UFO can shoot at the remaining robots
+  if (!bowUnlocked) {
+    bowUnlocked = true;
+    bowBtn.classList.add('show');
+    updateInventory();
+  }
+  showUnlockMessage('\u{1F6F8} UFO-Steuerung! Leertaste = hoch, C = runter, ' + (isTouch ? 'Bogen-Knopf' : 'Rechtsklick') + ' = Roboter abschie&szlig;en');
   beep(440, 0.2, 'sine', 0.15);
   setTimeout(() => beep(660, 0.2, 'sine', 0.15), 150);
   setTimeout(() => beep(880, 0.3, 'sine', 0.15), 300);
-  // After 8 seconds of free flight, trigger the final win
-  setTimeout(() => { if (inUfo) finalWin(); }, 8000);
+  // After 12 seconds of free flight, trigger the final win
+  setTimeout(() => { if (inUfo) finalWin(); }, 12000);
 }
 
 function updateUfoEntry(dt) {
@@ -4680,6 +4686,12 @@ function triggerDeath() {
   hud.style.display = 'none';
   compass.style.display = 'none';
   crosshair.style.display = 'none';
+  const deathMsg = document.getElementById('deathMsg');
+  if (deathMsg) {
+    deathMsg.textContent = hasBeenInAlienWorld
+      ? 'Die Aliens haben dich erwischt — du landest wieder im Weltraum.'
+      : 'Die Cupcake-Monster waren diesmal stärker. Versuch\'s nochmal.';
+  }
   deathScreen.classList.remove('hidden');
 }
 
@@ -4842,9 +4854,53 @@ if (isTouch) {
   document.getElementById('startBtn').textContent = 'Garten betreten (tippen)';
 }
 
+function retry() {
+  // If the player has reached the alien world before, respawn them there
+  if (hasBeenInAlienWorld) {
+    deathScreen.classList.add('hidden');
+    inAlienWorld = true;
+    inBonusWorld = false;
+    inCaveWorld = false;
+    inUfo = false;
+    playerUfoGroup.visible = false;
+    hammerGroup.visible = true;
+    ufoEnterStandTime = 0;
+    activeAlien = null;
+    camera.position.set(ALIEN_X + 9, PLAYER_HEIGHT, 8);
+    yaw = -Math.PI * 0.75;
+    pitch = -0.05;
+    playerVy = 0;
+    onGround = true;
+    jumpsUsed = 0;
+    playerHp = getMaxHp();
+    invulnerableUntil = 0;
+    updateHearts();
+    // Keep crowns/kills/stones/items as they were
+    // Reset alien world sky
+    scene.background = new THREE.Color(0x5a2810);
+    scene.fog.color.setHex(0x5a2810);
+    scene.fog.near = 10;
+    scene.fog.far = 40;
+    gameState = 'playing';
+    hud.style.display = 'block';
+    hearts.classList.add('show');
+    inventory.classList.add('show');
+    if (isTouch) {
+      touchUI.classList.add('active');
+      crosshair.style.display = 'block';
+    } else {
+      canvas.requestPointerLock();
+    }
+    showUnlockMessage('\u{1F47D} Du bist wieder im Weltraum!');
+    return;
+  }
+  // Otherwise full restart in the garden
+  startGame();
+}
+
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
-document.getElementById('retryBtn').addEventListener('click', startGame);
+document.getElementById('retryBtn').addEventListener('click', retry);
 document.getElementById('continueBtn').addEventListener('click', () => {
   invitationScreen.classList.add('hidden');
   // Reset HP and cake state for the alien fight
