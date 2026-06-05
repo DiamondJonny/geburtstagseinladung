@@ -263,12 +263,9 @@
       <li><b>iPad:</b> Joystick zum Bewegen &middot; <b>Springtaste</b> zum Schweben (hoch) &middot; Hoch/Runter-Knopf rechts</li>
     </ul>
     <h3 style="color:#ffd700; margin-top:14px;">&#x1F6F8; Mutterschiff &mdash; das gro&szlig;e Finale</h3>
-    <p>Hoch oben im Weltall schwebt ein <b>riesiges Star-Destroyer-Mutterschiff</b> (Keilform mit zwei Br&uuml;cken-T&uuml;rmen). Fliege mit dem UFO einfach hin &mdash; du <b>dockst automatisch an</b>, wenn du nah genug bist.</p>
-    <p><b>Gewonnen hast du erst, wenn du:</b></p>
-    <ol style="margin-left: 22px;">
-      <li>am Mutterschiff angedockt bist UND</li>
-      <li>im Hangar <b>alle Roboter</b> mit dem Hammer besiegt hast.</li>
-    </ol>
+    <p>Hoch oben im Weltall schwebt ein <b>riesiges Star-Destroyer-Mutterschiff</b>. Fliege mit dem UFO drunter &mdash; eine <b>blau leuchtende Luke</b> &ouml;ffnet sich, wenn du nah genug bist. Dr&uuml;ck dann <b>F</b> oder den gr&uuml;nen Knopf, um <b>einzudocken</b>.</p>
+    <p>Innen erwartet dich ein <b>riesiges Labyrinth</b> mit vielen Mauern. In der Mitte ist die <b>Controllerzentrale</b> (goldener Ring, blinkende Bildschirme, roter Hebel) &mdash; das ist dein Ziel!</p>
+    <p><b>Gewonnen hast du, wenn du die Controllerzentrale erreichst.</b> Roboter im Labyrinth versuchen dich zu stoppen &mdash; weich aus oder schalte sie mit dem Hammer aus.</p>
     <p style="margin-top:6px;">Stirbst du im Mutterschiff, kommst du automatisch wieder dort zur&uuml;ck.</p>
     <h3 style="color:#ffd700; margin-top:14px;">&#x2699; Grafik-Qualit&auml;t</h3>
     <p>Normalerweise passt sich die Grafik <b>automatisch</b> an dein Ger&auml;t an &mdash; es sollte <b>nie stocken</b>. Du kannst aber in den <b>Einstellungen</b> auch selbst eine Stufe von 1 (super schnell, ohne Hecken/Gras) bis 13 (volle Pracht) w&auml;hlen.</p>
@@ -3497,58 +3494,183 @@ function makeAlien(x, y, z, scale) {
     motherG.add(bar1);
   }
 
-  // HANGAR in der Mitte (zentriert auf Gruppen-Ursprung — die Landeplattform ist gleichzeitig der Boden des Bay)
-  const HANGAR_W = 9.5;
-  const HANGAR_D = 9.5;
-  const HANGAR_FLOOR_Y = -HULL_H / 2 + 0.1; // direkt am Hull-Boden
-  // Bay-Decke (dunkles Dach des Hangars)
-  const bay = new THREE.Mesh(
-    new THREE.BoxGeometry(HANGAR_W + 0.4, 0.25, HANGAR_D + 0.4),
-    new THREE.MeshStandardMaterial({ color: 0x191c22, roughness: 0.85 })
+  // === MUTTERSCHIFF-INNERES: LABYRINTH mit Controllerzentrale in der Mitte ===
+  const LAB_SIZE = 20;       // 20x20 Innenraum (halfSize = 10)
+  const LAB_HALF = LAB_SIZE / 2;
+  const LAB_FLOOR_Y = -HULL_H / 2 + 0.1;
+  const LAB_HEIGHT = 5;
+  // Boden
+  const labFloor = new THREE.Mesh(
+    new THREE.BoxGeometry(LAB_SIZE, 0.3, LAB_SIZE),
+    new THREE.MeshStandardMaterial({ color: 0x3a4252, metalness: 0.65, roughness: 0.55, emissive: 0x222a36, emissiveIntensity: 0.2 })
   );
-  bay.position.set(0, HANGAR_FLOOR_Y + 3.5, 0);
-  motherG.add(bay);
-  // Bay-Wände (3 Seiten — Eingang vorne offen)
-  const bayWallMat = new THREE.MeshStandardMaterial({ color: 0x232830, metalness: 0.7, roughness: 0.5 });
-  const wBack = new THREE.Mesh(new THREE.BoxGeometry(HANGAR_W, 3.4, 0.3), bayWallMat);
-  wBack.position.set(0, HANGAR_FLOOR_Y + 1.7, -HANGAR_D / 2);
-  motherG.add(wBack);
-  const wLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.4, HANGAR_D), bayWallMat);
-  wLeft.position.set(-HANGAR_W / 2, HANGAR_FLOOR_Y + 1.7, 0);
-  motherG.add(wLeft);
-  const wRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.4, HANGAR_D), bayWallMat);
-  wRight.position.set(HANGAR_W / 2, HANGAR_FLOOR_Y + 1.7, 0);
-  motherG.add(wRight);
-  // Landeplattform — Boden, auf dem der Spieler steht
-  const motherPlatform = new THREE.Mesh(
-    new THREE.BoxGeometry(8, 0.25, 8),
-    new THREE.MeshStandardMaterial({ color: 0x90969f, metalness: 0.7, roughness: 0.4, emissive: 0x556677, emissiveIntensity: 0.3 })
-  );
-  motherPlatform.position.set(0, HANGAR_FLOOR_Y, 0);
-  motherPlatform.castShadow = motherPlatform.receiveShadow = true;
-  motherG.add(motherPlatform);
-  // Leuchtende Hangar-Türrahmen (vorne offen)
-  const bayGlow = new THREE.MeshBasicMaterial({ color: 0x66ccff });
-  // unten am Eingang
-  const glowFront = new THREE.Mesh(new THREE.BoxGeometry(HANGAR_W, 0.18, 0.18), bayGlow);
-  glowFront.position.set(0, HANGAR_FLOOR_Y - 0.18, HANGAR_D / 2);
-  motherG.add(glowFront);
-  // oben am Eingang
-  const glowTop = new THREE.Mesh(new THREE.BoxGeometry(HANGAR_W, 0.18, 0.18), bayGlow);
-  glowTop.position.set(0, HANGAR_FLOOR_Y + 3.4, HANGAR_D / 2);
-  motherG.add(glowTop);
-  // Gelbe Warn-Streifen am Plattform-Rand
-  for (let i = 0; i < 4; i++) {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(i < 2 ? 8 : 0.16, 0.04, i < 2 ? 0.16 : 8), new THREE.MeshBasicMaterial({ color: 0xffdd00 }));
-    if (i === 0) strip.position.set(0, HANGAR_FLOOR_Y + 0.18, -3.8);
-    else if (i === 1) strip.position.set(0, HANGAR_FLOOR_Y + 0.18, 3.8);
-    else if (i === 2) strip.position.set(-3.8, HANGAR_FLOOR_Y + 0.18, 0);
-    else strip.position.set(3.8, HANGAR_FLOOR_Y + 0.18, 0);
-    motherG.add(strip);
+  labFloor.position.set(0, LAB_FLOOR_Y, 0);
+  labFloor.receiveShadow = true;
+  motherG.add(labFloor);
+  // Decke (mit Loch fuer Luke in der Mitte)
+  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x1c1f26, metalness: 0.6, roughness: 0.7 });
+  // Decke ist 4 Streifen mit Loch (2x2) in der Mitte
+  const ceilY = LAB_FLOOR_Y + LAB_HEIGHT;
+  const ceilStrips = [
+    { x: 0,  z: -7,  w: LAB_SIZE, d: 6 },
+    { x: 0,  z:  7,  w: LAB_SIZE, d: 6 },
+    { x: -7, z: 0,   w: 6,        d: 8 },
+    { x:  7, z: 0,   w: 6,        d: 8 }
+  ];
+  for (const c of ceilStrips) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(c.w, 0.25, c.d), ceilMat);
+    m.position.set(c.x, ceilY, c.z);
+    motherG.add(m);
   }
-  // Hangar-Innenbeleuchtung
-  const bayLight = new THREE.PointLight(0xaadcff, 3.5, 22);
-  bayLight.position.set(0, HANGAR_FLOOR_Y + 2.5, 0);
+  // Aussenwaende des Labyrinths
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x404a58, metalness: 0.6, roughness: 0.5 });
+  const wallDark = new THREE.MeshStandardMaterial({ color: 0x232a35, metalness: 0.7, roughness: 0.55 });
+  function makeLabWall(x, z, w, d, mat) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, LAB_HEIGHT - 0.3, d), mat || wallMat);
+    wall.position.set(x, LAB_FLOOR_Y + LAB_HEIGHT / 2, z);
+    wall.castShadow = wall.receiveShadow = true;
+    motherG.add(wall);
+    return wall;
+  }
+  // 4 Aussenwaende
+  makeLabWall(0, -LAB_HALF, LAB_SIZE, 0.4, wallDark);  // Nord
+  makeLabWall(0,  LAB_HALF, LAB_SIZE, 0.4, wallDark);  // Sued
+  makeLabWall(-LAB_HALF, 0, 0.4, LAB_SIZE, wallDark);  // West
+  makeLabWall( LAB_HALF, 0, 0.4, LAB_SIZE, wallDark);  // Ost
+  // INNERE LABYRINTH-WAENDE (Gang-Layout mit Zentrum erreichbar)
+  // Layout: 4 Quadranten mit Lueckungen, Zentrum (4x4) ist Ziel-Bereich
+  const innerWalls = [
+    // Nordwest-Quadrant
+    [-6, -7, 0.4, 4],
+    [-3, -4, 4, 0.4],
+    [-7, -3, 4, 0.4],
+    // Nordost-Quadrant
+    [ 6, -7, 0.4, 4],
+    [ 3, -4, 4, 0.4],
+    [ 7, -3, 4, 0.4],
+    // Suedwest-Quadrant
+    [-6,  7, 0.4, 4],
+    [-3,  4, 4, 0.4],
+    [-7,  3, 4, 0.4],
+    // Suedost-Quadrant
+    [ 6,  7, 0.4, 4],
+    [ 3,  4, 4, 0.4],
+    [ 7,  3, 4, 0.4],
+    // Schmale Engstellen zum Zentrum
+    [ 0, -3, 0.4, 2],
+    [ 0,  3, 0.4, 2]
+  ];
+  for (const [x, z, w, d] of innerWalls) {
+    makeLabWall(x, z, w, d);
+    // Kollision: Welt-Koordinate des Walls
+    obstacles.push({
+      x: MOTHERSHIP_X + x,
+      z: MOTHERSHIP_Z + z,
+      halfW: w / 2,
+      halfD: d / 2
+    });
+  }
+  // CONTROLLERZENTRALE in der Mitte
+  const cczGroup = new THREE.Group();
+  cczGroup.position.set(0, LAB_FLOOR_Y, 0);
+  // Basis-Sockel
+  const cczBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.4, 1.5, 0.6, 12),
+    new THREE.MeshStandardMaterial({ color: 0x707a88, metalness: 0.8, roughness: 0.3 })
+  );
+  cczBase.position.y = 0.4;
+  cczBase.castShadow = true;
+  cczGroup.add(cczBase);
+  // Konsole (geneigte Pult-Oberseite)
+  const cczConsole = new THREE.Mesh(
+    new THREE.BoxGeometry(1.6, 0.18, 1.0),
+    new THREE.MeshStandardMaterial({ color: 0x2a3340, metalness: 0.85, roughness: 0.3 })
+  );
+  cczConsole.position.set(0, 0.95, 0);
+  cczConsole.rotation.x = -0.35;
+  cczGroup.add(cczConsole);
+  // Bildschirme (3 Stueck, leuchtend)
+  for (let i = 0; i < 3; i++) {
+    const ang = (i - 1) * 0.55;
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.7, 0.5),
+      new THREE.MeshBasicMaterial({ color: [0x44ddff, 0xff66cc, 0xffee44][i] })
+    );
+    screen.position.set(Math.sin(ang) * 0.55, 1.5, Math.cos(ang) * 0.55);
+    screen.lookAt(Math.sin(ang) * 2, 1.5, Math.cos(ang) * 2);
+    cczGroup.add(screen);
+  }
+  // Hebel (rote Spitze — Endgegner-Knopf)
+  const lever = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 0.4, 8),
+    new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8 })
+  );
+  lever.position.set(0, 1.1, 0.3);
+  lever.rotation.x = -0.5;
+  cczGroup.add(lever);
+  const leverTop = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1, 12, 8),
+    new THREE.MeshStandardMaterial({ color: 0xff3344, emissive: 0xff2233, emissiveIntensity: 0.7 })
+  );
+  leverTop.position.set(0, 1.28, 0.42);
+  cczGroup.add(leverTop);
+  // Goldenes "ZIEL"-Ring um die Zentrale
+  const targetRing = new THREE.Mesh(
+    new THREE.TorusGeometry(2.0, 0.05, 8, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffd700 })
+  );
+  targetRing.rotation.x = Math.PI / 2;
+  targetRing.position.y = 0.05;
+  cczGroup.add(targetRing);
+  // Glow-Licht
+  const cczLight = new THREE.PointLight(0xffd700, 2.5, 15);
+  cczLight.position.set(0, 1.8, 0);
+  cczGroup.add(cczLight);
+  motherG.add(cczGroup);
+  window.__mothershipCZ = cczGroup;
+  // Markiere die Controllerzentrale als Kollisions-Block (kann nicht durchlaufen werden)
+  obstacles.push({
+    x: MOTHERSHIP_X, z: MOTHERSHIP_Z,
+    halfW: 1.5, halfD: 1.5
+  });
+  // === LUKE (animiert) unten am Schiff ===
+  const HATCH_R = 2.5;
+  const hatchOuter = new THREE.Mesh(
+    new THREE.CylinderGeometry(HATCH_R + 0.3, HATCH_R + 0.3, 0.2, 24),
+    new THREE.MeshStandardMaterial({ color: 0x232830, metalness: 0.85, roughness: 0.45 })
+  );
+  hatchOuter.position.set(0, -HULL_H / 2 - 0.05, 0);
+  motherG.add(hatchOuter);
+  // 4 Luken-Segmente (oeffnen sich nach aussen)
+  const hatchSegments = [];
+  const hatchSegMat = new THREE.MeshStandardMaterial({ color: 0x3a4452, metalness: 0.85, roughness: 0.3, emissive: 0x11151c, emissiveIntensity: 0.1 });
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2;
+    const seg = new THREE.Mesh(
+      new THREE.BoxGeometry(HATCH_R * 0.95, 0.15, HATCH_R * 0.95),
+      hatchSegMat
+    );
+    // Segment ist ein Viertel — wir nutzen halbe Breite und verschieben so dass es im 1/4 sitzt
+    const segGroup = new THREE.Group();
+    seg.position.set(HATCH_R / 2 * 0.95, 0, 0);
+    segGroup.add(seg);
+    segGroup.position.set(0, -HULL_H / 2 - 0.1, 0);
+    segGroup.rotation.y = ang;
+    motherG.add(segGroup);
+    hatchSegments.push({ group: segGroup, baseAng: ang });
+  }
+  window.__mothershipHatch = { segments: hatchSegments, open: 0 };
+  // Leuchtender Rand der Luke (Hinweis fuer den Spieler)
+  const hatchGlow = new THREE.Mesh(
+    new THREE.TorusGeometry(HATCH_R, 0.08, 8, 28),
+    new THREE.MeshBasicMaterial({ color: 0x66ddff })
+  );
+  hatchGlow.rotation.x = Math.PI / 2;
+  hatchGlow.position.set(0, -HULL_H / 2 - 0.05, 0);
+  motherG.add(hatchGlow);
+  // Hangar-Innenbeleuchtung (Labyrinth)
+  const bayLight = new THREE.PointLight(0xaadcff, 2.5, 24);
+  bayLight.position.set(0, LAB_FLOOR_Y + 3.5, 0);
   motherG.add(bayLight);
 
   // UNTERSEITEN-LICHTER (rot — damit man das Schiff von unten gut sieht)
@@ -4095,12 +4217,14 @@ function updatePipeBtn() {
 }
 
 function spawnMothershipRobots() {
-  // Roboter im Hangar verteilt — vor der Brueckenturm-Wand (-Z) und an den Seiten
+  // Roboter im Labyrinth verteilt — in den Quadranten, nicht in der Mitte (CCZ-Bereich)
   const spots = [
-    { dx: -2.8, dz: -2.8 },
-    { dx:  2.8, dz: -2.8 },
-    { dx: -3.0, dz:  0.5 },
-    { dx:  3.0, dz:  0.5 }
+    { dx: -6,   dz: -6   },  // NW Quadrant
+    { dx:  6,   dz: -6   },  // NE Quadrant
+    { dx: -6,   dz:  6   },  // SW Quadrant
+    { dx:  6,   dz:  6   },  // SE Quadrant
+    { dx: -8,   dz:  0   },  // West-Gang
+    { dx:  8,   dz:  0   }   // Ost-Gang
   ];
   for (const s of spots) {
     const robot = makeHumanAlien(MOTHERSHIP_X + s.dx, MOTHERSHIP_Y - 2.55, MOTHERSHIP_Z + s.dz, 0.9);
@@ -4122,9 +4246,9 @@ function dockToMothership() {
   ufoDownBtn.classList.remove('show');
   ufoUpHold = false;
   ufoDownHold = false;
-  // Teleport in den Hangar — am Eingang stehend, Blick zum Brueckenturm (-Z)
-  camera.position.set(MOTHERSHIP_X, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, MOTHERSHIP_Z + 3);
-  yaw = 0; // Schau in Richtung -Z = Heck mit Brueckenturm und Robotern
+  // Teleport in Labyrinth: an einer Ecke startet der Spieler, Controllerzentrale ist in Mitte (Ziel)
+  camera.position.set(MOTHERSHIP_X - 8, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, MOTHERSHIP_Z + 8);
+  yaw = -Math.PI / 4; // Schau in Richtung Mitte
   pitch = 0;
   playerVy = 0;
   onGround = true;
@@ -4141,11 +4265,19 @@ function dockToMothership() {
 
 function checkMothershipWin() {
   if (!onMothership) return;
-  const anyAlive = mothershipRobots.some(r => r.alive);
-  if (!anyAlive) {
+  // Gewinnen: Spieler erreicht die Controllerzentrale (in der Mitte des Labyrinths)
+  const dx = camera.position.x - MOTHERSHIP_X;
+  const dz = camera.position.z - MOTHERSHIP_Z;
+  const distToCC = Math.hypot(dx, dz);
+  if (distToCC < 2.4) {
     onMothership = false;
     finalWin();
   }
+}
+// Pruefe Controllerzentrale-Naehe jeden Frame (wird im animate-Loop aufgerufen)
+function checkControllerzentrale() {
+  if (!onMothership || gameState !== 'playing') return;
+  checkMothershipWin();
 }
 
 function updateDocking(dt) {
@@ -4730,7 +4862,7 @@ function getGroundHeightAt(x, z) {
   let h = 0;
   // On the mothership platform, ground is up high
   if (onMothership) {
-    if (Math.abs(x - MOTHERSHIP_X) < 3 && Math.abs(z - MOTHERSHIP_Z) < 3) {
+    if (Math.abs(x - MOTHERSHIP_X) < 9.5 && Math.abs(z - MOTHERSHIP_Z) < 9.5) {
       return MOTHERSHIP_Y - 2.42;
     }
     return -100; // off the platform = fall (we'll catch this)
@@ -4802,8 +4934,9 @@ function updateMovement(dt) {
       minX = CAVE_X - 19; maxX = CAVE_X + 19;
       minZ = -19; maxZ = 19;
     } else if (onMothership) {
-      minX = MOTHERSHIP_X - 3.8; maxX = MOTHERSHIP_X + 3.8;
-      minZ = MOTHERSHIP_Z - 3.8; maxZ = MOTHERSHIP_Z + 3.8;
+      // Im Labyrinth-Innenraum (20x20)
+      minX = MOTHERSHIP_X - 9.5; maxX = MOTHERSHIP_X + 9.5;
+      minZ = MOTHERSHIP_Z - 9.5; maxZ = MOTHERSHIP_Z + 9.5;
     }
     camera.position.x = Math.max(minX, Math.min(maxX, camera.position.x));
     camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
@@ -6383,7 +6516,8 @@ const UPDATES = [
   { id: 'v16', name: 'Update 16', desc: 'TIE-Fighter + Gras zurück + Los-geht\'s-Button RICHTIG gefixt', new: ['Enemy-Ships sind jetzt richtige TIE-Fighter (Imperiale Farben, hexagonale Flügel)', '5 statt 3 TIE-Fighter — näher beim Spieler und entlang des Wegs zum Mutterschiff', 'Gras schon ab Quality-Stufe 3 sichtbar (vorher erst ab 5)', 'pointerdown-Strategie: „Los geht\'s" reagiert auf JEDEN Tap, kein Doppeltipp mehr nötig', 'blur() NACH UI-Wechsel (verhindert dass iOS den Click verschluckt)'] },
   { id: 'v17', name: 'Update 17', desc: 'Eigener Charakter + Schild + Gold-Hammer + Tag/Nacht + Auto-Aim', new: ['Charakter-Vorschau oben rechts (zeigt aktuelle Ausrüstung)', 'Charakter-Erstellung am Anfang: Haut, Haare, Shirt, Hose wählbar', 'Schild jetzt SICHTBAR links in der Hand (mit goldenem Stern)', 'Gold-Hammer-Kopf wird wirklich golden wenn gekauft', 'Bow Auto-Aim: Pfeil zielt leicht auf Monster in der Nähe (65/35 Mix)', 'Tag/Nacht-Cycle in den Einstellungen: Nur Tag / Nur Nacht / Beides', 'Sonne wandert mit Sonnenauf- und untergang, Sterne + Mond bei Nacht', 'gameMode-Default repariert: immer aktuelles Update vorausgewählt'] },
   { id: 'v18', name: 'Update 18', desc: 'Animierter Avatar + Andocken fixt + Slots zurück + Form-Submit', new: ['Avatar oben rechts ist jetzt ANIMIERT (läuft, springt, schlägt mit dir)', 'Spielername unter dem Avatar angezeigt', 'Gold/Schild/Rüstung Slots zurück (grau wenn nicht gekauft, gold wenn gekauft)', 'Mutterschiff-Andocken: grüner Knopf erscheint jetzt auch bei Mutterschiff-Nähe', '„Los geht\'s" jetzt als HTML-Form (zuverlässigste Methode + iOS-Go-Button)', 'Sonne UND Mond nicht mehr gleichzeitig sichtbar — exklusiv', 'Avatar-Editor klarer mit Emoji-Icons und größerer Vorschau'] },
-  { id: 'v19', name: 'Update 19 (aktuell)', desc: 'Tag/Nacht nur im Garten + UFO darf zum Mutterschiff + Roboter greifen an', new: ['Tag/Nacht-Cycle STRENG nur im Garten (Höhle/Alien/Weltall haben keinen Wechsel)', 'Sonne/Mond/Sterne nur sichtbar im Garten', 'UFO darf jetzt über die Alien-Welt-Boundary hinausfliegen zum Mutterschiff', 'Mutterschiff-Roboter greifen jetzt AGGRESSIV an — schießen alle 1.5–2.5s', 'Roboter im Hangar machen 1 Herz Kontaktschaden (vorher 0.5)', 'Schießen bereits ab 0.5 Einheiten Distanz (vorher 1.8)'] }
+  { id: 'v19', name: 'Update 19', desc: 'Tag/Nacht nur im Garten + UFO darf zum Mutterschiff + Roboter greifen an', new: ['Tag/Nacht-Cycle STRENG nur im Garten (Höhle/Alien/Weltall haben keinen Wechsel)', 'Sonne/Mond/Sterne nur sichtbar im Garten', 'UFO darf jetzt über die Alien-Welt-Boundary hinausfliegen zum Mutterschiff', 'Mutterschiff-Roboter greifen jetzt AGGRESSIV an — schießen alle 1.5–2.5s', 'Roboter im Hangar machen 1 Herz Kontaktschaden (vorher 0.5)', 'Schießen bereits ab 0.5 Einheiten Distanz (vorher 1.8)'] },
+  { id: 'v20', name: 'Update 20 (aktuell)', desc: 'Mutterschiff jetzt riesiges Labyrinth mit Controllerzentrale + animierte Luke', new: ['Mutterschiff-Inneres ist ein 20×20 LABYRINTH (vorher kleine Plattform)', 'Animierte LUKE unten — 4 Segmente öffnen sich wenn UFO darüber schwebt', 'CONTROLLERZENTRALE in der Mitte = Ziel (mit 3 Bildschirmen + rotem Hebel)', 'Wände in 4 Quadranten — du musst dich durchschlagen', '6 Roboter verteilt im Labyrinth (vorher 4 im Hangar)', 'Win-Bedingung: erreich die Controllerzentrale (Distanz < 2.4)', 'Goldener Ziel-Ring um die Controllerzentrale (gut sichtbar)'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
@@ -6850,6 +6984,24 @@ function animate() {
   updateEnemyShips(dt);
   updateDocking(dt);
   updateDayNight(dt);
+  checkControllerzentrale();
+  // Luke-Animation: oeffnet sich wenn UFO darueber schwebt
+  if (window.__mothershipHatch) {
+    const h = window.__mothershipHatch;
+    let targetOpen = 0;
+    if (inUfo && !onMothership) {
+      const dx = camera.position.x - MOTHERSHIP_X;
+      const dz = camera.position.z - MOTHERSHIP_Z;
+      const dy = camera.position.y - (MOTHERSHIP_Y - 2);
+      if (Math.hypot(dx, dz) < 5 && dy > 0 && dy < 18) targetOpen = 1;
+    }
+    h.open += (targetOpen - h.open) * Math.min(1, dt * 4);
+    for (const s of h.segments) {
+      // Verschiebe Segmente nach aussen wenn offen
+      s.group.position.x = Math.cos(s.baseAng) * h.open * 2.4;
+      s.group.position.z = Math.sin(s.baseAng) * h.open * 2.4;
+    }
+  }
   // Avatar-Animation Frame + Vorschau aktualisieren
   animFrame += dt;
   if (charPreviewEl && charPreviewEl.classList.contains('show')) updateCharPreview();
