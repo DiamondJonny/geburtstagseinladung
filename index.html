@@ -2250,12 +2250,24 @@ function makeHumanAlien(x, y, z, scale) {
   const gunLight = new THREE.Mesh(new THREE.SphereGeometry(0.02 * s, 6, 5), visorMat);
   gunLight.position.set(0.3 * s, 0.45 * s, 0.31 * s);
   g.add(gunLight);
-  // Marker arrow above so the player always sees the robot
-  const markerMat = new THREE.MeshBasicMaterial({ color: 0xff3344 });
-  const marker = new THREE.Mesh(new THREE.ConeGeometry(0.18 * s, 0.32 * s, 6), markerMat);
-  marker.position.y = 1.7 * s;
+  // Big red marker above the robot — easy to spot from anywhere
+  const markerMat = new THREE.MeshBasicMaterial({ color: 0xff2244 });
+  const marker = new THREE.Mesh(new THREE.ConeGeometry(0.35 * s, 0.7 * s, 8), markerMat);
+  marker.position.y = 2.6 * s;
   marker.rotation.x = Math.PI;
   g.add(marker);
+  // Glow under the marker
+  const markerLight = new THREE.PointLight(0xff2244, 1.2, 4);
+  markerLight.position.y = 2.2 * s;
+  g.add(markerLight);
+  // Pulsing ring around the alien for extra visibility
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.45 * s, 0.04 * s, 6, 16),
+    new THREE.MeshBasicMaterial({ color: 0xff4466 })
+  );
+  ring.position.y = 0.08;
+  ring.rotation.x = Math.PI / 2;
+  g.add(ring);
   g.position.set(x, y, z);
   scene.add(g);
   return {
@@ -3128,7 +3140,7 @@ window.addEventListener('keydown', e => {
 
 function tryClimbLadder() {
   if (gameState !== 'playing') return false;
-  if (inBonusWorld || inCaveWorld || inAlienWorld) return false;
+  if (inBonusWorld || inCaveWorld) return false;
   for (const o of ladderTriggers) {
     if (Math.abs(camera.position.x - o.x) < o.halfW && Math.abs(camera.position.z - o.z) < o.halfD) {
       ladderClimbing = !ladderClimbing;
@@ -3155,6 +3167,24 @@ function isNearLadder() {
 }
 
 function tryF() {
+  // In alien world with no aliens left: F = direct teleport into UFO
+  if (inAlienWorld && !inUfo && !alienLasersActive()) {
+    for (const o of ladderTriggers) {
+      if (!o.isAlienLadder) continue;
+      const dx = camera.position.x - o.x;
+      const dz = camera.position.z - o.z;
+      if (Math.hypot(dx, dz) < 2.5) {
+        camera.position.x = o.x;
+        camera.position.z = o.z;
+        camera.position.y = o.top + PLAYER_HEIGHT;
+        playerVy = 0;
+        onGround = true;
+        ladderClimbing = false;
+        enterUfoMode();
+        return;
+      }
+    }
+  }
   if (tryClimbLadder()) return;
   tryEnterPipe();
 }
@@ -3357,6 +3387,29 @@ let pipeUsedRecently = false;
 let ladderUsedRecently = false;
 
 function updateAutoEnter(dt) {
+  // In alien world: if no aliens left and player is near the UFO ladder → auto-teleport into UFO
+  if (gameState === 'playing' && inAlienWorld && !inUfo && !alienLasersActive()) {
+    for (const o of ladderTriggers) {
+      if (!o.isAlienLadder) continue;
+      const dx = camera.position.x - o.x;
+      const dz = camera.position.z - o.z;
+      if (Math.hypot(dx, dz) < 1.6) {
+        standOnLadderTime += dt;
+        if (standOnLadderTime > 0.7) {
+          standOnLadderTime = 0;
+          ladderClimbing = false;
+          camera.position.x = o.x;
+          camera.position.z = o.z;
+          camera.position.y = o.top + PLAYER_HEIGHT;
+          playerVy = 0;
+          onGround = true;
+          enterUfoMode();
+        }
+        return;
+      }
+    }
+    standOnLadderTime = 0;
+  }
   if (gameState !== 'playing' || inBonusWorld || inCaveWorld || inAlienWorld || inUfo || ladderClimbing) {
     standOnPipeTime = 0;
     standOnLadderTime = 0;
