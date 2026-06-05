@@ -187,13 +187,66 @@
     <span class="key">ESC</span> &nbsp;Maus freigeben
   </div>
   <button class="btn" id="startBtn">Garten betreten</button>
+  <button class="btn" id="helpBtn" style="margin-top:10px; background: linear-gradient(135deg, #88cc88, #44aa66); font-size: 0.95rem; padding: 10px 26px;">&#x2753; Anleitung / Hilfe</button>
   <button class="btn" id="settingsBtn" style="margin-top:10px; background: linear-gradient(135deg, #88aacc, #4477aa); font-size: 0.95rem; padding: 10px 26px;">&#x2699; Einstellungen / Updates</button>
+  <button class="btn" id="mapGenBtn" style="display:none; margin-top:10px; background: linear-gradient(135deg, #cc88ee, #8866cc); font-size: 0.95rem; padding: 10px 26px;">&#x1F5FA;&#xFE0F; Map-Generator (nur Daniel)</button>
+</div>
+
+<div class="overlay hidden" id="mapGenScreen">
+  <h1>&#x1F5FA;&#xFE0F; Map-Generator</h1>
+  <p style="opacity: 0.85; margin-bottom: 10px;">Geheime Funktion nur f&uuml;r Daniel &mdash; w&uuml;rfle neue Garten-Layouts!</p>
+  <canvas id="mapGenCanvas" width="520" height="520" style="background: #1a3010; border: 3px solid #ffd700; border-radius: 8px; margin: 10px 0;"></canvas>
+  <div style="margin: 10px 0;">
+    <button class="btn" id="mapGenNewBtn" style="font-size: 1rem; padding: 10px 22px;">&#x1F3B2; Neue Map w&uuml;rfeln</button>
+    <button class="btn" id="mapGenCopyBtn" style="font-size: 1rem; padding: 10px 22px; margin-left: 8px; background: linear-gradient(135deg, #88cc88, #44aa66);">&#x1F4CB; Code kopieren</button>
+  </div>
+  <div id="mapGenInfo" style="font-family: monospace; font-size: 0.9em; opacity: 0.85; max-width: 600px;"></div>
+  <button class="btn" id="mapGenBackBtn" style="margin-top: 14px;">Zur&uuml;ck</button>
+</div>
+
+<div class="overlay hidden" id="helpScreen">
+  <h1>&#x2753; Anleitung</h1>
+  <div style="max-width: 640px; width: 92%; max-height: 70vh; overflow-y: auto; text-align: left; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.18); border-radius: 12px; padding: 18px 22px; font-size: 0.95em; line-height: 1.55;">
+    <h3 style="color:#ffd700; margin-bottom: 6px;">&#x1F3AE; Steuerung</h3>
+    <p><b>Computer:</b> <span class="key">W A S D</span> laufen &middot; <span class="key">Maus</span> umsehen &middot; <span class="key">Leertaste</span> springen &middot; <span class="key">Linke Maus</span> schlagen / schie&szlig;en</p>
+    <p style="margin-top:4px;"><b>iPad / Handy:</b> Joystick links zum Laufen, gelber Knopf zum Springen, gro&szlig;er Knopf rechts zum Schlagen.</p>
+    <h3 style="color:#ffd700; margin-top:14px;">&#x1F382; Garten &mdash; finde die Torte</h3>
+    <p>Du startest im Garten mit hohen Hecken. Suche zwischen den Hecken nach einem Steinsockel mit einer <b>Geburtstagstorte</b>. Schlage sie mit dem Hammer kaputt, damit die Einladung erscheint.</p>
+    <h3 style="color:#ffd700; margin-top:14px;">&#x1F573;&#xFE0F; Tunnel nach unten in die H&ouml;hle</h3>
+    <p>Im Garten gibt es eine <b>gr&uuml;ne R&ouml;hre</b> (wie bei Mario). Stell dich draufstellen oder direkt daneben &mdash; auf dem Handy erscheint dann ein <b>gr&uuml;ner runder Knopf</b>, am Computer dr&uuml;ckst du <span class="key">E</span>. So <b>rutschst du in die H&ouml;hle</b>. Dort kannst du Stein abbauen, an der Werkbank Items basteln und sp&auml;ter wieder hochfahren.</p>
+    <h3 style="color:#ffd700; margin-top:14px;">&#x2601;&#xFE0F; Wolkenwelt</h3>
+    <p>In der H&ouml;hle gibt es eine weitere R&ouml;hre nach oben &mdash; die bringt dich in die <b>Wolkenwelt</b>, wo du springen und schweben kannst.</p>
+    <h3 style="color:#ffd700; margin-top:14px;">&#x1F47D; Alien-Planet</h3>
+    <p>Wenn du im Garten alle Cupcake-Monster besiegst, wird ein Portal aktiv, das dich auf den <b>Alien-Planeten</b> bringt. Dort gibt es <b>Roboter mit Pistolen</b> &mdash; sie haben einen roten Marker &uuml;ber dem Kopf. Schlage sie alle.</p>
+    <h3 style="color:#ffd700; margin-top:14px;">&#x1F680; Ins Weltall &mdash; Leiter und UFO</h3>
+    <p>Wenn du alle Alien-Roboter besiegt hast, erscheint eine <b>Leiter</b> auf dem Steinsockel. Steige hoch, dann <b>wirst du vom UFO mitgenommen</b>. Im UFO fliegst du mit:</p>
+    <ul style="margin-left: 22px;">
+      <li><b>Computer:</b> <span class="key">W A S D</span> bewegen &middot; <span class="key">Leertaste</span> hoch &middot; <span class="key">Shift</span> runter</li>
+      <li><b>iPad:</b> Joystick zum Bewegen &middot; <b>Springtaste</b> zum Schweben (hoch) &middot; Hoch/Runter-Knopf rechts</li>
+    </ul>
+    <h3 style="color:#ffd700; margin-top:14px;">&#x1F6F8; Mutterschiff &mdash; das gro&szlig;e Finale</h3>
+    <p>Hoch oben im Weltall schwebt ein <b>riesiges Star-Destroyer-Mutterschiff</b> (Keilform mit zwei Br&uuml;cken-T&uuml;rmen). Fliege mit dem UFO einfach hin &mdash; du <b>dockst automatisch an</b>, wenn du nah genug bist.</p>
+    <p><b>Gewonnen hast du erst, wenn du:</b></p>
+    <ol style="margin-left: 22px;">
+      <li>am Mutterschiff angedockt bist UND</li>
+      <li>im Hangar <b>alle Roboter</b> mit dem Hammer besiegt hast.</li>
+    </ol>
+    <p style="margin-top:6px;">Stirbst du im Mutterschiff, kommst du automatisch wieder dort zur&uuml;ck.</p>
+    <h3 style="color:#ffd700; margin-top:14px;">&#x2699; Grafik-Qualit&auml;t</h3>
+    <p>Normalerweise passt sich die Grafik <b>automatisch</b> an dein Ger&auml;t an &mdash; es sollte <b>nie stocken</b>. Du kannst aber in den <b>Einstellungen</b> auch selbst eine Stufe von 1 (super schnell, ohne Hecken/Gras) bis 13 (volle Pracht) w&auml;hlen.</p>
+  </div>
+  <button class="btn" id="helpBackBtn" style="margin-top:16px;">Zur&uuml;ck</button>
 </div>
 
 <div class="overlay hidden" id="settingsScreen">
   <h1>&#x2699; Einstellungen</h1>
-  <p>W&auml;hle, welche Version du spielen m&ouml;chtest:</p>
-  <div id="versionList" style="max-width: 580px; width: 90%; margin-top: 14px; max-height: 60vh; overflow-y: auto; text-align: left;">
+  <div id="qualitySection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
+    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">Grafik-Qualit&auml;t</div>
+    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Automatisch passt sich an dein Ger&auml;t an (stockt nie). Wenn du lieber selber w&auml;hlst, geht das auch.</p>
+    <div id="qualityChoices" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+  </div>
+  <p style="margin-top: 18px;">W&auml;hle, welche Version du spielen m&ouml;chtest:</p>
+  <div id="versionList" style="max-width: 580px; width: 90%; margin-top: 8px; max-height: 40vh; overflow-y: auto; text-align: left;">
     <!-- filled by JS -->
   </div>
   <button class="btn" id="settingsBackBtn" style="margin-top:18px;">Zur&uuml;ck</button>
@@ -513,6 +566,7 @@ const cakeSpot = CAKE_SPOTS[Math.floor(Math.random() * CAKE_SPOTS.length)];
 // === Hedges (high, block sight) ===
 const HEDGE_H = 2.6;
 
+const hedgeGroups = [];
 function makeHedge(cx, cz, length, rotY) {
   const g = new THREE.Group();
   const w = 0.7;
@@ -558,6 +612,7 @@ function makeHedge(cx, cz, length, rotY) {
   g.position.set(cx, 0, cz);
   g.rotation.y = rotY;
   scene.add(g);
+  hedgeGroups.push(g);
 
   const halfL = length / 2;
   const halfW = w / 2 + 0.1;
@@ -1161,6 +1216,7 @@ buildFence();
 const windUniform = { value: 0 };
 
 // === Grass blades (instanced) ===
+const grassBladeMeshes = [];
 function spawnGrass() {
   const bladeGeo = new THREE.PlaneGeometry(0.08, 0.32);
   bladeGeo.translate(0, 0.16, 0);
@@ -1220,6 +1276,7 @@ function spawnGrass() {
   mesh2.count = placed;
   scene.add(mesh);
   scene.add(mesh2);
+  grassBladeMeshes.push(mesh, mesh2);
 }
 spawnGrass();
 
@@ -2845,127 +2902,224 @@ function makeAlien(x, y, z, scale) {
   makeEnemyShip(ALIEN_X - 30, 22, 35);
   window.__enemyShips = enemyShips;
 
-  // === Mutterschiff (Endgegner — Star-Wars-Stil) ===
+  // === Mutterschiff (Star Destroyer — Keilform a la Imperial Class) ===
   const motherG = new THREE.Group();
-  const hullMat = new THREE.MeshStandardMaterial({ color: 0x5e6770, metalness: 0.88, roughness: 0.22 });
-  const hullDark = new THREE.MeshStandardMaterial({ color: 0x32363d, metalness: 0.85, roughness: 0.3 });
-  const hullAccent = new THREE.MeshStandardMaterial({ color: 0x4a525d, metalness: 0.9, roughness: 0.2 });
-  const glassMat = new THREE.MeshStandardMaterial({ color: 0x66ddff, transparent: true, opacity: 0.55, metalness: 0.6, roughness: 0.08, emissive: 0x2288cc, emissiveIntensity: 0.7 });
-  const engineGlow = new THREE.MeshBasicMaterial({ color: 0xff7733 });
-  const engineCore = new THREE.MeshBasicMaterial({ color: 0xffee88 });
+  const hullMat = new THREE.MeshStandardMaterial({ color: 0x6b7480, metalness: 0.78, roughness: 0.32 });
+  const hullDark = new THREE.MeshStandardMaterial({ color: 0x2f343b, metalness: 0.8, roughness: 0.4 });
+  const hullAccent = new THREE.MeshStandardMaterial({ color: 0x515862, metalness: 0.85, roughness: 0.28 });
+  const engineRing = new THREE.MeshStandardMaterial({ color: 0x222931, metalness: 0.85, roughness: 0.35 });
+  const engineGlow = new THREE.MeshBasicMaterial({ color: 0x99ddff });
+  const engineCore = new THREE.MeshBasicMaterial({ color: 0xddf0ff });
 
-  // Massive main saucer (3-layer disc)
-  const saucerTop = new THREE.Mesh(new THREE.CylinderGeometry(14, 20, 2.5, 48), hullMat);
-  saucerTop.position.y = 0.5;
-  saucerTop.castShadow = true;
-  motherG.add(saucerTop);
-  const saucerMid = new THREE.Mesh(new THREE.CylinderGeometry(20, 22, 1.4, 48), hullAccent);
-  saucerMid.position.y = -0.9;
-  saucerMid.castShadow = true;
-  motherG.add(saucerMid);
-  const saucerBottom = new THREE.Mesh(new THREE.CylinderGeometry(22, 16, 2.2, 48), hullDark);
-  saucerBottom.position.y = -2.8;
-  saucerBottom.castShadow = true;
-  motherG.add(saucerBottom);
-
-  // Central bridge tower on top
-  const bridge = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 2.2, 16), hullMat);
-  bridge.position.y = 2.8;
-  bridge.castShadow = true;
-  motherG.add(bridge);
-  const bridgeDome = new THREE.Mesh(new THREE.SphereGeometry(2.4, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), glassMat);
-  bridgeDome.position.y = 3.9;
-  motherG.add(bridgeDome);
-  // Antennas
-  for (let i = 0; i < 3; i++) {
-    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.5, 6), hullDark);
-    ant.position.set([-1.5, 0, 1.5][i], 5.2, [0, -1.6, 0][i]);
-    motherG.add(ant);
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3344 }));
-    tip.position.set([-1.5, 0, 1.5][i], 6.45, [0, -1.6, 0][i]);
-    motherG.add(tip);
+  // HULL: lange Keilform — Spitze nach +Z (vorne), Heck breit nach -Z
+  const HULL_LEN = 70;
+  const HULL_BACK_W = 32;
+  const HULL_H = 5.5;
+  const halfLen = HULL_LEN / 2;
+  const hullGeo = new THREE.BoxGeometry(HULL_BACK_W, HULL_H, HULL_LEN, 6, 2, 16);
+  const hPos = hullGeo.attributes.position;
+  for (let i = 0; i < hPos.count; i++) {
+    const x = hPos.getX(i);
+    const y = hPos.getY(i);
+    const z = hPos.getZ(i);
+    const t = (z + halfLen) / HULL_LEN; // 0=Heck, 1=Bug
+    // Breite verjuengt sich zur Spitze
+    hPos.setX(i, x * (1 - 0.97 * t));
+    // Oberseite faellt leicht ab, Unterseite bleibt flach
+    if (y > 0) hPos.setY(i, y - t * 2.2);
   }
+  hullGeo.computeVertexNormals();
+  const hull = new THREE.Mesh(hullGeo, hullMat);
+  hull.castShadow = true;
+  hull.receiveShadow = true;
+  motherG.add(hull);
 
-  // 6 engine nacelles on the back
+  // Oberseiten-Panels (laenger werdende Streifen — Star-Destroyer-Look)
   for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 4, 16), hullDark);
-    nacelle.position.set(Math.cos(a) * 16, -2, Math.sin(a) * 16);
-    nacelle.rotation.z = Math.PI / 2;
-    nacelle.rotation.y = -a;
-    nacelle.castShadow = true;
-    motherG.add(nacelle);
-    const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.6, 0.8, 16), engineGlow);
-    exhaust.position.set(Math.cos(a) * 18.5, -2, Math.sin(a) * 18.5);
-    exhaust.rotation.z = Math.PI / 2;
-    exhaust.rotation.y = -a;
-    motherG.add(exhaust);
-    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.5, 12), engineCore);
-    core.position.set(Math.cos(a) * 19.0, -2, Math.sin(a) * 19.0);
-    core.rotation.z = Math.PI / 2;
-    core.rotation.y = -a;
-    motherG.add(core);
-    // Engine light
-    const eLight = new THREE.PointLight(0xff7733, 1.4, 8);
-    eLight.position.set(Math.cos(a) * 18, -2, Math.sin(a) * 18);
-    motherG.add(eLight);
+    const tt = i / 5;
+    const z = -halfLen * 0.8 + tt * (HULL_LEN * 0.75);
+    const wAtZ = HULL_BACK_W * (1 - 0.97 * ((z + halfLen) / HULL_LEN));
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(wAtZ * 0.95, 0.2, 1.6), hullAccent);
+    panel.position.set(0, HULL_H / 2 - (z + halfLen) / HULL_LEN * 2.2 + 0.05, z);
+    motherG.add(panel);
   }
+  // Spine — dunkler Mittelstreifen auf dem Ruecken
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, HULL_LEN - 6), hullDark);
+  spine.position.set(0, HULL_H / 2 - 0.8, 0);
+  motherG.add(spine);
 
-  // 24 rim window strips on the saucer (alternating)
-  for (let i = 0; i < 24; i++) {
-    const a = (i / 24) * Math.PI * 2;
-    const w = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.4, 0.06), new THREE.MeshBasicMaterial({ color: i % 3 === 0 ? 0xffee88 : 0x88ddff }));
-    w.position.set(Math.cos(a) * 19.5, -1.5, Math.sin(a) * 19.5);
-    w.rotation.y = -a;
+  // BRUECKENTURM hinten oben (mit zwei Schild-Kuppeln — Star Destroyer Signatur!)
+  const towerZ = -halfLen + 9;
+  const towerBase = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 6), hullAccent);
+  towerBase.position.set(0, HULL_H / 2 + 1.25, towerZ);
+  towerBase.castShadow = true;
+  motherG.add(towerBase);
+  const towerMid = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 4.5), hullMat);
+  towerMid.position.set(0, HULL_H / 2 + 4.1, towerZ);
+  towerMid.castShadow = true;
+  motherG.add(towerMid);
+  const towerTop = new THREE.Mesh(new THREE.BoxGeometry(9.5, 1.8, 5.2), hullAccent);
+  towerTop.position.set(0, HULL_H / 2 + 6.6, towerZ);
+  towerTop.castShadow = true;
+  motherG.add(towerTop);
+  // Zwei ikonische Schild-Kuppeln
+  const domeMat = new THREE.MeshStandardMaterial({ color: 0x7a838f, metalness: 0.78, roughness: 0.3 });
+  for (const dx of [-3.4, 3.4]) {
+    const motherDome = new THREE.Mesh(new THREE.SphereGeometry(1.1, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+    motherDome.position.set(dx, HULL_H / 2 + 7.5, towerZ);
+    motherDome.castShadow = true;
+    motherG.add(motherDome);
+    // Sensor-Stab in der Kuppel
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.2, 6), hullDark);
+    stick.position.set(dx, HULL_H / 2 + 8.4, towerZ);
+    motherG.add(stick);
+  }
+  // Brueckenfenster (gelbe Streifen)
+  for (let row = 0; row < 3; row++) {
+    const w = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.32, 0.08), new THREE.MeshBasicMaterial({ color: 0xffee88 }));
+    w.position.set(0, HULL_H / 2 + 3.4 + row * 0.7, towerZ + 2.3);
     motherG.add(w);
   }
-  // 12 rim LEDs (slow flashing colors)
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    const led = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), new THREE.MeshBasicMaterial({ color: [0xff3344, 0xffcc44, 0x44ddff, 0xff66ff][i % 4] }));
-    led.position.set(Math.cos(a) * 21, -1.6, Math.sin(a) * 21);
-    motherG.add(led);
+
+  // HECK-TRIEBWERKE — 3 gigantische Hauptdüsen + 4 kleine
+  const engBlock = new THREE.Mesh(new THREE.BoxGeometry(HULL_BACK_W * 0.95, HULL_H * 0.85, 3), hullDark);
+  engBlock.position.set(0, -0.3, -halfLen - 1.4);
+  motherG.add(engBlock);
+  for (const dx of [-9, 0, 9]) {
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 0.5, 20), engineRing);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(dx, 0.4, -halfLen - 2.6);
+    motherG.add(ring);
+    const glow = new THREE.Mesh(new THREE.CylinderGeometry(1.65, 1.65, 0.3, 20), engineGlow);
+    glow.rotation.x = Math.PI / 2;
+    glow.position.set(dx, 0.4, -halfLen - 2.95);
+    motherG.add(glow);
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.6, 0.4, 14), engineCore);
+    core.rotation.x = Math.PI / 2;
+    core.position.set(dx, 0.4, -halfLen - 3.15);
+    motherG.add(core);
+    const eL = new THREE.PointLight(0x99ddff, 3.2, 16);
+    eL.position.set(dx, 0.4, -halfLen - 2.95);
+    motherG.add(eL);
+  }
+  // 4 kleinere seitliche Triebwerke
+  for (const dx of [-13.5, -11, 11, 13.5]) {
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.35, 14), engineRing);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(dx, -1.8, -halfLen - 2);
+    motherG.add(ring);
+    const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.25, 14), engineGlow);
+    glow.rotation.x = Math.PI / 2;
+    glow.position.set(dx, -1.8, -halfLen - 2.25);
+    motherG.add(glow);
   }
 
-  // Hangar bay underneath — square opening with glowing entrance
-  const bayMat = new THREE.MeshStandardMaterial({ color: 0x1a1d22, roughness: 0.85 });
-  const bay = new THREE.Mesh(new THREE.BoxGeometry(12, 0.3, 12), bayMat);
-  bay.position.y = -3.85;
-  bay.castShadow = bay.receiveShadow = true;
-  motherG.add(bay);
-  // Glowing bay walls
-  const bayGlow = new THREE.MeshBasicMaterial({ color: 0x66ccff });
-  for (const offs of [{ x: -6, z: 0 }, { x: 6, z: 0 }, { x: 0, z: -6 }, { x: 0, z: 6 }]) {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(offs.x === 0 ? 12 : 0.15, 0.12, offs.z === 0 ? 12 : 0.15), bayGlow);
-    strip.position.set(offs.x, -3.75, offs.z);
-    motherG.add(strip);
+  // FENSTER auf den Seiten (lange gelbe Streifen entlang der Keil-Flanken)
+  for (let i = 0; i < 5; i++) {
+    const z = -halfLen * 0.7 + i * (halfLen * 0.28);
+    const t = (z + halfLen) / HULL_LEN;
+    const wAtZ = HULL_BACK_W * (1 - 0.97 * t);
+    const yAtZ = HULL_H / 2 - t * 2.2 - 0.5;
+    // links
+    const wL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.18, 1.4), new THREE.MeshBasicMaterial({ color: 0xffee88 }));
+    wL.position.set(-wAtZ / 2 + 0.05, yAtZ, z);
+    motherG.add(wL);
+    // rechts
+    const wR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.18, 1.4), new THREE.MeshBasicMaterial({ color: 0xffee88 }));
+    wR.position.set(wAtZ / 2 - 0.05, yAtZ, z);
+    motherG.add(wR);
   }
-  // Landing platform inside the bay
+
+  // GESCHUETZ-TUERME oben (kleine Doppel-Kanonen — typisch Star Destroyer)
+  for (const [tx, tz] of [[-9, -10], [9, -10], [-7, 2], [7, 2], [-4, 14], [4, 14]]) {
+    const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.4, 12), hullAccent);
+    const t = (tz + halfLen) / HULL_LEN;
+    const yAtZ = HULL_H / 2 - t * 2.2 + 0.2;
+    turret.position.set(tx, yAtZ, tz);
+    motherG.add(turret);
+    const bar1 = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 0.12), hullDark);
+    bar1.position.set(tx, yAtZ + 0.3, tz);
+    motherG.add(bar1);
+  }
+
+  // HANGAR in der Mitte (zentriert auf Gruppen-Ursprung — die Landeplattform ist gleichzeitig der Boden des Bay)
+  const HANGAR_W = 9.5;
+  const HANGAR_D = 9.5;
+  const HANGAR_FLOOR_Y = -HULL_H / 2 + 0.1; // direkt am Hull-Boden
+  // Bay-Decke (dunkles Dach des Hangars)
+  const bay = new THREE.Mesh(
+    new THREE.BoxGeometry(HANGAR_W + 0.4, 0.25, HANGAR_D + 0.4),
+    new THREE.MeshStandardMaterial({ color: 0x191c22, roughness: 0.85 })
+  );
+  bay.position.set(0, HANGAR_FLOOR_Y + 3.5, 0);
+  motherG.add(bay);
+  // Bay-Wände (3 Seiten — Eingang vorne offen)
+  const bayWallMat = new THREE.MeshStandardMaterial({ color: 0x232830, metalness: 0.7, roughness: 0.5 });
+  const wBack = new THREE.Mesh(new THREE.BoxGeometry(HANGAR_W, 3.4, 0.3), bayWallMat);
+  wBack.position.set(0, HANGAR_FLOOR_Y + 1.7, -HANGAR_D / 2);
+  motherG.add(wBack);
+  const wLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.4, HANGAR_D), bayWallMat);
+  wLeft.position.set(-HANGAR_W / 2, HANGAR_FLOOR_Y + 1.7, 0);
+  motherG.add(wLeft);
+  const wRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.4, HANGAR_D), bayWallMat);
+  wRight.position.set(HANGAR_W / 2, HANGAR_FLOOR_Y + 1.7, 0);
+  motherG.add(wRight);
+  // Landeplattform — Boden, auf dem der Spieler steht
   const motherPlatform = new THREE.Mesh(
     new THREE.BoxGeometry(8, 0.25, 8),
-    new THREE.MeshStandardMaterial({ color: 0x9095a0, metalness: 0.75, emissive: 0x445566, emissiveIntensity: 0.35 })
+    new THREE.MeshStandardMaterial({ color: 0x90969f, metalness: 0.7, roughness: 0.4, emissive: 0x556677, emissiveIntensity: 0.3 })
   );
-  motherPlatform.position.y = -3.7;
+  motherPlatform.position.set(0, HANGAR_FLOOR_Y, 0);
   motherPlatform.castShadow = motherPlatform.receiveShadow = true;
   motherG.add(motherPlatform);
-  // Yellow caution markings around the platform edge
+  // Leuchtende Hangar-Türrahmen (vorne offen)
+  const bayGlow = new THREE.MeshBasicMaterial({ color: 0x66ccff });
+  // unten am Eingang
+  const glowFront = new THREE.Mesh(new THREE.BoxGeometry(HANGAR_W, 0.18, 0.18), bayGlow);
+  glowFront.position.set(0, HANGAR_FLOOR_Y - 0.18, HANGAR_D / 2);
+  motherG.add(glowFront);
+  // oben am Eingang
+  const glowTop = new THREE.Mesh(new THREE.BoxGeometry(HANGAR_W, 0.18, 0.18), bayGlow);
+  glowTop.position.set(0, HANGAR_FLOOR_Y + 3.4, HANGAR_D / 2);
+  motherG.add(glowTop);
+  // Gelbe Warn-Streifen am Plattform-Rand
   for (let i = 0; i < 4; i++) {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 0.18), new THREE.MeshBasicMaterial({ color: 0xffdd00 }));
-    if (i < 2) strip.position.set(0, -3.55, i === 0 ? -3.8 : 3.8);
-    else { strip.position.set(i === 2 ? -3.8 : 3.8, -3.55, 0); strip.rotation.y = Math.PI / 2; }
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(i < 2 ? 8 : 0.16, 0.04, i < 2 ? 0.16 : 8), new THREE.MeshBasicMaterial({ color: 0xffdd00 }));
+    if (i === 0) strip.position.set(0, HANGAR_FLOOR_Y + 0.18, -3.8);
+    else if (i === 1) strip.position.set(0, HANGAR_FLOOR_Y + 0.18, 3.8);
+    else if (i === 2) strip.position.set(-3.8, HANGAR_FLOOR_Y + 0.18, 0);
+    else strip.position.set(3.8, HANGAR_FLOOR_Y + 0.18, 0);
     motherG.add(strip);
   }
-  // Big interior light
-  const bayLight = new THREE.PointLight(0xaadcff, 3, 22);
-  bayLight.position.y = -3;
+  // Hangar-Innenbeleuchtung
+  const bayLight = new THREE.PointLight(0xaadcff, 3.5, 22);
+  bayLight.position.set(0, HANGAR_FLOOR_Y + 2.5, 0);
   motherG.add(bayLight);
 
+  // UNTERSEITEN-LICHTER (rot — damit man das Schiff von unten gut sieht)
+  for (let i = 0; i < 8; i++) {
+    const t = i / 7;
+    const z = -halfLen + 4 + t * (HULL_LEN - 8);
+    const tt = (z + halfLen) / HULL_LEN;
+    const wAtZ = HULL_BACK_W * (1 - 0.97 * tt);
+    if (wAtZ < 1) continue;
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3344 }));
+    led.position.set(0, -HULL_H / 2 - 0.2, z);
+    motherG.add(led);
+  }
+  // Findbarkeits-Beacon: pulsierende blaue Säule unter dem Schiff
+  const beaconMat = new THREE.MeshBasicMaterial({ color: 0x66ccff, transparent: true, opacity: 0.35 });
+  const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 1.2, 18, 12, 1, true), beaconMat);
+  beacon.position.set(0, -HULL_H / 2 - 9, 0);
+  motherG.add(beacon);
+  window.__mothershipBeacon = beacon;
+
   // Powerful exterior lights
-  const motherLight1 = new THREE.PointLight(0x88ddff, 4, 50);
-  motherLight1.position.y = 0;
+  const motherLight1 = new THREE.PointLight(0x99ccff, 4, 50);
+  motherLight1.position.set(0, HULL_H, towerZ);
   motherG.add(motherLight1);
-  const motherLight2 = new THREE.PointLight(0xffaa55, 2, 30);
-  motherLight2.position.y = -2;
+  const motherLight2 = new THREE.PointLight(0xffaa55, 2.5, 35);
+  motherLight2.position.set(0, -HULL_H / 2 - 1, halfLen - 8);
   motherG.add(motherLight2);
 
   motherG.position.set(MOTHERSHIP_X, MOTHERSHIP_Y, MOTHERSHIP_Z);
@@ -3423,11 +3577,15 @@ function updatePipeBtn() {
 }
 
 function spawnMothershipRobots() {
-  for (let i = 0; i < 4; i++) {
-    const ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const rx = MOTHERSHIP_X + Math.cos(ang) * 3.0;
-    const rz = MOTHERSHIP_Z + Math.sin(ang) * 3.0;
-    const robot = makeHumanAlien(rx, MOTHERSHIP_Y - 2.7, rz, 0.9);
+  // Roboter im Hangar verteilt — vor der Brueckenturm-Wand (-Z) und an den Seiten
+  const spots = [
+    { dx: -2.8, dz: -2.8 },
+    { dx:  2.8, dz: -2.8 },
+    { dx: -3.0, dz:  0.5 },
+    { dx:  3.0, dz:  0.5 }
+  ];
+  for (const s of spots) {
+    const robot = makeHumanAlien(MOTHERSHIP_X + s.dx, MOTHERSHIP_Y - 2.55, MOTHERSHIP_Z + s.dz, 0.9);
     robot._onMothership = true;
     monsters.push(robot);
     mothershipRobots.push(robot);
@@ -3445,9 +3603,9 @@ function dockToMothership() {
   ufoDownBtn.classList.remove('show');
   ufoUpHold = false;
   ufoDownHold = false;
-  // Teleport onto the landing platform
-  camera.position.set(MOTHERSHIP_X + 2, MOTHERSHIP_Y - 2.55 + PLAYER_HEIGHT, MOTHERSHIP_Z);
-  yaw = Math.atan2(camera.position.x - MOTHERSHIP_X, camera.position.z - MOTHERSHIP_Z);
+  // Teleport in den Hangar — am Eingang stehend, Blick zum Brueckenturm (-Z)
+  camera.position.set(MOTHERSHIP_X, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, MOTHERSHIP_Z + 3);
+  yaw = 0; // Schau in Richtung -Z = Heck mit Brueckenturm und Robotern
   pitch = 0;
   playerVy = 0;
   onGround = true;
@@ -3506,12 +3664,11 @@ function enterUfoMode() {
     bowBtn.classList.add('show');
     updateInventory();
   }
-  showUnlockMessage('\u{1F6F8} UFO-Steuerung! Leertaste = hoch, C = runter, ' + (isTouch ? 'Bogen-Knopf' : 'Rechtsklick') + ' = Roboter abschie&szlig;en');
+  showUnlockMessage('\u{1F6F8} UFO-Steuerung! Flieg zum riesigen Mutterschiff und docke im Hangar an, um alle Roboter zu besiegen!');
   beep(440, 0.2, 'sine', 0.15);
   setTimeout(() => beep(660, 0.2, 'sine', 0.15), 150);
   setTimeout(() => beep(880, 0.3, 'sine', 0.15), 300);
-  // After 12 seconds of free flight, trigger the final win
-  setTimeout(() => { if (inUfo) finalWin(); }, 12000);
+  // KEIN Auto-Win mehr — gewinnen NUR durch Andocken UND alle Roboter im Hangar besiegen.
 }
 
 function updateEnemyShips(dt) {
@@ -4052,7 +4209,7 @@ function getGroundHeightAt(x, z) {
   // On the mothership platform, ground is up high
   if (onMothership) {
     if (Math.abs(x - MOTHERSHIP_X) < 3 && Math.abs(z - MOTHERSHIP_Z) < 3) {
-      return MOTHERSHIP_Y - 2.55;
+      return MOTHERSHIP_Y - 2.42;
     }
     return -100; // off the platform = fall (we'll catch this)
   }
@@ -5532,8 +5689,8 @@ function retry() {
     }
     mothershipRobots.length = 0;
     spawnMothershipRobots();
-    camera.position.set(MOTHERSHIP_X + 2, MOTHERSHIP_Y - 2.55 + PLAYER_HEIGHT, MOTHERSHIP_Z);
-    yaw = Math.atan2(camera.position.x - MOTHERSHIP_X, camera.position.z - MOTHERSHIP_Z);
+    camera.position.set(MOTHERSHIP_X, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, MOTHERSHIP_Z + 3);
+    yaw = 0;
     pitch = 0;
     playerVy = 0;
     onGround = true;
@@ -5642,7 +5799,8 @@ const UPDATES = [
   { id: 'v6',  name: 'Update 6', desc: 'UFO-Flug und Mutterschiff', new: ['UFO selbst steuern', 'Andere Planeten', 'Mutterschiff als Endgegner'] },
   { id: 'v7',  name: 'Update 7', desc: 'Vulkane schöner + Sichtbare Aliens + adaptive Qualität', new: ['Roter Marker über Robotern', 'Wind im Gras', 'Sonnen-Blendeffekt', '13 Qualitätsstufen'] },
   { id: 'v8',  name: 'Update 8', desc: 'UFO Touch-Steuerung + härtere Roboter + Auto-Tests', new: ['Hoch/Runter Knöpfe für UFO auf iPad', 'Roboter-Schuss macht 1 Herz Schaden', 'Schnellerer Quality-Wechsel (450ms)', '30 automatische Tests vor jedem Push'] },
-  { id: 'v9',  name: 'Update 9 (aktuell)', desc: 'Riesiges Star-Wars-Mutterschiff + UFO-Sprungtaste + Quality-Chip', new: ['Star-Wars-Mutterschiff mit Hangar-Bucht', 'Springtaste lässt UFO schweben', 'Quality-Chip oben rechts (kurz sichtbar)', 'Schnellerer Quality-Wechsel (350ms)', 'Roboter spawnen innen im Hangar', 'Größere Landeplattform 8×8'] }
+  { id: 'v9',  name: 'Update 9', desc: 'Riesiges Star-Wars-Mutterschiff + UFO-Sprungtaste + Quality-Chip', new: ['Star-Wars-Mutterschiff mit Hangar-Bucht', 'Springtaste lässt UFO schweben', 'Quality-Chip oben rechts (kurz sichtbar)', 'Schnellerer Quality-Wechsel (350ms)', 'Roboter spawnen innen im Hangar', 'Größere Landeplattform 8×8'] },
+  { id: 'v10', name: 'Update 10 (aktuell)', desc: 'Echter Star Destroyer + manuelle Qualität + Anleitung + nie stocken', new: ['Mutterschiff als Star-Destroyer-Keil mit zwei Brücken-Kuppeln', 'Pulsierender Beacon unter dem Schiff zum Finden', 'Hecken & Grashalme können bei schlechter FPS verschwinden', 'Stutter-Erkennung (jeder Spike senkt Qualität sofort)', 'Manuell Auto/1–13 in den Einstellungen wählbar', 'Anleitungs-Bildschirm erklärt Tunnel, UFO und Mutterschiff', 'Gewinnen NUR durch Andocken + alle Roboter im Hangar besiegen', 'Geheimer Map-Generator (URL ?dev=daniel)'] }
 ];
 
 let gameMode = (typeof localStorage !== 'undefined' && localStorage.getItem('geburtstag.mode')) || 'v7';
@@ -5666,9 +5824,210 @@ function buildVersionList() {
 }
 buildVersionList();
 
+// === Quality choice buttons (Auto + Stufen 1..13) ===
+const qualityChoicesEl = document.getElementById('qualityChoices');
+function buildQualityChoices() {
+  qualityChoicesEl.innerHTML = '';
+  const mkBtn = (label, value, active, tooltip) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.title = tooltip || '';
+    b.style.cssText = 'padding: 8px 12px; min-width: 44px; font-weight: bold; border-radius: 8px; cursor: pointer; border: 2px solid ' +
+      (active ? '#ffd700' : 'rgba(255,255,255,0.25)') + '; background: ' +
+      (active ? 'linear-gradient(135deg,#ffd700,#ffa500)' : 'rgba(255,255,255,0.08)') + '; color: ' +
+      (active ? '#1a1a2e' : '#fff') + '; font-size: 0.9em;';
+    b.addEventListener('click', () => {
+      if (value === 'auto') {
+        manualQualityLevel = null;
+        try { localStorage.setItem('geburtstag.quality', 'auto'); } catch (e) {}
+      } else {
+        manualQualityLevel = value;
+        qualityLevel = value;
+        applyQualityLevel();
+        try { localStorage.setItem('geburtstag.quality', String(value)); } catch (e) {}
+      }
+      showQualityChip(qualityLevel);
+      buildQualityChoices();
+    });
+    qualityChoicesEl.appendChild(b);
+  };
+  mkBtn('Auto', 'auto', manualQualityLevel === null, 'Passt sich automatisch an — nie stocken');
+  for (let lv = 1; lv <= MAX_QUALITY; lv++) {
+    mkBtn(String(lv), lv, manualQualityLevel === lv, lv <= 4 ? 'Sehr schnell, einfacher Look' : (lv <= 8 ? 'Mittel' : 'Maximale Grafik'));
+  }
+}
+buildQualityChoices();
+
+// === Hilfe / Anleitung ===
+const helpScreen = document.getElementById('helpScreen');
+const helpBtn = document.getElementById('helpBtn');
+const helpBackBtn = document.getElementById('helpBackBtn');
+if (helpBtn) {
+  helpBtn.addEventListener('click', () => {
+    startScreen.classList.add('hidden');
+    helpScreen.classList.remove('hidden');
+  });
+}
+if (helpBackBtn) {
+  helpBackBtn.addEventListener('click', () => {
+    helpScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+  });
+}
+
+// === Map-Generator (versteckt, nur fuer Daniel) ===
+try {
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('dev') || url.searchParams.has('daniel') || url.searchParams.has('map')) {
+    localStorage.setItem('geburtstag.dev', '1');
+  }
+} catch (e) {}
+const devMode = (() => {
+  try { return localStorage.getItem('geburtstag.dev') === '1'; }
+  catch (e) { return false; }
+})();
+const mapGenBtn = document.getElementById('mapGenBtn');
+const mapGenScreen = document.getElementById('mapGenScreen');
+const mapGenBackBtn = document.getElementById('mapGenBackBtn');
+const mapGenNewBtn = document.getElementById('mapGenNewBtn');
+const mapGenCopyBtn = document.getElementById('mapGenCopyBtn');
+const mapGenCanvas = document.getElementById('mapGenCanvas');
+const mapGenInfo = document.getElementById('mapGenInfo');
+let currentGenMap = null;
+
+function generateRandomMap(seed) {
+  let s = seed || Math.floor(Math.random() * 99999);
+  const seedVal = s;
+  const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  const hedges = [];
+  const HCOUNT = 8 + Math.floor(rand() * 6);
+  const tries = HCOUNT * 12;
+  let placed = 0, t = 0;
+  while (placed < HCOUNT && t < tries) {
+    t++;
+    const x = Math.round((rand() - 0.5) * 36);
+    const z = Math.round((rand() - 0.5) * 36);
+    const l = 6 + Math.floor(rand() * 9);
+    const r = Math.floor(rand() * 4) * (Math.PI / 2);
+    // Vermeide das Zentrum (wo die Torte stehen koennte)
+    if (Math.abs(x) < 3 && Math.abs(z) < 3) continue;
+    let ok = true;
+    for (const h of hedges) {
+      if (Math.abs(h[0] - x) < 5 && Math.abs(h[1] - z) < 5) { ok = false; break; }
+    }
+    if (!ok) continue;
+    hedges.push([x, z, l, r]);
+    placed++;
+  }
+  const trees = [];
+  for (let i = 0; i < 6 + Math.floor(rand() * 5); i++) {
+    const x = Math.round((rand() - 0.5) * 50);
+    const z = Math.round((rand() - 0.5) * 50);
+    if (Math.abs(x) < 6 && Math.abs(z) < 6) continue;
+    trees.push([x, z]);
+  }
+  return { seed: seedVal, hedges, trees };
+}
+
+function drawMapPreview(map) {
+  if (!mapGenCanvas) return;
+  const ctx = mapGenCanvas.getContext('2d');
+  const W = mapGenCanvas.width, H = mapGenCanvas.height;
+  const SCALE = W / 64; // -32..+32 sichtbar
+  ctx.fillStyle = '#1a3010';
+  ctx.fillRect(0, 0, W, H);
+  // Gitter
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  for (let g = -32; g <= 32; g += 8) {
+    ctx.beginPath();
+    ctx.moveTo((g + 32) * SCALE, 0);
+    ctx.lineTo((g + 32) * SCALE, H);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, (g + 32) * SCALE);
+    ctx.lineTo(W, (g + 32) * SCALE);
+    ctx.stroke();
+  }
+  // Garten-Grenze
+  ctx.strokeStyle = '#a87f50';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(2 * SCALE, 2 * SCALE, 60 * SCALE, 60 * SCALE);
+  // Baeume
+  ctx.fillStyle = '#3a5520';
+  for (const [x, z] of map.trees) {
+    ctx.beginPath();
+    ctx.arc((x + 32) * SCALE, (z + 32) * SCALE, 1.4 * SCALE, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Hecken
+  ctx.fillStyle = '#4a6628';
+  ctx.strokeStyle = '#2d4416';
+  ctx.lineWidth = 2;
+  for (const [x, z, l, r] of map.hedges) {
+    ctx.save();
+    ctx.translate((x + 32) * SCALE, (z + 32) * SCALE);
+    ctx.rotate(r);
+    ctx.fillRect(-l / 2 * SCALE, -0.35 * SCALE, l * SCALE, 0.7 * SCALE);
+    ctx.strokeRect(-l / 2 * SCALE, -0.35 * SCALE, l * SCALE, 0.7 * SCALE);
+    ctx.restore();
+  }
+  // Spieler-Start (0,0)
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.arc(32 * SCALE, 32 * SCALE, 0.6 * SCALE, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('Start', 32 * SCALE - 12, 32 * SCALE - 6);
+}
+
+function showMap(map) {
+  currentGenMap = map;
+  drawMapPreview(map);
+  if (mapGenInfo) {
+    const code = 'const HEDGES = [\n' + map.hedges.map(h => '  [' + h[0] + ', ' + h[1] + ', ' + h[2] + ', ' + h[3].toFixed(4) + ']').join(',\n') + '\n];';
+    mapGenInfo.textContent = 'Seed: ' + map.seed + ' · ' + map.hedges.length + ' Hecken · ' + map.trees.length + ' Baeume';
+    mapGenInfo._code = code;
+  }
+}
+
+if (devMode && mapGenBtn) {
+  mapGenBtn.style.display = 'inline-block';
+}
+if (mapGenBtn) {
+  mapGenBtn.addEventListener('click', () => {
+    startScreen.classList.add('hidden');
+    mapGenScreen.classList.remove('hidden');
+    showMap(generateRandomMap());
+  });
+}
+if (mapGenBackBtn) {
+  mapGenBackBtn.addEventListener('click', () => {
+    mapGenScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+  });
+}
+if (mapGenNewBtn) {
+  mapGenNewBtn.addEventListener('click', () => {
+    showMap(generateRandomMap());
+  });
+}
+if (mapGenCopyBtn) {
+  mapGenCopyBtn.addEventListener('click', () => {
+    if (mapGenInfo && mapGenInfo._code && navigator.clipboard) {
+      navigator.clipboard.writeText(mapGenInfo._code).then(() => {
+        mapGenCopyBtn.textContent = '✓ Kopiert!';
+        setTimeout(() => { mapGenCopyBtn.textContent = '\u{1F4CB} Code kopieren'; }, 1500);
+      });
+    }
+  });
+}
+
 settingsBtn.addEventListener('click', () => {
   startScreen.classList.add('hidden');
   settingsScreen.classList.remove('hidden');
+  buildQualityChoices();
 });
 settingsBackBtn.addEventListener('click', () => {
   settingsScreen.classList.add('hidden');
@@ -5708,24 +6067,38 @@ const MAX_QUALITY = 13;
 const MIN_QUALITY = 1;
 const frameTimes = [];
 let qualityCheckAt = 0;
+// Manueller Override: null = automatisch, sonst Wunsch-Level (1..13)
+let manualQualityLevel = null;
+try {
+  const stored = localStorage.getItem('geburtstag.quality');
+  if (stored && stored !== 'auto') {
+    const lv = parseInt(stored, 10);
+    if (lv >= MIN_QUALITY && lv <= MAX_QUALITY) {
+      manualQualityLevel = lv;
+      qualityLevel = lv;
+    }
+  }
+} catch (e) {}
 
 // Quality strategy: SCHMETTERLINGE first, then other effects, pixel ratio LAST.
 // Movement always stays smooth.
+// Strategie: ZUERST Schmetterlinge, dann Effekte, dann Grashalme + Hecken-Deko, ZULETZT Pixel-Ratio.
+// Bewegung bleibt immer flüssig. Hecken-Kollision bleibt erhalten (nur Visual abgeschaltet).
 const QUALITY_CONFIG = [
   null,
-  { px: 0.75, shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, fogNear: 12, fogFar: 28 }, // 1
-  { px: 0.9,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, fogNear: 14, fogFar: 34 }, // 2
-  { px: 1.0,  shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, fogNear: 16, fogFar: 40 }, // 3
-  { px: 1.2,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, fogNear: 18, fogFar: 50 }, // 4
-  { px: 1.4,  shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, fogNear: 20, fogFar: 60 }, // 5
-  { px: 1.7,  shadow: false, butt: 0,  clouds: 4, wind: false, sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 6
-  { px: 2.0,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: false, birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 7
-  { px: 2.0,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 8
-  { px: 2.0,  shadow: true,  butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 9
-  { px: 2.0,  shadow: true,  butt: 2,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 10
-  { px: 2.0,  shadow: true,  butt: 4,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 11
-  { px: 2.0,  shadow: true,  butt: 7,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 }, // 12
-  { px: 2.0,  shadow: true,  butt: 99, clouds: 99, wind: true, sun: true,  birds: true,  grass: true,  fogNear: 20, fogFar: 70 } // 13
+  { px: 1.0,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: false, fogNear: 12, fogFar: 28 }, // 1
+  { px: 1.1,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: false, fogNear: 14, fogFar: 34 }, // 2
+  { px: 1.25, shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 16, fogFar: 40 }, // 3
+  { px: 1.4,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 18, fogFar: 50 }, // 4
+  { px: 1.55, shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 60 }, // 5
+  { px: 1.7,  shadow: false, butt: 0,  clouds: 4, wind: false, sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 6
+  { px: 2.0,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 7
+  { px: 2.0,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 8
+  { px: 2.0,  shadow: true,  butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 9
+  { px: 2.0,  shadow: true,  butt: 2,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 10
+  { px: 2.0,  shadow: true,  butt: 4,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 11
+  { px: 2.0,  shadow: true,  butt: 7,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 12
+  { px: 2.0,  shadow: true,  butt: 99, clouds: 99, wind: true, sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 } // 13
 ];
 
 let windEnabled = true, sunEnabled = true, birdsEnabled = true, grassNoiseEnabled = true;
@@ -5737,6 +6110,8 @@ function applyQualityLevel() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, c.px));
   for (let i = 0; i < butterflies.length; i++) butterflies[i].group.visible = i < c.butt;
   for (let i = 0; i < cloudGroups.length; i++) cloudGroups[i].group.visible = i < c.clouds;
+  for (let i = 0; i < grassBladeMeshes.length; i++) grassBladeMeshes[i].visible = !!c.grassBlades;
+  for (let i = 0; i < hedgeGroups.length; i++) hedgeGroups[i].visible = !!c.hedges;
   if (!inCaveWorld && !inAlienWorld && !inBonusWorld && scene.fog) {
     scene.fog.near = c.fogNear;
     scene.fog.far = c.fogFar;
@@ -5752,29 +6127,51 @@ function applyQualityLevel() {
 const qualityChip = document.getElementById('qualityChip');
 let qualityChipHideAt = 0;
 function showQualityChip(level) {
-  qualityChip.textContent = '⚡ Qualität: ' + level;
+  const prefix = (manualQualityLevel !== null) ? '🔒 Qualität: ' : '⚡ Qualität: ';
+  qualityChip.textContent = prefix + level;
   qualityChip.classList.add('show');
   qualityChipHideAt = performance.now() + 1500;
 }
 
+let goodFrameStreak = 0;
 function updateAdaptiveQuality(nowMs) {
   frameTimes.push(nowMs);
-  if (frameTimes.length > 30) frameTimes.shift();
+  if (frameTimes.length > 20) frameTimes.shift();
   if (qualityChipHideAt > 0 && nowMs > qualityChipHideAt) {
     qualityChip.classList.remove('show');
     qualityChipHideAt = 0;
   }
-  if (nowMs - qualityCheckAt < 350) return;
+  // Manueller Modus: keine automatischen Wechsel
+  if (manualQualityLevel !== null) return;
+  if (nowMs - qualityCheckAt < 200) return;
   qualityCheckAt = nowMs;
-  if (frameTimes.length < 8) return;
+  if (frameTimes.length < 5) return;
   const span = frameTimes[frameTimes.length - 1] - frameTimes[0];
   const avgFps = (frameTimes.length - 1) / (span / 1000);
+  // Worst frame delta in window — Stutter-Erkennung
+  let maxDelta = 0;
+  for (let i = 1; i < frameTimes.length; i++) {
+    const d = frameTimes[i] - frameTimes[i - 1];
+    if (d > maxDelta) maxDelta = d;
+  }
   let target = qualityLevel;
-  // Aggressive drops on low FPS, prompt recovery on good FPS
-  if (avgFps < 18 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 3);
-  else if (avgFps < 32 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 2);
-  else if (avgFps < 54 && qualityLevel > MIN_QUALITY) target = qualityLevel - 1;
-  else if (avgFps > 58 && qualityLevel < MAX_QUALITY) target = qualityLevel + 1;
+  // Sofort runter bei jedem Stocker — Stutter = jeder Frame über 50ms (< 20fps)
+  if (maxDelta > 80 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 4);
+  else if (maxDelta > 50 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 3);
+  else if (avgFps < 25 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 3);
+  else if (avgFps < 40 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 2);
+  else if (avgFps < 55 && qualityLevel > MIN_QUALITY) target = qualityLevel - 1;
+  // Hoch: nur sehr vorsichtig nach langer ruhiger Phase ohne Spikes
+  if (target === qualityLevel) {
+    if (avgFps > 58 && maxDelta < 22) goodFrameStreak++;
+    else goodFrameStreak = 0;
+    if (goodFrameStreak >= 6 && qualityLevel < MAX_QUALITY) {
+      target = qualityLevel + 1;
+      goodFrameStreak = 0;
+    }
+  } else {
+    goodFrameStreak = 0;
+  }
   if (target !== qualityLevel) {
     qualityLevel = target;
     applyQualityLevel();
@@ -5816,6 +6213,13 @@ function animate() {
   updateAutoEnter(dt);
   updateEnemyShips(dt);
   updateDocking(dt);
+  // Mutterschiff: pulsierender Beacon + leichte Schwebe-Animation
+  if (window.__mothershipBeacon) {
+    window.__mothershipBeacon.material.opacity = 0.22 + 0.18 * (0.5 + 0.5 * Math.sin(nowMs * 0.003));
+  }
+  if (window.__mothershipGroup) {
+    window.__mothershipGroup.position.y = MOTHERSHIP_Y + Math.sin(nowMs * 0.0006) * 0.4;
+  }
   // Grass rustling while moving in the garden
   const movingNow = gameState === 'playing' && onGround && (
     (isTouch && (joystickVec.x !== 0 || joystickVec.y !== 0)) ||
