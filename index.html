@@ -303,6 +303,33 @@
 
 <script>
 // === Game ===
+// Sichere localStorage-Helpers — werfen NIE (Private Mode, file://, opaque origins blockieren localStorage)
+function safeStorageGet(key, defaultValue) {
+  try {
+    if (typeof localStorage === 'undefined') return defaultValue;
+    const v = localStorage.getItem(key);
+    return (v === null || v === undefined) ? defaultValue : v;
+  } catch (e) { return defaultValue; }
+}
+function safeStorageSet(key, value) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(key, value);
+  } catch (e) {}
+}
+// Quality-Konstanten frueh deklariert (Settings-UI braucht sie)
+const MAX_QUALITY = 13;
+const MIN_QUALITY = 1;
+// Globaler Manueller-Quality-Override
+let manualQualityLevel = null;
+{
+  const stored = safeStorageGet('geburtstag.quality', null);
+  if (stored && stored !== 'auto') {
+    const lv = parseInt(stored, 10);
+    if (lv >= MIN_QUALITY && lv <= MAX_QUALITY) manualQualityLevel = lv;
+  }
+}
+
 const canvas = document.getElementById('game');
 const loading = document.getElementById('loading');
 const startScreen = document.getElementById('startScreen');
@@ -5803,10 +5830,11 @@ const UPDATES = [
   { id: 'v9',  name: 'Update 9', desc: 'Riesiges Star-Wars-Mutterschiff + UFO-Sprungtaste + Quality-Chip', new: ['Star-Wars-Mutterschiff mit Hangar-Bucht', 'Springtaste lässt UFO schweben', 'Quality-Chip oben rechts (kurz sichtbar)', 'Schnellerer Quality-Wechsel (350ms)', 'Roboter spawnen innen im Hangar', 'Größere Landeplattform 8×8'] },
   { id: 'v10', name: 'Update 10', desc: 'Echter Star Destroyer + manuelle Qualität + Anleitung + nie stocken', new: ['Mutterschiff als Star-Destroyer-Keil mit zwei Brücken-Kuppeln', 'Pulsierender Beacon unter dem Schiff zum Finden', 'Hecken & Grashalme können bei schlechter FPS verschwinden', 'Stutter-Erkennung (jeder Spike senkt Qualität sofort)', 'Manuell Auto/1–13 in den Einstellungen wählbar', 'Anleitungs-Bildschirm erklärt Tunnel, UFO und Mutterschiff', 'Gewinnen NUR durch Andocken + alle Roboter im Hangar besiegen', 'Geheimer Map-Generator (URL ?dev=daniel)'] },
   { id: 'v11', name: 'Update 11', desc: 'Wirklich nie mehr stocken — sofort-Reaktion + niedrigere Pixel-Stufen', new: ['Sofort-Reaktion: jeder einzelne Spike (>35ms) senkt Quality SOFORT', 'Pixel-Ratio jetzt ab Stufe 1 (0.5) drastisch niedriger', 'iPad/Touch startet auf Stufe 6 (nicht 13) — kein Initial-Stocken', 'Stutter-Lock: 6 Sek lang nicht hochstufen nach Spike', 'Hochstufen erst nach 8 ruhigen Checks ohne Spike'] },
-  { id: 'v12', name: 'Update 12 (aktuell)', desc: 'Röhren niedriger + viel strengere Tests', new: ['Garten-Röhren nur noch 0.55–0.85 hoch (vorher 0.9–1.5)', 'Cave-Exit-Röhre auf 0.85 reduziert (vorher 1.1)', 'Spieler kann jetzt bequem auf alle Röhren springen', '5 neue Runtime-Tests: Loading-Hide, Click-Test, pickStartQuality isoliert', '2D-Canvas-Stub für jsdom-Runtime'] }
+  { id: 'v12', name: 'Update 12', desc: 'Röhren niedriger + viel strengere Tests', new: ['Garten-Röhren nur noch 0.55–0.85 hoch (vorher 0.9–1.5)', 'Cave-Exit-Röhre auf 0.85 reduziert (vorher 1.1)', 'Spieler kann jetzt bequem auf alle Röhren springen', '5 neue Runtime-Tests: Loading-Hide, Click-Test, pickStartQuality isoliert', '2D-Canvas-Stub für jsdom-Runtime'] },
+  { id: 'v13', name: 'Update 13 (aktuell)', desc: 'KRITISCHE FIXES — Spiel lädt jetzt überall', new: ['localStorage-SecurityError gefixt (Private Mode, file://, opaque origins)', 'safeStorageGet/Set Helpers schützen vor allen localStorage-Fehlern', 'ReferenceError manualQualityLevel before initialization gefixt', 'ReferenceError MAX_QUALITY before initialization gefixt', 'Quality-Konstanten + Helpers früh deklariert (vor Settings-UI)', 'Verschärfte Runtime-Tests fangen ReferenceError/SecurityError'] }
 ];
 
-let gameMode = (typeof localStorage !== 'undefined' && localStorage.getItem('geburtstag.mode')) || 'v7';
+let gameMode = safeStorageGet('geburtstag.mode', 'v7');
 
 function buildVersionList() {
   versionList.innerHTML = '';
@@ -5818,7 +5846,7 @@ function buildVersionList() {
       '<div style="font-size:0.8em;opacity:0.7;margin-top:6px;">Neu: ' + u.new.join(' · ') + '</div>';
     el.addEventListener('click', () => {
       gameMode = u.id;
-      try { localStorage.setItem('geburtstag.mode', u.id); } catch (e) {}
+      safeStorageSet('geburtstag.mode', u.id);
       buildVersionList();
       showUnlockMessage(u.name + ' ausgewählt — startet beim nächsten Spiel');
     });
@@ -5842,12 +5870,12 @@ function buildQualityChoices() {
     b.addEventListener('click', () => {
       if (value === 'auto') {
         manualQualityLevel = null;
-        try { localStorage.setItem('geburtstag.quality', 'auto'); } catch (e) {}
+        safeStorageSet('geburtstag.quality', 'auto');
       } else {
         manualQualityLevel = value;
         qualityLevel = value;
         applyQualityLevel();
-        try { localStorage.setItem('geburtstag.quality', String(value)); } catch (e) {}
+        safeStorageSet('geburtstag.quality', String(value));
       }
       showQualityChip(qualityLevel);
       buildQualityChoices();
@@ -5882,13 +5910,10 @@ if (helpBackBtn) {
 try {
   const url = new URL(window.location.href);
   if (url.searchParams.has('dev') || url.searchParams.has('daniel') || url.searchParams.has('map')) {
-    localStorage.setItem('geburtstag.dev', '1');
+    safeStorageSet('geburtstag.dev', '1');
   }
 } catch (e) {}
-const devMode = (() => {
-  try { return localStorage.getItem('geburtstag.dev') === '1'; }
-  catch (e) { return false; }
-})();
+const devMode = safeStorageGet('geburtstag.dev', '') === '1';
 const mapGenBtn = document.getElementById('mapGenBtn');
 const mapGenScreen = document.getElementById('mapGenScreen');
 const mapGenBackBtn = document.getElementById('mapGenBackBtn');
@@ -6065,10 +6090,8 @@ window.addEventListener('resize', () => {
 });
 
 // === Adaptive quality: 13 fine-grained levels ===
-const MAX_QUALITY = 13;
-const MIN_QUALITY = 1;
-// Start-Level je nach Gerät: Touch/kleine Bildschirme starten vorsichtig,
-// damit's gar nicht erst stockt. Adaptive Quality steigert dann hoch wenn FPS gut bleibt.
+// MAX_QUALITY/MIN_QUALITY + manualQualityLevel sind oben deklariert (Hoisting fuer Settings-UI).
+// Start-Level je nach Gerät: Touch/kleine Bildschirme starten vorsichtig.
 function pickStartQuality() {
   const isTouchDev = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
   const isSmall = Math.min(window.innerWidth, window.innerHeight) < 800;
@@ -6077,22 +6100,11 @@ function pickStartQuality() {
   if (lowEnd) return 9;                  // älterer PC
   return 13;                             // moderner Desktop
 }
-let qualityLevel = pickStartQuality();
+// Falls Manueller-Quality bereits frueh gesetzt wurde, nutze ihn als Start-Level statt pickStartQuality
+let qualityLevel = (manualQualityLevel !== null) ? manualQualityLevel : pickStartQuality();
 const frameTimes = [];
 let qualityCheckAt = 0;
 let stutterLockUntil = 0;
-// Manueller Override: null = automatisch, sonst Wunsch-Level (1..13)
-let manualQualityLevel = null;
-try {
-  const stored = localStorage.getItem('geburtstag.quality');
-  if (stored && stored !== 'auto') {
-    const lv = parseInt(stored, 10);
-    if (lv >= MIN_QUALITY && lv <= MAX_QUALITY) {
-      manualQualityLevel = lv;
-      qualityLevel = lv;
-    }
-  }
-} catch (e) {}
 
 // Quality strategy: SCHMETTERLINGE first, then other effects, pixel ratio LAST.
 // Movement always stays smooth.
