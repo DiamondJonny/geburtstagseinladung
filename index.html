@@ -5800,7 +5800,8 @@ const UPDATES = [
   { id: 'v7',  name: 'Update 7', desc: 'Vulkane schöner + Sichtbare Aliens + adaptive Qualität', new: ['Roter Marker über Robotern', 'Wind im Gras', 'Sonnen-Blendeffekt', '13 Qualitätsstufen'] },
   { id: 'v8',  name: 'Update 8', desc: 'UFO Touch-Steuerung + härtere Roboter + Auto-Tests', new: ['Hoch/Runter Knöpfe für UFO auf iPad', 'Roboter-Schuss macht 1 Herz Schaden', 'Schnellerer Quality-Wechsel (450ms)', '30 automatische Tests vor jedem Push'] },
   { id: 'v9',  name: 'Update 9', desc: 'Riesiges Star-Wars-Mutterschiff + UFO-Sprungtaste + Quality-Chip', new: ['Star-Wars-Mutterschiff mit Hangar-Bucht', 'Springtaste lässt UFO schweben', 'Quality-Chip oben rechts (kurz sichtbar)', 'Schnellerer Quality-Wechsel (350ms)', 'Roboter spawnen innen im Hangar', 'Größere Landeplattform 8×8'] },
-  { id: 'v10', name: 'Update 10 (aktuell)', desc: 'Echter Star Destroyer + manuelle Qualität + Anleitung + nie stocken', new: ['Mutterschiff als Star-Destroyer-Keil mit zwei Brücken-Kuppeln', 'Pulsierender Beacon unter dem Schiff zum Finden', 'Hecken & Grashalme können bei schlechter FPS verschwinden', 'Stutter-Erkennung (jeder Spike senkt Qualität sofort)', 'Manuell Auto/1–13 in den Einstellungen wählbar', 'Anleitungs-Bildschirm erklärt Tunnel, UFO und Mutterschiff', 'Gewinnen NUR durch Andocken + alle Roboter im Hangar besiegen', 'Geheimer Map-Generator (URL ?dev=daniel)'] }
+  { id: 'v10', name: 'Update 10', desc: 'Echter Star Destroyer + manuelle Qualität + Anleitung + nie stocken', new: ['Mutterschiff als Star-Destroyer-Keil mit zwei Brücken-Kuppeln', 'Pulsierender Beacon unter dem Schiff zum Finden', 'Hecken & Grashalme können bei schlechter FPS verschwinden', 'Stutter-Erkennung (jeder Spike senkt Qualität sofort)', 'Manuell Auto/1–13 in den Einstellungen wählbar', 'Anleitungs-Bildschirm erklärt Tunnel, UFO und Mutterschiff', 'Gewinnen NUR durch Andocken + alle Roboter im Hangar besiegen', 'Geheimer Map-Generator (URL ?dev=daniel)'] },
+  { id: 'v11', name: 'Update 11 (aktuell)', desc: 'Wirklich nie mehr stocken — sofort-Reaktion + niedrigere Pixel-Stufen', new: ['Sofort-Reaktion: jeder einzelne Spike (>35ms) senkt Quality SOFORT', 'Pixel-Ratio jetzt ab Stufe 1 (0.5) drastisch niedriger', 'iPad/Touch startet auf Stufe 6 (nicht 13) — kein Initial-Stocken', 'Stutter-Lock: 6 Sek lang nicht hochstufen nach Spike', 'Hochstufen erst nach 8 ruhigen Checks ohne Spike'] }
 ];
 
 let gameMode = (typeof localStorage !== 'undefined' && localStorage.getItem('geburtstag.mode')) || 'v7';
@@ -6062,11 +6063,22 @@ window.addEventListener('resize', () => {
 });
 
 // === Adaptive quality: 13 fine-grained levels ===
-let qualityLevel = 13;
 const MAX_QUALITY = 13;
 const MIN_QUALITY = 1;
+// Start-Level je nach Gerät: Touch/kleine Bildschirme starten vorsichtig,
+// damit's gar nicht erst stockt. Adaptive Quality steigert dann hoch wenn FPS gut bleibt.
+function pickStartQuality() {
+  const isTouchDev = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const isSmall = Math.min(window.innerWidth, window.innerHeight) < 800;
+  const lowEnd = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
+  if (isTouchDev || isSmall) return 6;   // iPad / Handy
+  if (lowEnd) return 9;                  // älterer PC
+  return 13;                             // moderner Desktop
+}
+let qualityLevel = pickStartQuality();
 const frameTimes = [];
 let qualityCheckAt = 0;
+let stutterLockUntil = 0;
 // Manueller Override: null = automatisch, sonst Wunsch-Level (1..13)
 let manualQualityLevel = null;
 try {
@@ -6082,22 +6094,22 @@ try {
 
 // Quality strategy: SCHMETTERLINGE first, then other effects, pixel ratio LAST.
 // Movement always stays smooth.
-// Strategie: ZUERST Schmetterlinge, dann Effekte, dann Grashalme + Hecken-Deko, ZULETZT Pixel-Ratio.
-// Bewegung bleibt immer flüssig. Hecken-Kollision bleibt erhalten (nur Visual abgeschaltet).
+// Strategie: ZUERST Schmetterlinge + Wolken, dann Effekte, dann Grashalme + Hecken-Deko,
+// PARALLEL dazu Pixel-Ratio aggressiv senken (damit's NIE stockt — Bewegung > Auflösung).
 const QUALITY_CONFIG = [
   null,
-  { px: 1.0,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: false, fogNear: 12, fogFar: 28 }, // 1
-  { px: 1.1,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: false, fogNear: 14, fogFar: 34 }, // 2
-  { px: 1.25, shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 16, fogFar: 40 }, // 3
-  { px: 1.4,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 18, fogFar: 50 }, // 4
-  { px: 1.55, shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 60 }, // 5
-  { px: 1.7,  shadow: false, butt: 0,  clouds: 4, wind: false, sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 6
-  { px: 2.0,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 7
-  { px: 2.0,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 8
-  { px: 2.0,  shadow: true,  butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 9
-  { px: 2.0,  shadow: true,  butt: 2,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 10
-  { px: 2.0,  shadow: true,  butt: 4,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 11
-  { px: 2.0,  shadow: true,  butt: 7,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 12
+  { px: 0.5,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: false, fogNear: 10, fogFar: 22 }, // 1 — Notfall
+  { px: 0.6,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: false, fogNear: 12, fogFar: 28 }, // 2
+  { px: 0.7,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 14, fogFar: 32 }, // 3
+  { px: 0.85, shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true,  fogNear: 16, fogFar: 38 }, // 4
+  { px: 1.0,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 18, fogFar: 46 }, // 5
+  { px: 1.2,  shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 56 }, // 6
+  { px: 1.4,  shadow: false, butt: 0,  clouds: 4, wind: true,  sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 66 }, // 7
+  { px: 1.6,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 8
+  { px: 1.75, shadow: false, butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 9
+  { px: 1.9,  shadow: true,  butt: 0,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 10
+  { px: 2.0,  shadow: true,  butt: 2,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 11
+  { px: 2.0,  shadow: true,  butt: 5,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 12
   { px: 2.0,  shadow: true,  butt: 99, clouds: 99, wind: true, sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 } // 13
 ];
 
@@ -6143,34 +6155,54 @@ function updateAdaptiveQuality(nowMs) {
   }
   // Manueller Modus: keine automatischen Wechsel
   if (manualQualityLevel !== null) return;
+
+  // === SOFORT-REAKTION: jeder einzelne Spike senkt die Qualität OHNE 200ms-Wartezeit ===
+  if (frameTimes.length >= 2 && qualityLevel > MIN_QUALITY) {
+    const lastDelta = frameTimes[frameTimes.length - 1] - frameTimes[frameTimes.length - 2];
+    let immediateDrop = 0;
+    if (lastDelta > 100) immediateDrop = 5;       // schwerer Stocker (>100ms = <10fps)
+    else if (lastDelta > 60) immediateDrop = 3;   // mittlerer Stocker
+    else if (lastDelta > 35) immediateDrop = 2;   // leichter Stocker (>35ms = <28fps)
+    if (immediateDrop > 0) {
+      qualityLevel = Math.max(MIN_QUALITY, qualityLevel - immediateDrop);
+      applyQualityLevel();
+      showQualityChip(qualityLevel);
+      qualityCheckAt = nowMs;
+      goodFrameStreak = 0;
+      stutterLockUntil = nowMs + 6000; // 6 Sek lang nicht hochstufen
+      return;
+    }
+  }
+
   if (nowMs - qualityCheckAt < 200) return;
   qualityCheckAt = nowMs;
   if (frameTimes.length < 5) return;
   const span = frameTimes[frameTimes.length - 1] - frameTimes[0];
   const avgFps = (frameTimes.length - 1) / (span / 1000);
-  // Worst frame delta in window — Stutter-Erkennung
+  // Worst frame delta in window — durchschnittliche Stutter-Erkennung
   let maxDelta = 0;
   for (let i = 1; i < frameTimes.length; i++) {
     const d = frameTimes[i] - frameTimes[i - 1];
     if (d > maxDelta) maxDelta = d;
   }
   let target = qualityLevel;
-  // Sofort runter bei jedem Stocker — Stutter = jeder Frame über 50ms (< 20fps)
   if (maxDelta > 80 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 4);
   else if (maxDelta > 50 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 3);
   else if (avgFps < 25 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 3);
   else if (avgFps < 40 && qualityLevel > MIN_QUALITY) target = Math.max(MIN_QUALITY, qualityLevel - 2);
   else if (avgFps < 55 && qualityLevel > MIN_QUALITY) target = qualityLevel - 1;
-  // Hoch: nur sehr vorsichtig nach langer ruhiger Phase ohne Spikes
+  // Hoch: nur wenn KEIN Stutter-Lock aktiv + langer ruhiger Lauf ohne Spikes
   if (target === qualityLevel) {
-    if (avgFps > 58 && maxDelta < 22) goodFrameStreak++;
+    if (nowMs < stutterLockUntil) goodFrameStreak = 0;
+    else if (avgFps > 58 && maxDelta < 22) goodFrameStreak++;
     else goodFrameStreak = 0;
-    if (goodFrameStreak >= 6 && qualityLevel < MAX_QUALITY) {
+    if (goodFrameStreak >= 8 && qualityLevel < MAX_QUALITY) {
       target = qualityLevel + 1;
       goodFrameStreak = 0;
     }
   } else {
     goodFrameStreak = 0;
+    stutterLockUntil = nowMs + 6000;
   }
   if (target !== qualityLevel) {
     qualityLevel = target;
