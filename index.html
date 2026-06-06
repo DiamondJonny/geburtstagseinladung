@@ -75,9 +75,12 @@
   .settings-page { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 16px 18px; text-align: left; }
   .settings-page.show { display: block; }
   .settings-page.hidden { display: none; }
-  #tutorialInfoBtn { position: fixed; top: 12px; left: 180px; background: rgba(40,80,140,0.8); color: #fff; padding: 0; width: 38px; height: 38px; border-radius: 50%; font-size: 22px; font-weight: bold; z-index: 8; border: 3px solid #66ccff; cursor: pointer; pointer-events: auto; display: none; box-shadow: 0 0 14px rgba(100,200,255,0.7); font-family: serif; line-height: 1; }
-  #tutorialInfoBtn:hover { background: rgba(100,150,200,0.95); }
-  #tutorialInfoBtn.show { display: block; }
+  /* Globaler Info-Knopf (gelb) — immer sichtbar im Spiel, zeigt Erklaerungen fuer alle Knoepfe */
+  #globalInfoBtn { position: fixed; top: 102px; left: 50%; transform: translateX(-50%) translateX(-180px); background: linear-gradient(135deg, #ffd700, #ffa500); color: #1a1a2e; padding: 0; width: 40px; height: 40px; border-radius: 50%; font-size: 24px; font-weight: bold; z-index: 8; border: 3px solid #ffd700; cursor: pointer; pointer-events: auto; display: none; box-shadow: 0 0 14px rgba(255,215,0,0.7); font-family: serif; line-height: 1; }
+  #globalInfoBtn:hover { background: linear-gradient(135deg, #ffea66, #ffc266); }
+  #globalInfoBtn.show { display: block; }
+  /* Alter Tutorial-Info-Knopf bleibt (versteckt — globalInfoBtn macht das jetzt) */
+  #tutorialInfoBtn { display: none !important; }
   #infoOverlay { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgba(0,0,0,0.55); display: none; }
   #infoOverlay.show { display: block; }
   .info-highlight { position: fixed; border: 3px solid #ffd700; border-radius: 8px; box-shadow: 0 0 18px rgba(255,215,0,0.9), inset 0 0 12px rgba(255,215,0,0.4); pointer-events: none; animation: infoBlink 1.2s ease-in-out infinite; z-index: 21; }
@@ -158,6 +161,7 @@
 <div id="qualityChip"></div>
 <button id="abortBtn" type="button" title="Zurück zum Start-Menü">&#x2715; Zur&uuml;ck zum Men&uuml;</button>
 <button id="tutorialInfoBtn" type="button" title="Tutorial-Info anzeigen">&#x2139;</button>
+<button id="globalInfoBtn" type="button" title="Was kann ich hier alles tun?">&#x2139;</button>
 <div id="infoOverlay"></div>
 <div id="charPreview"><canvas id="charPreviewCanvas" width="130" height="170"></canvas></div>
 <div id="sunFlare"></div>
@@ -480,7 +484,7 @@ function bindRobustClick(btn, handler) {
   btn.addEventListener('click', trigger);
 }
 // Quality-Konstanten frueh deklariert (Settings-UI braucht sie)
-const MAX_QUALITY = 13;
+const MAX_QUALITY = 20;
 const MIN_QUALITY = 1;
 // Globaler Manueller-Quality-Override
 let manualQualityLevel = null;
@@ -1444,8 +1448,9 @@ function isInCrater(x, z) {
 }
 function findSafeAlienSpawn(x, z) {
   if (!collidesAny(x, z, 0.5) && !isInCrater(x, z)) return { x, z };
-  for (let ring = 1; ring <= 10; ring++) {
-    const radius = ring * 1.0;
+  // Spirale-Suche (16 Ringe — sehr gruendlich)
+  for (let ring = 1; ring <= 16; ring++) {
+    const radius = ring * 0.8;
     const steps = 8 + ring * 4;
     for (let i = 0; i < steps; i++) {
       const ang = (i / steps) * Math.PI * 2;
@@ -1454,7 +1459,18 @@ function findSafeAlienSpawn(x, z) {
       if (!collidesAny(nx, nz, 0.5) && !isInCrater(nx, nz)) return { x: nx, z: nz };
     }
   }
-  return { x, z };
+  // Notfall: Spieler weit weg vom Center, garantiert ausserhalb der Krater-Zone
+  // Krater sind innerhalb ±16 vom Center, also gehen wir auf ±20
+  const fallbackSpots = [
+    { x: ALIEN_X + 20, z: 0 },
+    { x: ALIEN_X - 20, z: 0 },
+    { x: ALIEN_X, z: 20 },
+    { x: ALIEN_X, z: -20 }
+  ];
+  for (const sp of fallbackSpots) {
+    if (!isInCrater(sp.x, sp.z)) return sp;
+  }
+  return { x: ALIEN_X + 22, z: 22 }; // letztes Fallback
 }
 
 // === Cake spot (random from a list) ===
@@ -5731,6 +5747,15 @@ function updateMovement(dt) {
       }
     }
   }
+  // Mothership: wenn Spieler unter den Boden faellt, sofort sicher zurueck zur Spawn-Ecke
+  if (onMothership && camera.position.y < MOTHERSHIP_Y - 4) {
+    const _s = findSafeSpawn(MOTHERSHIP_X - 8, MOTHERSHIP_Z + 7.5, 0.55);
+    camera.position.set(_s.x, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, _s.z);
+    playerVy = 0;
+    onGround = true;
+    jumpsUsed = 0;
+    return;
+  }
   // Fell into an alien crater — always lose a heart (bypass invulnerability)
   if (inAlienWorld && !inUfo && camera.position.y < -2) {
     const dmg = hasShield ? 0.5 : 1;
@@ -6217,6 +6242,7 @@ function abortToMenu() {
   showCharPreview(false);
   abortBtn.classList.remove('show');
   if (tutorialInfoBtn) tutorialInfoBtn.classList.remove('show');
+  if (globalInfoBtn) globalInfoBtn.classList.remove('show');
   hideInfoOverlay();
   stopMusic();
   if (typeof document.exitPointerLock === 'function') { try { document.exitPointerLock(); } catch (e) {} }
@@ -6330,6 +6356,15 @@ function hideInfoOverlay() {
 }
 if (tutorialInfoBtn) {
   bindRobustClick(tutorialInfoBtn, (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (_infoOverlayActive) hideInfoOverlay();
+    else showInfoOverlay();
+  });
+}
+// Globaler Info-Knopf (immer sichtbar im Spiel, fuer alle Modi)
+const globalInfoBtn = document.getElementById('globalInfoBtn');
+if (globalInfoBtn) {
+  bindRobustClick(globalInfoBtn, (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     if (_infoOverlayActive) hideInfoOverlay();
     else showInfoOverlay();
@@ -6884,8 +6919,8 @@ function teleportToAlienWorld() {
     abductionUfo = null;
   }
   abductionPhase = 0;
-  // Teleport player — look directly at the pedestal so aliens are right in view
-  camera.position.set(ALIEN_X + 11, PLAYER_HEIGHT, 11);
+  // Teleport player — Krater-sicher (mit findSafeAlienSpawn) damit man nicht direkt reinfaellt
+  { const _s = findSafeAlienSpawn(ALIEN_X + 11, 11); camera.position.set(_s.x, PLAYER_HEIGHT, _s.z); }
   yaw = Math.atan2(camera.position.x - ALIEN_X, camera.position.z - 0);
   pitch = -0.05;
   playerVy = 0;
@@ -7291,6 +7326,8 @@ function startGame() {
   if (abortBtn) abortBtn.classList.add('show');
   // Info-Knopf nur im Tutorial sichtbar
   if (tutorialInfoBtn) tutorialInfoBtn.classList.toggle('show', isTutorialMode());
+  // Globaler Info-Knopf IMMER sichtbar im Spiel
+  if (globalInfoBtn) globalInfoBtn.classList.add('show');
   // Hintergrundmusik starten
   startMusic();
   // Tutorial-Welt vereinfachen (Bäume/Büsche/Steine ausblenden, nur 1 Hecke)
@@ -7417,7 +7454,7 @@ function retry() {
         }
       }
     }
-    { const _s = findSafeSpawn(ALIEN_X + 11, 11, 0.5); camera.position.set(_s.x, PLAYER_HEIGHT, _s.z); }
+    { const _s = findSafeAlienSpawn(ALIEN_X + 11, 11); camera.position.set(_s.x, PLAYER_HEIGHT, _s.z); }
     yaw = Math.atan2(camera.position.x - ALIEN_X, camera.position.z - 0);
     pitch = -0.05;
     playerVy = 0;
@@ -7490,7 +7527,8 @@ const UPDATES = [
   { id: 'v32', name: 'Update 32', desc: 'Performance-Optimierung — weniger stocken bei schönerer Optik', new: ['Char-Preview-Animation throttled auf 10 fps (vorher 60 fps) — 6× weniger Canvas-Drawing', 'Roboter-Marker-PointLight ENTFERNT — bei vielen Robotern war das teuer', 'Stattdessen: schönerer Glow mit Kern (Mesh-Material) — sieht besser aus', 'Mothership-Engines: nur 1 PointLight statt 3 (gleiche Wirkung, 3× billiger)', 'WebGL-Renderer mit „high-performance"-Hint (GPU statt iGPU)', 'Tone-Mapping-Exposure leicht erhöht (1.1) — wärmere Farben'] },
   { id: 'v33', name: 'Update 33', desc: 'Optische Politur — Sonne, Mond, Schatten, Spieler-Halo viel echter', new: ['☀️ Sonne mit 3 Glow-Schichten + Additive-Blending Lens-Halo', '☀️ Sun-Halo pulsiert sanft (atmosphärischer Effekt)', '🌙 Mond mit Kratern (8 zufällige Krater-Beulen) statt Sphäre', '🌙 Mond-Glow mit Additive-Blending für realistischen Schein', '👤 Spieler-Schatten-Halo auf dem Boden (skaliert beim Springen)', '🌑 Schatten weicher (radius 4) + besseres Bias (kein „Acne")', 'Sun-Sphere höhere Auflösung (32×20 statt 24×16) für glattere Form'] },
   { id: 'v34', name: 'Update 34', desc: 'Animierte Erfolgs-Feiern + Walkthrough-Tests', new: ['🎉 celebrateAchievement(): Rainbow-Banner + Konfetti-Burst bei Erfolg', '🎉 1. Krone gesammelt → Banner „Erste Krone!"', '🎉 3 Kronen → Doppelsprung-Banner', '🎉 1. Monster besiegt → Banner', '🎉 Pfeil & Bogen freigeschaltet → Banner', '🎉 Gold-Hammer/Schild/Rüstung gebaut → eigene Banner', '🎉 Mutterschiff angedockt → Banner', '🎉 Torte zerstört → 🎂-Banner', '🏆 GEWONNEN → riesiger Banner mit 120 Konfetti', 'Banner-Text rotiert die Regenbogen-Farben', 'Walkthrough-Tests: alle Game-Funktionen sind aufrufbar'] },
-  { id: 'v35', name: 'Update 35 (aktuell)', desc: 'Anti-Krater-Spawn + interaktive Welt-Karte', new: ['🛡️ findSafeAlienSpawn: nach Krater-Sturz NIE wieder in einen Krater spawnen', 'Spirale-Suche meidet auch andere Hindernisse', '🗺️ Neue welt.html-Seite: top-down Karte aller 5 Welten', 'Karte zeigt: Wände, Lücken, Krater, Spawn-Punkte, Ziele', 'Klick auf Karte: Notiz mit Position hinzufügen', 'Notizen lokal gespeichert + Copy-to-Clipboard Export', 'Link „🗺️ Welt-Karte öffnen" im Avatar-Tab in den Einstellungen'] }
+  { id: 'v35', name: 'Update 35', desc: 'Anti-Krater-Spawn + interaktive Welt-Karte', new: ['🛡️ findSafeAlienSpawn: nach Krater-Sturz NIE wieder in einen Krater spawnen', 'Spirale-Suche meidet auch andere Hindernisse', '🗺️ Neue welt.html-Seite: top-down Karte aller 5 Welten', 'Karte zeigt: Wände, Lücken, Krater, Spawn-Punkte, Ziele', 'Klick auf Karte: Notiz mit Position hinzufügen', 'Notizen lokal gespeichert + Copy-to-Clipboard Export', 'Link „🗺️ Welt-Karte öffnen" im Avatar-Tab in den Einstellungen'] },
+  { id: 'v36', name: 'Update 36 (aktuell)', desc: 'Mothership-Durchfall-Schutz + 20 Quality-Stufen + globaler Info-Knopf', new: ['🛡️ Mothership Anti-Fall: Y < (MOTHERSHIP_Y-4) → sofort sicher zurück zur Ecke', '⚙️ Quality-Stufen jetzt 1–20 (vorher 1–13) für mehr Granularität', 'Stufe 1 nur für ganz alte iPads (px 0.4 — absolutes Notfall)', 'Stufen 1–3 für sehr alte Geräte, 4–11 für iPads, 12–17 für PCs, 18–20 für Top-Hardware', 'Modernes iPad startet auf Stufe 11 (vorher 6), guter PC auf 18 (vorher 13)', '🟡 Globaler ℹ️-Info-Knopf neben dem Inventory — IMMER sichtbar', 'Klick zeigt Markierungen für ALLE klickbaren Knöpfe mit Pfeil-Erklärungen', 'findSafeAlienSpawn jetzt mit 16 Ringen + 4 Fallback-Spots'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
@@ -7855,9 +7893,11 @@ function pickStartQuality() {
   const isTouchDev = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
   const isSmall = Math.min(window.innerWidth, window.innerHeight) < 800;
   const lowEnd = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
-  if (isTouchDev || isSmall) return 6;   // iPad / Handy
-  if (lowEnd) return 9;                  // älterer PC
-  return 13;                             // moderner Desktop
+  // Stufen 1-3 sind Notfall — nur fuer SEHR alte Geraete
+  if (isTouchDev && lowEnd) return 9;    // iPad mit wenig Cores
+  if (isTouchDev || isSmall) return 11;  // normales iPad / Handy
+  if (lowEnd) return 14;                 // aelterer PC
+  return 18;                             // moderner Desktop
 }
 // Falls Manueller-Quality bereits frueh gesetzt wurde, nutze ihn als Start-Level statt pickStartQuality
 let qualityLevel = (manualQualityLevel !== null) ? manualQualityLevel : pickStartQuality();
@@ -7869,21 +7909,29 @@ let stutterLockUntil = 0;
 // Movement always stays smooth.
 // Strategie: ZUERST Schmetterlinge + Wolken, dann Effekte, dann Grashalme + Hecken-Deko,
 // PARALLEL dazu Pixel-Ratio aggressiv senken (damit's NIE stockt — Bewegung > Auflösung).
+// 20 Stufen — 1 nur fuer GANZ alte iPads, 20 fuer top-Hardware
 const QUALITY_CONFIG = [
   null,
-  { px: 0.5,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 10, fogFar: 22 }, // 1 — Notfall (Hecken bleiben, fuers Spiel-Gefuehl)
-  { px: 0.6,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true, fogNear: 12, fogFar: 28 }, // 2 (Gras schon hier)
-  { px: 0.7,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 14, fogFar: 32 }, // 3
-  { px: 0.85, shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 16, fogFar: 38 }, // 4
-  { px: 1.0,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 18, fogFar: 46 }, // 5
-  { px: 1.2,  shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 56 }, // 6
-  { px: 1.4,  shadow: false, butt: 0,  clouds: 4, wind: false, sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 66 }, // 7 (Wind erst spaeter)
-  { px: 1.6,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 8 (Wind ab hier)
-  { px: 1.75, shadow: false, butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 9
-  { px: 1.9,  shadow: true,  butt: 0,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 10
-  { px: 2.0,  shadow: true,  butt: 2,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 11
-  { px: 2.0,  shadow: true,  butt: 5,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 12
-  { px: 2.0,  shadow: true,  butt: 99, clouds: 99, wind: true, sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 } // 13
+  { px: 0.4,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 8,  fogFar: 18 }, // 1 — uralt iPad
+  { px: 0.5,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 10, fogFar: 22 }, // 2
+  { px: 0.6,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true, fogNear: 12, fogFar: 28 }, // 3 (Gras zurueck)
+  { px: 0.7,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true, fogNear: 14, fogFar: 32 }, // 4
+  { px: 0.8,  shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true, fogNear: 15, fogFar: 36 }, // 5
+  { px: 0.9,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true, fogNear: 16, fogFar: 40 }, // 6
+  { px: 1.0,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true, fogNear: 18, fogFar: 46 }, // 7
+  { px: 1.1,  shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, grassBlades: true,  hedges: true, fogNear: 19, fogFar: 52 }, // 8
+  { px: 1.25, shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, grassBlades: true,  hedges: true, fogNear: 20, fogFar: 58 }, // 9
+  { px: 1.4,  shadow: false, butt: 0,  clouds: 4, wind: false, sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 62 }, // 10
+  { px: 1.55, shadow: false, butt: 0,  clouds: 4, wind: false, sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 66 }, // 11
+  { px: 1.65, shadow: false, butt: 0,  clouds: 5, wind: true,  sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 }, // 12 (Wind)
+  { px: 1.75, shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 }, // 13 (Sun)
+  { px: 1.85, shadow: false, butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 }, // 14
+  { px: 1.9,  shadow: true,  butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 }, // 15 (Schatten)
+  { px: 2.0,  shadow: true,  butt: 0,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 }, // 16
+  { px: 2.0,  shadow: true,  butt: 2,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 }, // 17 (Schmetterlinge)
+  { px: 2.0,  shadow: true,  butt: 4,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 }, // 18
+  { px: 2.0,  shadow: true,  butt: 7,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 }, // 19
+  { px: 2.0,  shadow: true,  butt: 99, clouds: 99, wind: true, sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true, fogNear: 20, fogFar: 70 } // 20
 ];
 
 let windEnabled = true, sunEnabled = true, birdsEnabled = true, grassNoiseEnabled = true;
