@@ -2629,6 +2629,7 @@ let pipeRideStartPos = null;
 let pipeRideStartYaw = 0;
 
 function startPipeRide() {
+  playSfx('pipe');
   if (gameState !== 'playing') return;
   gameState = 'pipeRide';
   pipeRideStartPos = camera.position.clone();
@@ -3103,8 +3104,7 @@ function alienShoot(alien) {
   const glow = new THREE.PointLight(0xff44ff, 1.0, 3);
   proj.add(glow);
   alienProjectiles.push({ mesh: proj, pos: start.clone(), dir, speed: 11, life: 2.5 });
-  beep(720, 0.07, 'square', 0.06);
-  setTimeout(() => beep(480, 0.05, 'square', 0.04), 30);
+  playSfx('enemyShot');
 }
 
 function updateAlienProjectiles(dt) {
@@ -4142,9 +4142,7 @@ function collectCrown(c) {
   crownsCollected++;
   updateInventory();
   checkUnlockBow();
-  beep(700, 0.13, 'sine', 0.14);
-  setTimeout(() => beep(1000, 0.13, 'sine', 0.14), 100);
-  setTimeout(() => beep(1300, 0.2, 'sine', 0.14), 200);
+  playSfx('coin');
   // Sparkle burst
   for (let i = 0; i < 24; i++) {
     const sz = 0.04 + Math.random() * 0.05;
@@ -4335,7 +4333,7 @@ function tryJump() {
   playerVy = JUMP_SPEED;
   onGround = false;
   jumpsUsed = 1;
-  beep(440, 0.08, 'sine', 0.06);
+  playSfx('jump');
 }
 
 function wingPuff() {
@@ -4556,10 +4554,8 @@ function dockToMothership() {
   invulnerableUntil = 0;
   updateHearts();
   spawnMothershipRobots();
-  showUnlockMessage('🛸 Du bist auf dem Mutterschiff! Besiege alle Roboter!');
-  beep(500, 0.2, 'sine', 0.15);
-  setTimeout(() => beep(700, 0.2, 'sine', 0.15), 200);
-  setTimeout(() => beep(900, 0.25, 'sine', 0.15), 400);
+  showUnlockMessage('🛸 Du bist im Mutterschiff! Erreiche die Controllerzentrale in der Mitte!');
+  playSfx('dock');
 }
 
 function checkMothershipWin() {
@@ -5720,13 +5716,13 @@ function killMonster(m) {
   monstersKilled++;
   updateInventory();
   checkUnlockBow();
+  playSfx('kill');
   if (m._onMothership) setTimeout(checkMothershipWin, 200);
   // Every 3 kills: heal half a heart (if not full)
   if (monstersKilled % 3 === 0 && playerHp < getMaxHp()) {
     playerHp = Math.min(getMaxHp(), playerHp + 0.5);
     updateHearts();
-    beep(880, 0.15, 'sine', 0.12);
-    setTimeout(() => beep(1320, 0.2, 'sine', 0.12), 130);
+    playSfx('powerup');
   }
   scene.remove(m.group);
   m.group.traverse(o => {
@@ -5833,8 +5829,7 @@ function tryShoot() {
     life: 2.0
   });
 
-  beep(900, 0.06, 'square', 0.08);
-  setTimeout(() => beep(550, 0.06, 'square', 0.05), 30);
+  playSfx('arrow');
 }
 
 function updateArrows(dt) {
@@ -6290,9 +6285,7 @@ function win() {
   // Garden cake destroyed
   for (const child of cakeGroup.children) child.visible = false;
   spawnCrumbs(180, true);
-  beep(523, 0.15, 'square', 0.15);
-  setTimeout(() => beep(659, 0.15, 'square', 0.15), 150);
-  setTimeout(() => beep(784, 0.3, 'square', 0.15), 300);
+  playSfx('win');
   // Tutorial-Modus: Torte zerstoert → automatisch zu Freestyle wechseln und neu starten
   if (isTutorialMode()) {
     playMode = 'freestyle';
@@ -6648,6 +6641,7 @@ function damagePlayer(amount) {
   let dmg = amount || 1;
   if (hasShield) dmg *= 0.5;
   playerHp = Math.max(0, playerHp - dmg);
+  playSfx('hurt');
   invulnerableUntil = now + 1400;
   shakeAmount = 0.18;
   updateHearts();
@@ -7037,7 +7031,8 @@ const UPDATES = [
   { id: 'v25', name: 'Update 25', desc: 'Tutorial-Welt deutlich + Mutterschiff-Bugs gefixt', new: ['Tutorial: goldener Zaun rundherum zeigt klar die Spielfläche', 'Tutorial: hellgrüner Tutorial-Boden visualisiert die Wiese', 'Tutorial: lila Alien-Portal-Leiter (-2, -3) zum Alien-Planeten', 'Tutorial: nach Torte zerstören → automatisch Freestyle-Modus', 'Mutterschiff: Roboter schießen NICHT mehr durch Wände (Sichtlinie-Check)', 'Mutterschiff: Roboter respektieren Wände wie Spieler (Radius 0.4)', 'Mutterschiff: Innen-Wände vereinfacht — alle 4 Ecken erreichbar', 'Mutterschiff: Projektile zerschellen an Wänden (nicht mehr durch)', 'Mutterschiff: Spawn-Sackgasse aufgelöst (findSafeSpawn + weniger Wände)'] },
   { id: 'v26', name: 'Update 26', desc: 'Abbruch-Knopf + Einstellungen mit Tabs', new: ['Abbruch-Knopf „✕ Zurück zum Menü" oben links im Spiel (für Tutorial UND Freestyle)', 'Klick auf Abbruch: zurück zur Modus-Auswahl (kein Neu-Laden)', 'Einstellungen jetzt mit 5 Tabs: Updates, Avatar, Game Mode, Grafik, Tag/Nacht', 'Modus-Screen hat jetzt direkt einen Einstellungen-Knopf', 'Zurück-Button geht je nach Quelle zurück (Modus-Screen oder Start-Screen)'] },
   { id: 'v27', name: 'Update 27', desc: 'Tutorial winzig + Sprachausgabe + Roboter besser sichtbar', new: ['Tutorial-Feld nur noch ±5 (vorher ±7) — wirklich winzig', 'Tutorial-Objekte enger zusammen (Pipe -2.5/+2.5, Leiter +2.5/-2.5, Portal -2.5/-2.5)', 'Tutorial-Zaun + Boden nur noch 10×10', '🔊 Sprachausgabe: jeder Tutorial-Hinweis wird auch VORGELESEN (Web Speech API auf Deutsch)', 'Roboter haben jetzt riesigen leuchtenden roten Kegel + Glow + Light', 'Roboter von überall im Mutterschiff gut sichtbar'] },
-  { id: 'v28', name: 'Update 28 (aktuell)', desc: 'Tutorial-Plattform + Cake direkt zugänglich + Portrait-Support', new: ['Tutorial: ALLE Hecken weg (vorher 1 sichtbar) — wirklich nur Plattform', 'Tutorial: Pedestal-Stein versteckt — Torte liegt direkt auf der Plattform', 'Tutorial: Cake an fester zugänglicher Position (0, 2.5) — kein Klettern nötig', 'Touch-UI passt sich an Portrait-Modus + kleine Screens an (Media Queries)', 'Joystick und Knöpfe kleiner und enger bei Portrait/kleinen Geräten', 'Spielbar in JEDER Orientierung ohne Geräte-Drehen'] }
+  { id: 'v28', name: 'Update 28', desc: 'Tutorial-Plattform + Cake direkt zugänglich + Portrait-Support', new: ['Tutorial: ALLE Hecken weg (vorher 1 sichtbar) — wirklich nur Plattform', 'Tutorial: Pedestal-Stein versteckt — Torte liegt direkt auf der Plattform', 'Tutorial: Cake an fester zugänglicher Position (0, 2.5) — kein Klettern nötig', 'Touch-UI passt sich an Portrait-Modus + kleine Screens an (Media Queries)', 'Joystick und Knöpfe kleiner und enger bei Portrait/kleinen Geräten', 'Spielbar in JEDER Orientierung ohne Geräte-Drehen'] },
+  { id: 'v29', name: 'Update 29 (aktuell)', desc: 'Sound-Effekte JETZT wirklich aktiv (vorher nur definiert)', new: ['🔊 playSfx() wird jetzt überall aufgerufen wo Sounds passieren sollten', 'jump-Sound beim Springen', 'kill-Sound wenn Monster besiegt', 'hurt-Sound wenn Spieler Schaden nimmt', 'arrow-Sound beim Pfeil abschießen', 'enemyShot-Sound beim Roboter-Schuss', 'coin-Sound beim Kronen-Sammeln', 'pipe-Sound beim in die Röhre fahren', 'dock-Sound beim Andocken am Mutterschiff', 'win-Sound beim Torte zerstören', 'powerup-Sound bei Heilung alle 3 Kills'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
