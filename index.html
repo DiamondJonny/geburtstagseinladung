@@ -69,6 +69,14 @@
   #nameInput.shake { animation: nameShake 0.4s; }
   @keyframes nameShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0a0a14; color: #ffd700; font-size: 1.2rem; z-index: 100; }
+  .settings-tab-btn { padding: 8px 14px; font-weight: bold; border-radius: 8px; cursor: pointer; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; font-size: 0.9em; }
+  .settings-tab-btn.active { border-color: #ffd700; background: linear-gradient(135deg,#ffd700,#ffa500); color: #1a1a2e; }
+  .settings-page { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 16px 18px; text-align: left; }
+  .settings-page.show { display: block; }
+  .settings-page.hidden { display: none; }
+  #abortBtn { position: fixed; top: 12px; left: 14px; background: rgba(40,20,30,0.7); color: #ff9090; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; z-index: 8; border: 2px solid rgba(255,120,120,0.6); cursor: pointer; pointer-events: auto; display: none; }
+  #abortBtn:hover { background: rgba(80,30,40,0.85); color: #fff; }
+  #abortBtn.show { display: block; }
   #qualityChip { position: fixed; top: 14px; right: 16px; background: rgba(0,0,0,0.55); color: #cfe0ff; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; z-index: 8; opacity: 0; transition: opacity 0.25s, background 0.25s; pointer-events: none; border: 1px solid rgba(207,224,255,0.25); white-space: nowrap; }
   #qualityChip.show { opacity: 0.95; }
   #qualityChip.flash { background: rgba(255,170,40,0.85); color: #1a1a2e; border-color: rgba(255,170,40,1); }
@@ -106,6 +114,7 @@
 <div id="loading">Lade Garten...</div>
 <canvas id="game"></canvas>
 <div id="qualityChip"></div>
+<button id="abortBtn" type="button" title="Zurück zum Start-Menü">&#x2715; Zur&uuml;ck zum Men&uuml;</button>
 <div id="charPreview"><canvas id="charPreviewCanvas" width="130" height="170"></canvas></div>
 <div id="sunFlare"></div>
 <div id="crosshair"></div>
@@ -178,6 +187,7 @@
     <button class="btn" id="modeTutorialBtn" style="font-size: 1.05rem; padding: 18px 32px; background: linear-gradient(135deg, #88cc88, #44aa66);">&#x1F4D6; Tutorial<br><span style="font-size: 0.75em; opacity: 0.9;">Lernen Schritt f&uuml;r Schritt</span></button>
     <button class="btn" id="modeFreestyleBtn" style="font-size: 1.05rem; padding: 18px 32px;">&#x1F680; Freestyle<br><span style="font-size: 0.75em; opacity: 0.9;">Direkt loslegen</span></button>
   </div>
+  <button class="btn" id="modeSettingsBtn" style="margin-top: 10px; background: linear-gradient(135deg, #88aacc, #4477aa); font-size: 0.95rem; padding: 10px 26px;">&#x2699; Einstellungen / Updates</button>
 </div>
 
 <div class="overlay" id="nameScreen">
@@ -285,29 +295,34 @@
 
 <div class="overlay hidden" id="settingsScreen">
   <h1>&#x2699; Einstellungen</h1>
-  <div id="qualitySection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
-    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">Grafik-Qualit&auml;t</div>
-    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Automatisch passt sich an dein Ger&auml;t an (stockt nie). Wenn du lieber selber w&auml;hlst, geht das auch.</p>
-    <div id="qualityChoices" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+  <div id="settingsTabs" style="display:flex; gap:6px; margin: 10px 0 14px 0; flex-wrap: wrap; justify-content: center;">
+    <button class="settings-tab-btn" data-tab="updates">&#x1F4DC; Updates</button>
+    <button class="settings-tab-btn" data-tab="avatar">&#x1F464; Avatar</button>
+    <button class="settings-tab-btn" data-tab="gamemode">&#x1F3AE; Game Mode</button>
+    <button class="settings-tab-btn" data-tab="graphics">&#x1F5BC;&#xFE0F; Grafik</button>
+    <button class="settings-tab-btn" data-tab="daynight">&#x2600;&#xFE0F; Tag/Nacht</button>
   </div>
-  <div id="charSection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
-    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">&#x1F468;&#x200D;&#x1F3A8; Mein Charakter</div>
-    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">&Auml;ndere dein Aussehen: Haut, Haare, Shirt, Hose.</p>
-    <button class="btn" id="openCharEditorBtn" style="font-size: 0.95rem; padding: 8px 18px; background: linear-gradient(135deg, #cc88ee, #8866cc);">&#x1F3A8; Charakter ändern</button>
-  </div>
-  <div id="playModeSection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
-    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">&#x1F3AE; Spielmodus</div>
-    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Tutorial für Anleitungen, Freestyle für freies Spielen.</p>
-    <div id="playModeChoices" style="display: flex; gap: 8px;"></div>
-  </div>
-  <div id="dayNightSection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
-    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">Tag &amp; Nacht</div>
-    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Nur Tag, nur Nacht, oder beides im Wechsel (mit Sonnenauf- und untergang).</p>
-    <div id="dayNightChoices" style="display: flex; gap: 8px;"></div>
-  </div>
-  <p style="margin-top: 18px;">W&auml;hle, welche Version du spielen m&ouml;chtest:</p>
-  <div id="versionList" style="max-width: 580px; width: 90%; margin-top: 8px; max-height: 40vh; overflow-y: auto; text-align: left;">
-    <!-- filled by JS -->
+  <div id="settingsContent" style="max-width: 600px; width: 92%;">
+    <div class="settings-page hidden" id="page-updates">
+      <p style="margin-bottom: 8px;">W&auml;hle, welche Version du spielen m&ouml;chtest (neueste oben):</p>
+      <div id="versionList" style="max-height: 56vh; overflow-y: auto; text-align: left;"></div>
+    </div>
+    <div class="settings-page hidden" id="page-avatar" style="text-align: center;">
+      <p style="opacity: 0.85; margin-bottom: 12px;">&Auml;ndere dein Aussehen: Haut, Haare, Shirt, Hose.</p>
+      <button class="btn" id="openCharEditorBtn" style="font-size: 1rem; padding: 12px 26px; background: linear-gradient(135deg, #cc88ee, #8866cc);">&#x1F3A8; Charakter ändern</button>
+    </div>
+    <div class="settings-page hidden" id="page-gamemode">
+      <p style="margin-bottom: 10px;">Tutorial für Anleitungen, Freestyle für freies Spielen.</p>
+      <div id="playModeChoices" style="display: flex; gap: 8px; justify-content: center;"></div>
+    </div>
+    <div class="settings-page hidden" id="page-graphics">
+      <p style="margin-bottom: 10px;">Automatisch passt sich an dein Gerät an (stockt nie). Du kannst auch selbst wählen.</p>
+      <div id="qualityChoices" style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;"></div>
+    </div>
+    <div class="settings-page hidden" id="page-daynight">
+      <p style="margin-bottom: 10px;">Nur Tag, nur Nacht, oder beides im Wechsel (mit Sonnenauf- und untergang).</p>
+      <div id="dayNightChoices" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;"></div>
+    </div>
   </div>
   <button class="btn" id="settingsBackBtn" style="margin-top:18px;">Zur&uuml;ck</button>
 </div>
@@ -676,6 +691,20 @@ function proceedToCharOrStart() {
 const modeTutorialBtn = document.getElementById('modeTutorialBtn');
 const modeFreestyleBtn = document.getElementById('modeFreestyleBtn');
 const modeScreenEl = document.getElementById('modeScreen');
+let _settingsCameFromMode = false;
+// Einstellungen aus dem Modus-Screen
+const modeSettingsBtn = document.getElementById('modeSettingsBtn');
+if (modeSettingsBtn) {
+  bindRobustClick(modeSettingsBtn, () => {
+    if (modeScreenEl) modeScreenEl.classList.add('hidden');
+    settingsScreen.classList.remove('hidden');
+    buildQualityChoices();
+    buildDayNightChoices();
+    buildPlayModeChoices();
+    showSettingsTab('updates');
+    _settingsCameFromMode = true;
+  });
+}
 if (modeTutorialBtn) {
   bindRobustClick(modeTutorialBtn, () => {
     playMode = 'tutorial';
@@ -3767,16 +3796,18 @@ function makeAlien(x, y, z, scale) {
   makeLabWall(0,  LAB_HALF, LAB_SIZE, 0.4, wallDark);  // Sued
   makeLabWall(-LAB_HALF, 0, 0.4, LAB_SIZE, wallDark);  // West
   makeLabWall( LAB_HALF, 0, 0.4, LAB_SIZE, wallDark);  // Ost
-  // INNERE LABYRINTH-WAENDE — vereinfacht, sodass alle 4 Ecken erreichbar sind
-  // 4 kurze Quadranten-Trenner + 2 schmale Engstellen vor der Mitte
+  // INNERE LABYRINTH-WAENDE — alle 4 Ecken erreichbar, aber Sichtlinien sind blockiert
   const innerWalls = [
-    [-5, -5, 3.5, 0.4],   // NW Quadrant-Trenner (waagrecht)
-    [ 5, -5, 3.5, 0.4],   // NE
-    [-5,  5, 3.5, 0.4],   // SW
-    [ 5,  5, 3.5, 0.4],   // SE
-    // Schmale Wände um die Controllerzentrale (Engstellen)
-    [ 0, -3, 0.4, 2],
-    [ 0,  3, 0.4, 2]
+    // 4 horizontale Quadranten-Trenner
+    [-4, -5, 3, 0.4],   // NW
+    [ 4, -5, 3, 0.4],   // NE
+    [-4,  5, 3, 0.4],   // SW
+    [ 4,  5, 3, 0.4],   // SE
+    // 4 vertikale Sichtlinien-Blocker (Spieler kann immer noch um sie herum)
+    [-6, -2, 0.4, 3],   // W oben
+    [ 6, -2, 0.4, 3],   // E oben
+    [-6,  2, 0.4, 3],   // W unten
+    [ 6,  2, 0.4, 3]    // E unten
   ];
   for (const [x, z, w, d] of innerWalls) {
     makeLabWall(x, z, w, d);
@@ -5845,6 +5876,33 @@ function showUnlockMessage(html) {
   setTimeout(() => el.remove(), 3200);
 }
 
+// Zurueck-zum-Menue-Funktion: bricht das laufende Spiel ab, zeigt Modus-Auswahl
+const abortBtn = document.getElementById('abortBtn');
+function abortToMenu() {
+  // Spiel anhalten
+  gameState = 'start';
+  if (typeof inUfo !== 'undefined') inUfo = false;
+  if (typeof onMothership !== 'undefined') onMothership = false;
+  if (typeof inAlienWorld !== 'undefined') inAlienWorld = false;
+  if (typeof inCaveWorld !== 'undefined') inCaveWorld = false;
+  if (typeof inBonusWorld !== 'undefined') inBonusWorld = false;
+  // UI verstecken
+  if (typeof hud !== 'undefined' && hud) hud.style.display = 'none';
+  if (typeof hearts !== 'undefined' && hearts) hearts.classList.remove('show');
+  if (typeof inventory !== 'undefined' && inventory) inventory.classList.remove('show');
+  if (typeof touchUI !== 'undefined' && touchUI) touchUI.classList.remove('active');
+  if (typeof crosshair !== 'undefined' && crosshair) crosshair.style.display = 'none';
+  setQualityChipVisible(false);
+  showCharPreview(false);
+  abortBtn.classList.remove('show');
+  stopMusic();
+  if (typeof document.exitPointerLock === 'function') { try { document.exitPointerLock(); } catch (e) {} }
+  // Modus-Auswahl + Einstellungen anzeigen
+  const modeScreen = document.getElementById('modeScreen');
+  if (modeScreen) modeScreen.classList.remove('hidden');
+}
+bindRobustClick(abortBtn, abortToMenu);
+
 // Tutorial-Hint: einmaliger Hinweis pro Schluessel (zeigt nur im Tutorial-Mode und nur einmal pro Session)
 const _shownTutorialKeys = new Set();
 function showTutorialHint(key, text) {
@@ -6729,6 +6787,8 @@ function startGame() {
   // Quality-Chip oben rechts immer sichtbar im Spiel
   refreshQualityChip();
   setQualityChipVisible(true);
+  // Abbruch-Knopf oben links sichtbar
+  if (abortBtn) abortBtn.classList.add('show');
   // Hintergrundmusik starten
   startMusic();
   // Tutorial-Welt vereinfachen (Bäume/Büsche/Steine ausblenden, nur 1 Hecke)
@@ -6918,7 +6978,8 @@ const UPDATES = [
   { id: 'v22', name: 'Update 22', desc: 'Avatar größer + Tutorial-Welt + 8-bit Musik + Mehr Monster + Updates-Liste sortiert', new: ['Avatar oben rechts: viel größer (130×170) + goldener Rahmen + Glow', 'Tutorial-Welt: nur 1 Hecke + 1 Monster, keine Bäume/Büsche/Steine', 'Tutorial: unendlich Herzen — kein Schaden, einfach lernen', 'Schritt-für-Schritt Tutorial-Hints (Steuerung, Torte, Monster, Pipe)', 'Freestyle: bis zu 20 Monster gleichzeitig (vorher 14), schneller spawnen', 'Reihenfolge: Name → Modus → Charakter → direkt ins Spiel (kein Start-Screen)', '8-bit Chiptune-Musik mit Lead + Bass pro Welt (Game-Style)', 'Schnellere Musik (175ms statt 320ms) für Game-Feeling', 'findSafeSpawn jetzt überall (Garten/Alien/Mutterschiff)', 'Updates-Liste: neueste oben, älteste unten'] },
   { id: 'v23', name: 'Update 23', desc: 'Tutorial-Welt kleiner + Höhle weiter weg + Mutterschiff-Respawn an Ecke', new: ['Tutorial: Garten-Boundary auf ±11 (vorher ±29) — viel kleineres Feld', 'Höhle (CAVE_X) auf +400 verschoben (vorher -110) — nicht mehr im Weltall sichtbar', 'Mutterschiff-Respawn nach Tod: zurück an Ecke (-8,+8), NICHT bei Controllerzentrale', 'Mutterschiff-Spawn mit findSafeSpawn → kein Einklemmen in Wand', 'Freestyle: Start-Screen mit Einstellungen wird angezeigt', 'Tutorial: direkt zum Char-Editor (keine Einstellungen mehr im Weg)'] },
   { id: 'v24', name: 'Update 24', desc: 'Tutorial: winziges Feld + 1 Pipe + 1 Leiter + Schritt-für-Schritt Hinweise', new: ['Tutorial-Garten nur noch ±7 (vorher ±11) — minimal!', 'Eine feste Tutorial-Pipe (-3, +3) führt in die Höhle', 'Eine feste Tutorial-Leiter (+2, -3) führt zur Wolkenwelt (visuell mit Wolke oben)', 'Im Tutorial verschwinden alle anderen Pipes', '8 detaillierte Tutorial-Hinweise (Bewegen, Springen, Hecke, Monster, Pipe, Leiter, Modus-Wechsel)', 'Tutorial erklärt von vorne bis hinten was zu tun ist'] },
-  { id: 'v25', name: 'Update 25 (aktuell)', desc: 'Tutorial-Welt deutlich + Mutterschiff-Bugs gefixt', new: ['Tutorial: goldener Zaun rundherum zeigt klar die Spielfläche', 'Tutorial: hellgrüner Tutorial-Boden visualisiert die Wiese', 'Tutorial: lila Alien-Portal-Leiter (-2, -3) zum Alien-Planeten', 'Tutorial: nach Torte zerstören → automatisch Freestyle-Modus', 'Mutterschiff: Roboter schießen NICHT mehr durch Wände (Sichtlinie-Check)', 'Mutterschiff: Roboter respektieren Wände wie Spieler (Radius 0.4)', 'Mutterschiff: Innen-Wände vereinfacht — alle 4 Ecken erreichbar', 'Mutterschiff: Projektile zerschellen an Wänden (nicht mehr durch)', 'Mutterschiff: Spawn-Sackgasse aufgelöst (findSafeSpawn + weniger Wände)'] }
+  { id: 'v25', name: 'Update 25', desc: 'Tutorial-Welt deutlich + Mutterschiff-Bugs gefixt', new: ['Tutorial: goldener Zaun rundherum zeigt klar die Spielfläche', 'Tutorial: hellgrüner Tutorial-Boden visualisiert die Wiese', 'Tutorial: lila Alien-Portal-Leiter (-2, -3) zum Alien-Planeten', 'Tutorial: nach Torte zerstören → automatisch Freestyle-Modus', 'Mutterschiff: Roboter schießen NICHT mehr durch Wände (Sichtlinie-Check)', 'Mutterschiff: Roboter respektieren Wände wie Spieler (Radius 0.4)', 'Mutterschiff: Innen-Wände vereinfacht — alle 4 Ecken erreichbar', 'Mutterschiff: Projektile zerschellen an Wänden (nicht mehr durch)', 'Mutterschiff: Spawn-Sackgasse aufgelöst (findSafeSpawn + weniger Wände)'] },
+  { id: 'v26', name: 'Update 26 (aktuell)', desc: 'Abbruch-Knopf + Einstellungen mit Tabs', new: ['Abbruch-Knopf „✕ Zurück zum Menü" oben links im Spiel (für Tutorial UND Freestyle)', 'Klick auf Abbruch: zurück zur Modus-Auswahl (kein Neu-Laden)', 'Einstellungen jetzt mit 5 Tabs: Updates, Avatar, Game Mode, Grafik, Tag/Nacht', 'Modus-Screen hat jetzt direkt einen Einstellungen-Knopf', 'Zurück-Button geht je nach Quelle zurück (Modus-Screen oder Start-Screen)'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
@@ -7178,12 +7239,26 @@ if (mapGenCopyBtn) {
   });
 }
 
+// Settings-Tabs umschalten
+function showSettingsTab(tabName) {
+  const pages = document.querySelectorAll('.settings-page');
+  pages.forEach(p => { p.classList.add('hidden'); p.classList.remove('show'); });
+  const btns = document.querySelectorAll('.settings-tab-btn');
+  btns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+  const target = document.getElementById('page-' + tabName);
+  if (target) { target.classList.remove('hidden'); target.classList.add('show'); }
+}
+document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+  bindRobustClick(btn, () => showSettingsTab(btn.dataset.tab));
+});
+
 bindRobustClick(settingsBtn, () => {
   startScreen.classList.add('hidden');
   settingsScreen.classList.remove('hidden');
   buildQualityChoices();
   buildDayNightChoices();
   buildPlayModeChoices();
+  showSettingsTab('updates'); // Default-Tab
 });
 // Char-Editor aus Settings heraus aufrufen
 const openCharEditorBtn = document.getElementById('openCharEditorBtn');
@@ -7223,7 +7298,12 @@ function buildPlayModeChoices() {
 }
 bindRobustClick(settingsBackBtn, () => {
   settingsScreen.classList.add('hidden');
-  startScreen.classList.remove('hidden');
+  if (_settingsCameFromMode && modeScreenEl) {
+    modeScreenEl.classList.remove('hidden');
+    _settingsCameFromMode = false;
+  } else {
+    startScreen.classList.remove('hidden');
+  }
 });
 
 // "Garten betreten"-Button: gehe zuerst zum Char-Editor (falls neuer Spieler), sonst direkt los
