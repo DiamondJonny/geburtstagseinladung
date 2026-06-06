@@ -88,6 +88,19 @@
 
   #touchUI { position: fixed; inset: 0; pointer-events: none; z-index: 6; display: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   #touchUI.active { display: block; }
+  /* Portrait + kleine Screens: Touch-UI kompakter — funktioniert in JEDER Orientierung */
+  @media (max-width: 700px), (orientation: portrait) {
+    #joystick { width: 100px !important; height: 100px !important; bottom: 20px !important; left: 18px !important; }
+    #joystickKnob { width: 44px !important; height: 44px !important; margin: -22px 0 0 -22px !important; }
+    #hitBtn { width: 90px !important; height: 90px !important; bottom: 28px !important; right: 18px !important; font-size: 2rem !important; }
+    #jumpBtn { width: 72px !important; height: 72px !important; bottom: 40px !important; right: 128px !important; font-size: 1.6rem !important; }
+    #bowBtn { width: 72px !important; height: 72px !important; bottom: 40px !important; right: 216px !important; font-size: 1.6rem !important; }
+    #pipeBtn { width: 64px !important; height: 64px !important; bottom: 130px !important; right: 128px !important; font-size: 1.4rem !important; }
+    #ufoUpBtn { width: 70px !important; height: 70px !important; bottom: 210px !important; right: 36px !important; font-size: 1.8rem !important; }
+    #ufoDownBtn { width: 70px !important; height: 70px !important; bottom: 130px !important; right: 36px !important; font-size: 1.8rem !important; }
+    #charPreview { width: 96px !important; height: 130px !important; top: 8px !important; right: 8px !important; }
+    body.has-char-preview #qualityChip { right: 110px !important; }
+  }
   #joystick { position: absolute; bottom: 28px; left: 28px; width: 130px; height: 130px; background: rgba(0,0,0,0.28); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; pointer-events: auto; touch-action: none; backdrop-filter: blur(2px); }
   #joystickKnob { position: absolute; top: 50%; left: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; background: rgba(255,255,255,0.55); border: 2px solid rgba(255,255,255,0.7); border-radius: 50%; pointer-events: none; }
   #hitBtn { position: absolute; bottom: 50px; right: 28px; width: 120px; height: 120px; background: linear-gradient(135deg, #ff6b9d 0%, #c06cff 100%); border: 3px solid #ffd700; border-radius: 50%; color: #fff; font-size: 2.6rem; font-weight: bold; pointer-events: auto; touch-action: manipulation; box-shadow: 0 6px 20px rgba(0,0,0,0.45); cursor: pointer; padding: 0; line-height: 1; display: flex; align-items: center; justify-content: center; }
@@ -1170,9 +1183,19 @@ function applyTutorialSimplification() {
     if (d.group) d.group.visible = !isTut;
     if (d.obstacle) d.obstacle._disabled = !!isTut;
   }
-  // Hecken: nur die erste sichtbar (Tutorial), sonst alle
+  // Hecken: ALLE hide im Tutorial (Daniel: nur eine Plattform!)
   for (let i = 0; i < hedgeGroups.length; i++) {
-    hedgeGroups[i].visible = isTut ? (i === 0) : true;
+    hedgeGroups[i].visible = !isTut;
+  }
+  // Pedestal hide im Tutorial; Cake auf Boden + zugaengliche Position
+  if (typeof pedestalGroup !== 'undefined') pedestalGroup.visible = !isTut;
+  if (typeof cakeGroup !== 'undefined') {
+    if (isTut) {
+      // Cake auf zugaenglicher Position direkt auf dem Boden (innerhalb des Tutorial-Felds)
+      cakeGroup.position.set(0, 0.45, 2.5);
+    } else {
+      cakeGroup.position.set(cakeSpot.x, PEDESTAL_H + 0.02, cakeSpot.z);
+    }
   }
   // Pipes: im Tutorial nur die LETZTE (Tutorial-Pipe), sonst die ersten 3 random pipes
   if (gardenPipes.length > 0) {
@@ -1989,36 +2012,37 @@ const PEDESTAL_H = 1.85;
 const pedMat = new THREE.MeshStandardMaterial({ color: 0x8a8074, roughness: 0.95 });
 const pedAccent = new THREE.MeshStandardMaterial({ color: 0x756a5c, roughness: 0.95 });
 
+// Pedestal als Gruppe — im Tutorial wird sie versteckt damit die Torte zugaenglich ist
+const pedestalGroup = new THREE.Group();
 const pedBase = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.25, 1.2), pedAccent);
 pedBase.position.set(cakeSpot.x, 0.125, cakeSpot.z);
 pedBase.castShadow = pedBase.receiveShadow = true;
-scene.add(pedBase);
+pedestalGroup.add(pedBase);
 
 const pedShaft = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.4, 0.85), pedMat);
 pedShaft.position.set(cakeSpot.x, 0.25 + 0.7, cakeSpot.z);
 pedShaft.castShadow = pedShaft.receiveShadow = true;
-scene.add(pedShaft);
+pedestalGroup.add(pedShaft);
 
 const pedTop = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.2, 1.05), pedAccent);
 pedTop.position.set(cakeSpot.x, PEDESTAL_H - 0.1, cakeSpot.z);
 pedTop.castShadow = pedTop.receiveShadow = true;
-scene.add(pedTop);
+pedestalGroup.add(pedTop);
 
-// Small carved details (stone blocks at corners)
 for (const [dx, dz] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) {
   const detail = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), pedAccent);
   detail.position.set(cakeSpot.x + dx, 0.4 + Math.random() * 1.0, cakeSpot.z + dz);
   detail.castShadow = true;
-  scene.add(detail);
+  pedestalGroup.add(detail);
 }
 
-// Cloth on top
 const cloth = new THREE.Mesh(
   new THREE.BoxGeometry(0.95, 0.02, 0.95),
   new THREE.MeshStandardMaterial({ color: 0x88203a, roughness: 0.85 })
 );
 cloth.position.set(cakeSpot.x, PEDESTAL_H + 0.01, cakeSpot.z);
-scene.add(cloth);
+pedestalGroup.add(cloth);
+scene.add(pedestalGroup);
 
 obstacles.push({ x: cakeSpot.x, z: cakeSpot.z, halfW: 0.7, halfD: 0.7 });
 
@@ -7012,7 +7036,8 @@ const UPDATES = [
   { id: 'v24', name: 'Update 24', desc: 'Tutorial: winziges Feld + 1 Pipe + 1 Leiter + Schritt-für-Schritt Hinweise', new: ['Tutorial-Garten nur noch ±7 (vorher ±11) — minimal!', 'Eine feste Tutorial-Pipe (-3, +3) führt in die Höhle', 'Eine feste Tutorial-Leiter (+2, -3) führt zur Wolkenwelt (visuell mit Wolke oben)', 'Im Tutorial verschwinden alle anderen Pipes', '8 detaillierte Tutorial-Hinweise (Bewegen, Springen, Hecke, Monster, Pipe, Leiter, Modus-Wechsel)', 'Tutorial erklärt von vorne bis hinten was zu tun ist'] },
   { id: 'v25', name: 'Update 25', desc: 'Tutorial-Welt deutlich + Mutterschiff-Bugs gefixt', new: ['Tutorial: goldener Zaun rundherum zeigt klar die Spielfläche', 'Tutorial: hellgrüner Tutorial-Boden visualisiert die Wiese', 'Tutorial: lila Alien-Portal-Leiter (-2, -3) zum Alien-Planeten', 'Tutorial: nach Torte zerstören → automatisch Freestyle-Modus', 'Mutterschiff: Roboter schießen NICHT mehr durch Wände (Sichtlinie-Check)', 'Mutterschiff: Roboter respektieren Wände wie Spieler (Radius 0.4)', 'Mutterschiff: Innen-Wände vereinfacht — alle 4 Ecken erreichbar', 'Mutterschiff: Projektile zerschellen an Wänden (nicht mehr durch)', 'Mutterschiff: Spawn-Sackgasse aufgelöst (findSafeSpawn + weniger Wände)'] },
   { id: 'v26', name: 'Update 26', desc: 'Abbruch-Knopf + Einstellungen mit Tabs', new: ['Abbruch-Knopf „✕ Zurück zum Menü" oben links im Spiel (für Tutorial UND Freestyle)', 'Klick auf Abbruch: zurück zur Modus-Auswahl (kein Neu-Laden)', 'Einstellungen jetzt mit 5 Tabs: Updates, Avatar, Game Mode, Grafik, Tag/Nacht', 'Modus-Screen hat jetzt direkt einen Einstellungen-Knopf', 'Zurück-Button geht je nach Quelle zurück (Modus-Screen oder Start-Screen)'] },
-  { id: 'v27', name: 'Update 27 (aktuell)', desc: 'Tutorial winzig + Sprachausgabe + Roboter besser sichtbar', new: ['Tutorial-Feld nur noch ±5 (vorher ±7) — wirklich winzig', 'Tutorial-Objekte enger zusammen (Pipe -2.5/+2.5, Leiter +2.5/-2.5, Portal -2.5/-2.5)', 'Tutorial-Zaun + Boden nur noch 10×10', '🔊 Sprachausgabe: jeder Tutorial-Hinweis wird auch VORGELESEN (Web Speech API auf Deutsch)', 'Roboter haben jetzt riesigen leuchtenden roten Kegel + Glow + Light', 'Roboter von überall im Mutterschiff gut sichtbar'] }
+  { id: 'v27', name: 'Update 27', desc: 'Tutorial winzig + Sprachausgabe + Roboter besser sichtbar', new: ['Tutorial-Feld nur noch ±5 (vorher ±7) — wirklich winzig', 'Tutorial-Objekte enger zusammen (Pipe -2.5/+2.5, Leiter +2.5/-2.5, Portal -2.5/-2.5)', 'Tutorial-Zaun + Boden nur noch 10×10', '🔊 Sprachausgabe: jeder Tutorial-Hinweis wird auch VORGELESEN (Web Speech API auf Deutsch)', 'Roboter haben jetzt riesigen leuchtenden roten Kegel + Glow + Light', 'Roboter von überall im Mutterschiff gut sichtbar'] },
+  { id: 'v28', name: 'Update 28 (aktuell)', desc: 'Tutorial-Plattform + Cake direkt zugänglich + Portrait-Support', new: ['Tutorial: ALLE Hecken weg (vorher 1 sichtbar) — wirklich nur Plattform', 'Tutorial: Pedestal-Stein versteckt — Torte liegt direkt auf der Plattform', 'Tutorial: Cake an fester zugänglicher Position (0, 2.5) — kein Klettern nötig', 'Touch-UI passt sich an Portrait-Modus + kleine Screens an (Media Queries)', 'Joystick und Knöpfe kleiner und enger bei Portrait/kleinen Geräten', 'Spielbar in JEDER Orientierung ohne Geräte-Drehen'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
