@@ -74,6 +74,16 @@
   .settings-page { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 16px 18px; text-align: left; }
   .settings-page.show { display: block; }
   .settings-page.hidden { display: none; }
+  #tutorialInfoBtn { position: fixed; top: 12px; left: 180px; background: rgba(40,80,140,0.8); color: #fff; padding: 0; width: 38px; height: 38px; border-radius: 50%; font-size: 22px; font-weight: bold; z-index: 8; border: 3px solid #66ccff; cursor: pointer; pointer-events: auto; display: none; box-shadow: 0 0 14px rgba(100,200,255,0.7); font-family: serif; line-height: 1; }
+  #tutorialInfoBtn:hover { background: rgba(100,150,200,0.95); }
+  #tutorialInfoBtn.show { display: block; }
+  #infoOverlay { position: fixed; inset: 0; z-index: 20; pointer-events: auto; background: rgba(0,0,0,0.55); display: none; }
+  #infoOverlay.show { display: block; }
+  .info-highlight { position: fixed; border: 3px solid #ffd700; border-radius: 8px; box-shadow: 0 0 18px rgba(255,215,0,0.9), inset 0 0 12px rgba(255,215,0,0.4); pointer-events: none; animation: infoBlink 1.2s ease-in-out infinite; z-index: 21; }
+  @keyframes infoBlink { 0%, 100% { box-shadow: 0 0 18px rgba(255,215,0,0.9), inset 0 0 12px rgba(255,215,0,0.4); } 50% { box-shadow: 0 0 32px rgba(255,255,150,1), inset 0 0 18px rgba(255,255,180,0.6); } }
+  .info-label { position: fixed; background: #ffd700; color: #1a1a2e; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; pointer-events: none; z-index: 22; box-shadow: 0 4px 12px rgba(0,0,0,0.5); white-space: nowrap; max-width: 180px; }
+  .info-arrow { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 22; }
+  #infoCloseHint { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #ffd700; padding: 10px 20px; border-radius: 20px; font-weight: bold; z-index: 23; pointer-events: none; border: 2px solid #ffd700; }
   #abortBtn { position: fixed; top: 12px; left: 14px; background: rgba(40,20,30,0.7); color: #ff9090; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; z-index: 8; border: 2px solid rgba(255,120,120,0.6); cursor: pointer; pointer-events: auto; display: none; }
   #abortBtn:hover { background: rgba(80,30,40,0.85); color: #fff; }
   #abortBtn.show { display: block; }
@@ -128,6 +138,8 @@
 <canvas id="game"></canvas>
 <div id="qualityChip"></div>
 <button id="abortBtn" type="button" title="Zurück zum Start-Menü">&#x2715; Zur&uuml;ck zum Men&uuml;</button>
+<button id="tutorialInfoBtn" type="button" title="Tutorial-Info anzeigen">&#x2139;</button>
+<div id="infoOverlay"></div>
 <div id="charPreview"><canvas id="charPreviewCanvas" width="130" height="170"></canvas></div>
 <div id="sunFlare"></div>
 <div id="crosshair"></div>
@@ -232,9 +244,21 @@
         <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F455; Shirt</div>
         <div id="charShirtChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
       </div>
-      <div>
+      <div style="margin-bottom:18px;">
         <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F456; Hose</div>
         <div id="charPantsChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
+      </div>
+      <div style="margin-bottom:18px;">
+        <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F3A9; Hut</div>
+        <div id="charHatChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
+      </div>
+      <div style="margin-bottom:18px;">
+        <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F576; Brille</div>
+        <div id="charGlassChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
+      </div>
+      <div>
+        <div style="font-weight:bold; color:#ffd700; margin-bottom:8px; font-size: 1.05em;">&#x1F60A; Gesicht</div>
+        <div id="charMouthChoices" style="display:flex; flex-wrap: wrap; gap:8px;"></div>
       </div>
     </div>
   </div>
@@ -465,22 +489,34 @@ const CHAR_SKINS  = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#5d
 const CHAR_HAIRS  = ['#2b1d12', '#5b3a1c', '#a86b30', '#dfb56a', '#cc4422', '#ffffff', '#88aaff', '#ff66cc', '#44dd44', '#222222'];
 const CHAR_SHIRTS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#ffffff', '#ffd700', '#ff66cc', '#222222', '#ff6b00'];
 const CHAR_PANTS  = ['#34495e', '#2c3e50', '#5d4037', '#1565c0', '#37474f', '#212121', '#7a4a2b', '#0a3a1a', '#5d2b6e'];
-let charSkin  = CHAR_SKINS[0];
-let charHair  = CHAR_HAIRS[0];
-let charShirt = CHAR_SHIRTS[1]; // blau
-let charPants = CHAR_PANTS[0];
+const CHAR_HATS    = ['none', 'cap', 'crown', 'wizard', 'helmet', 'party'];
+const CHAR_GLASSES = ['none', 'sunglasses', 'round', 'square'];
+const CHAR_MOUTHS  = ['smile', 'open', 'serious', 'tongue'];
+let charSkin   = CHAR_SKINS[0];
+let charHair   = CHAR_HAIRS[0];
+let charShirt  = CHAR_SHIRTS[1];
+let charPants  = CHAR_PANTS[0];
+let charHat    = 'none';
+let charGlass  = 'none';
+let charMouth  = 'smile';
 // Laden aus localStorage
 {
   const s = safeStorageGet('geburtstag.charSkin', null);  if (s && CHAR_SKINS.includes(s)) charSkin = s;
   const h = safeStorageGet('geburtstag.charHair', null);  if (h && CHAR_HAIRS.includes(h)) charHair = h;
   const sh = safeStorageGet('geburtstag.charShirt', null); if (sh && CHAR_SHIRTS.includes(sh)) charShirt = sh;
   const p = safeStorageGet('geburtstag.charPants', null); if (p && CHAR_PANTS.includes(p)) charPants = p;
+  const ht = safeStorageGet('geburtstag.charHat', null); if (ht && CHAR_HATS.includes(ht)) charHat = ht;
+  const gl = safeStorageGet('geburtstag.charGlass', null); if (gl && CHAR_GLASSES.includes(gl)) charGlass = gl;
+  const mo = safeStorageGet('geburtstag.charMouth', null); if (mo && CHAR_MOUTHS.includes(mo)) charMouth = mo;
 }
 function saveCharColors() {
   safeStorageSet('geburtstag.charSkin', charSkin);
   safeStorageSet('geburtstag.charHair', charHair);
   safeStorageSet('geburtstag.charShirt', charShirt);
   safeStorageSet('geburtstag.charPants', charPants);
+  safeStorageSet('geburtstag.charHat', charHat);
+  safeStorageSet('geburtstag.charGlass', charGlass);
+  safeStorageSet('geburtstag.charMouth', charMouth);
 }
 
 // Charakter zeichnen — mit Animation (laufen/springen/schlagen)
@@ -589,9 +625,87 @@ function drawCharacter(ctx, w, h, opts) {
   ctx.fillStyle = '#222';
   ctx.fillRect(cx - 7 * scale, h - 146 * scale + jumpLift, 3 * scale, 3 * scale);
   ctx.fillRect(cx + 4 * scale, h - 146 * scale + jumpLift, 3 * scale, 3 * scale);
-  // Mund
+  // Brille
+  if (charGlass !== 'none') {
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.5 * scale;
+    if (charGlass === 'sunglasses') {
+      ctx.fillStyle = '#222';
+      ctx.fillRect(cx - 9 * scale, h - 148 * scale + jumpLift, 7 * scale, 5 * scale);
+      ctx.fillRect(cx + 2 * scale, h - 148 * scale + jumpLift, 7 * scale, 5 * scale);
+    } else if (charGlass === 'round') {
+      ctx.beginPath();
+      ctx.arc(cx - 5.5 * scale, h - 145 * scale + jumpLift, 3.5 * scale, 0, Math.PI * 2);
+      ctx.arc(cx + 5.5 * scale, h - 145 * scale + jumpLift, 3.5 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (charGlass === 'square') {
+      ctx.strokeRect(cx - 9 * scale, h - 148 * scale + jumpLift, 7 * scale, 5 * scale);
+      ctx.strokeRect(cx + 2 * scale, h - 148 * scale + jumpLift, 7 * scale, 5 * scale);
+    }
+  }
+  // Mund (verschiedene Stile)
   ctx.fillStyle = '#a04030';
-  ctx.fillRect(cx - 4 * scale, h - 138 * scale + jumpLift, 8 * scale, 2 * scale);
+  if (charMouth === 'smile') {
+    ctx.beginPath();
+    ctx.arc(cx, h - 139 * scale + jumpLift, 4 * scale, 0.1, Math.PI - 0.1);
+    ctx.lineWidth = 1.5 * scale;
+    ctx.strokeStyle = '#a04030';
+    ctx.stroke();
+  } else if (charMouth === 'open') {
+    ctx.fillStyle = '#3a1010';
+    ctx.fillRect(cx - 3 * scale, h - 140 * scale + jumpLift, 6 * scale, 4 * scale);
+  } else if (charMouth === 'serious') {
+    ctx.fillRect(cx - 4 * scale, h - 138 * scale + jumpLift, 8 * scale, 2 * scale);
+  } else if (charMouth === 'tongue') {
+    ctx.fillStyle = '#a04030';
+    ctx.fillRect(cx - 4 * scale, h - 138 * scale + jumpLift, 8 * scale, 2 * scale);
+    ctx.fillStyle = '#ff5577';
+    ctx.fillRect(cx, h - 136 * scale + jumpLift, 4 * scale, 4 * scale);
+  }
+  // Hut auf dem Kopf
+  if (charHat === 'cap') {
+    ctx.fillStyle = '#3366cc';
+    ctx.fillRect(cx - 18 * scale, h - 160 * scale + jumpLift, 36 * scale, 8 * scale);
+    ctx.fillRect(cx + 6 * scale, h - 162 * scale + jumpLift, 14 * scale, 5 * scale);
+  } else if (charHat === 'crown') {
+    ctx.fillStyle = '#ffd700';
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 16 * scale + i * 8 * scale, h - 162 * scale + jumpLift);
+      ctx.lineTo(cx - 12 * scale + i * 8 * scale, h - 170 * scale + jumpLift);
+      ctx.lineTo(cx - 8 * scale + i * 8 * scale, h - 162 * scale + jumpLift);
+      ctx.fill();
+    }
+    ctx.fillRect(cx - 18 * scale, h - 162 * scale + jumpLift, 36 * scale, 4 * scale);
+  } else if (charHat === 'wizard') {
+    ctx.fillStyle = '#5b2d8a';
+    ctx.beginPath();
+    ctx.moveTo(cx - 16 * scale, h - 162 * scale + jumpLift);
+    ctx.lineTo(cx + 16 * scale, h - 162 * scale + jumpLift);
+    ctx.lineTo(cx, h - 188 * scale + jumpLift);
+    ctx.fill();
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(cx - 18 * scale, h - 162 * scale + jumpLift, 36 * scale, 3 * scale);
+  } else if (charHat === 'helmet') {
+    ctx.fillStyle = '#888';
+    ctx.beginPath();
+    ctx.arc(cx, h - 158 * scale + jumpLift, 19 * scale, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(cx - 19 * scale, h - 158 * scale + jumpLift, 38 * scale, 3 * scale);
+  } else if (charHat === 'party') {
+    const partyColors = ['#ff3366', '#ffd700', '#3399ff', '#66ff66'];
+    ctx.fillStyle = partyColors[Math.floor((animFrame * 4) % 4)];
+    ctx.beginPath();
+    ctx.moveTo(cx - 12 * scale, h - 162 * scale + jumpLift);
+    ctx.lineTo(cx + 12 * scale, h - 162 * scale + jumpLift);
+    ctx.lineTo(cx, h - 184 * scale + jumpLift);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(cx, h - 184 * scale + jumpLift, 3 * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
   // Spielername unter dem Avatar (auf der Char-Preview, klein)
   if (opts.showName && playerName) {
     ctx.fillStyle = '#ffd700';
@@ -638,14 +752,17 @@ function showCharPreview(on) {
 
 // Charakter-Erstellungs-Screen: Buttons
 const charScreen = document.getElementById('charScreen');
+const CHAR_HAT_LABELS    = { none: 'Kein Hut', cap: 'Cap', crown: '👑 Krone', wizard: '🧙 Zauber', helmet: '⛑️ Helm', party: '🎉 Party' };
+const CHAR_GLASS_LABELS  = { none: 'Keine', sunglasses: '🕶️ Sonne', round: '👓 Rund', square: '◽ Eckig' };
+const CHAR_MOUTH_LABELS  = { smile: '😊 Lächeln', open: '😮 Offen', serious: '😐 Ernst', tongue: '😛 Zunge' };
 function buildCharChoices() {
-  const sections = [
+  const colorSections = [
     { id: 'charSkinChoices',  palette: CHAR_SKINS,  get: () => charSkin,  set: v => { charSkin = v; } },
     { id: 'charHairChoices',  palette: CHAR_HAIRS,  get: () => charHair,  set: v => { charHair = v; } },
     { id: 'charShirtChoices', palette: CHAR_SHIRTS, get: () => charShirt, set: v => { charShirt = v; } },
     { id: 'charPantsChoices', palette: CHAR_PANTS,  get: () => charPants, set: v => { charPants = v; } }
   ];
-  for (const sec of sections) {
+  for (const sec of colorSections) {
     const el = document.getElementById(sec.id);
     if (!el) continue;
     el.innerHTML = '';
@@ -654,6 +771,34 @@ function buildCharChoices() {
       btn.style.cssText = 'width: 32px; height: 32px; border-radius: 8px; cursor: pointer; background: ' + color + '; border: 3px solid ' + (sec.get() === color ? '#ffd700' : 'rgba(255,255,255,0.25)') + ';';
       btn.addEventListener('click', () => {
         sec.set(color);
+        saveCharColors();
+        buildCharChoices();
+        updateCharBigPreview();
+        updateCharPreview();
+      });
+      el.appendChild(btn);
+    }
+  }
+  // Label-Sektionen (Hut, Brille, Mund)
+  const labelSections = [
+    { id: 'charHatChoices',   options: CHAR_HATS,    labels: CHAR_HAT_LABELS,   get: () => charHat,   set: v => { charHat = v; } },
+    { id: 'charGlassChoices', options: CHAR_GLASSES, labels: CHAR_GLASS_LABELS, get: () => charGlass, set: v => { charGlass = v; } },
+    { id: 'charMouthChoices', options: CHAR_MOUTHS,  labels: CHAR_MOUTH_LABELS, get: () => charMouth, set: v => { charMouth = v; } }
+  ];
+  for (const sec of labelSections) {
+    const el = document.getElementById(sec.id);
+    if (!el) continue;
+    el.innerHTML = '';
+    for (const opt of sec.options) {
+      const btn = document.createElement('button');
+      const active = sec.get() === opt;
+      btn.textContent = sec.labels[opt] || opt;
+      btn.style.cssText = 'padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 0.85em; font-weight: bold; border: 2px solid ' +
+        (active ? '#ffd700' : 'rgba(255,255,255,0.25)') + '; background: ' +
+        (active ? 'linear-gradient(135deg,#ffd700,#ffa500)' : 'rgba(255,255,255,0.08)') + '; color: ' +
+        (active ? '#1a1a2e' : '#fff') + ';';
+      btn.addEventListener('click', () => {
+        sec.set(opt);
         saveCharColors();
         buildCharChoices();
         updateCharBigPreview();
@@ -5070,23 +5215,72 @@ function beep(freq, duration, type='square', volume=0.1) {
   } catch (e) {}
 }
 
-// === Soundeffekte ===
+// === Soundeffekte (mit harmonischen Obertoenen + Huellkurven) ===
+function richTone(freq, dur, type, vol, opts) {
+  opts = opts || {};
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || 'square';
+    // Frequency Sweep wenn opts.toFreq gesetzt
+    osc.frequency.setValueAtTime(freq, now);
+    if (opts.toFreq) osc.frequency.exponentialRampToValueAtTime(opts.toFreq, now + dur);
+    // Attack-Sustain-Release
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(now + dur + 0.02);
+    // Oberton-Schicht (eine Oktave hoeher, leiser)
+    if (opts.harmonic !== false) {
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = type === 'sine' ? 'triangle' : 'sine';
+      osc2.frequency.setValueAtTime(freq * 2, now);
+      if (opts.toFreq) osc2.frequency.exponentialRampToValueAtTime(opts.toFreq * 2, now + dur);
+      gain2.gain.setValueAtTime(0, now);
+      gain2.gain.linearRampToValueAtTime(vol * 0.4, now + 0.008);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.8);
+      osc2.connect(gain2).connect(audioCtx.destination);
+      osc2.start();
+      osc2.stop(now + dur);
+    }
+  } catch (e) {}
+}
+function noiseBurst(dur, vol) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const g = audioCtx.createGain();
+    g.gain.value = vol;
+    src.connect(g).connect(audioCtx.destination);
+    src.start();
+  } catch (e) {}
+}
 function playSfx(type) {
   if (musicMuted) return;
   switch (type) {
-    case 'jump':       beep(360, 0.08, 'sine', 0.10); setTimeout(() => beep(540, 0.06, 'sine', 0.07), 30); break;
-    case 'coin':       beep(880, 0.06, 'square', 0.10); setTimeout(() => beep(1320, 0.10, 'square', 0.10), 50); break;
-    case 'hurt':       beep(180, 0.18, 'sawtooth', 0.18); setTimeout(() => beep(120, 0.18, 'sawtooth', 0.14), 60); break;
-    case 'kill':       beep(440, 0.08, 'square', 0.12); setTimeout(() => beep(220, 0.12, 'sine', 0.10), 70); break;
-    case 'powerup':    beep(523, 0.08, 'square', 0.10); setTimeout(() => beep(659, 0.08, 'square', 0.10), 80); setTimeout(() => beep(784, 0.12, 'square', 0.10), 160); setTimeout(() => beep(1046, 0.16, 'sine', 0.10), 250); break;
-    case 'arrow':      beep(900, 0.05, 'sawtooth', 0.08); setTimeout(() => beep(450, 0.05, 'sine', 0.05), 30); break;
-    case 'pipe':       beep(220, 0.15, 'square', 0.10); setTimeout(() => beep(440, 0.12, 'square', 0.10), 80); setTimeout(() => beep(660, 0.15, 'square', 0.10), 160); break;
-    case 'mine':       beep(180, 0.10, 'sawtooth', 0.10); setTimeout(() => beep(140, 0.12, 'sawtooth', 0.08), 60); break;
-    case 'dock':       beep(330, 0.10, 'sine', 0.10); setTimeout(() => beep(440, 0.10, 'sine', 0.10), 80); setTimeout(() => beep(660, 0.15, 'sine', 0.10), 160); break;
-    case 'win':        for (let i = 0; i < 6; i++) { setTimeout(() => beep([262, 330, 392, 523, 659, 784][i], 0.18, 'square', 0.10), i * 100); } break;
-    case 'dead':       beep(220, 0.2, 'sawtooth', 0.14); setTimeout(() => beep(165, 0.25, 'sawtooth', 0.12), 130); setTimeout(() => beep(110, 0.35, 'sawtooth', 0.10), 280); break;
-    case 'laser':      beep(1200, 0.05, 'square', 0.06); setTimeout(() => beep(800, 0.06, 'square', 0.04), 40); break;
-    case 'enemyShot':  beep(700, 0.06, 'sawtooth', 0.07); setTimeout(() => beep(450, 0.08, 'square', 0.05), 40); break;
+    case 'jump':       richTone(360, 0.18, 'sine', 0.10, { toFreq: 720 }); break;
+    case 'coin':       richTone(988, 0.08, 'square', 0.10); setTimeout(() => richTone(1318, 0.18, 'square', 0.10, { toFreq: 1568 }), 60); break;
+    case 'hurt':       richTone(220, 0.20, 'sawtooth', 0.16, { toFreq: 110 }); noiseBurst(0.12, 0.08); break;
+    case 'kill':       richTone(440, 0.08, 'square', 0.12); setTimeout(() => richTone(220, 0.15, 'square', 0.10, { toFreq: 80 }), 50); noiseBurst(0.15, 0.05); break;
+    case 'powerup':    for (let i = 0; i < 4; i++) setTimeout(() => richTone([523, 659, 784, 1046][i], 0.14, 'square', 0.09), i * 70); break;
+    case 'arrow':      richTone(1200, 0.12, 'sawtooth', 0.08, { toFreq: 400 }); break;
+    case 'pipe':       for (let i = 0; i < 5; i++) setTimeout(() => richTone(220 + i * 80, 0.10, 'square', 0.09), i * 50); break;
+    case 'mine':       richTone(150, 0.15, 'sawtooth', 0.12, { toFreq: 80 }); noiseBurst(0.20, 0.10); break;
+    case 'dock':       for (let i = 0; i < 4; i++) setTimeout(() => richTone([330, 440, 554, 698][i], 0.16, 'sine', 0.10), i * 90); break;
+    case 'win':        for (let i = 0; i < 8; i++) setTimeout(() => richTone([262, 330, 392, 523, 659, 784, 988, 1318][i], 0.20, 'square', 0.10), i * 110); break;
+    case 'dead':       richTone(220, 0.4, 'sawtooth', 0.16, { toFreq: 55 }); noiseBurst(0.6, 0.08); break;
+    case 'laser':      richTone(1400, 0.10, 'square', 0.06, { toFreq: 600 }); break;
+    case 'enemyShot':  richTone(700, 0.10, 'sawtooth', 0.07, { toFreq: 280 }); noiseBurst(0.05, 0.03); break;
   }
 }
 
@@ -5924,6 +6118,8 @@ function abortToMenu() {
   setQualityChipVisible(false);
   showCharPreview(false);
   abortBtn.classList.remove('show');
+  if (tutorialInfoBtn) tutorialInfoBtn.classList.remove('show');
+  hideInfoOverlay();
   stopMusic();
   if (typeof document.exitPointerLock === 'function') { try { document.exitPointerLock(); } catch (e) {} }
   // Modus-Auswahl + Einstellungen anzeigen
@@ -5931,6 +6127,116 @@ function abortToMenu() {
   if (modeScreen) modeScreen.classList.remove('hidden');
 }
 bindRobustClick(abortBtn, abortToMenu);
+
+// === Tutorial-Info-Overlay (kleines i im Kreis → zeigt alle wichtigen Knöpfe mit Erklärung) ===
+const tutorialInfoBtn = document.getElementById('tutorialInfoBtn');
+const infoOverlay = document.getElementById('infoOverlay');
+let _infoOverlayActive = false;
+function getInfoTargets() {
+  // Wichtige Elemente die im Tutorial-Info-Modus erklärt werden
+  const t = [];
+  const isInUfo = (typeof inUfo !== 'undefined') && inUfo;
+  if (isTouch) {
+    t.push({ id: 'joystick',     text: '🕹️ Bewegen — schiebe den Joystick' });
+    t.push({ id: 'hitBtn',       text: '⚒️ Schlagen / Schießen' });
+    t.push({ id: 'jumpBtn',      text: '⬆️ Springen (UFO: schweben hoch)' });
+    if (isInUfo) {
+      t.push({ id: 'ufoUpBtn',   text: '⬆️ UFO hoch' });
+      t.push({ id: 'ufoDownBtn', text: '⬇️ UFO runter' });
+    }
+    if (document.getElementById('pipeBtn') && document.getElementById('pipeBtn').classList.contains('show')) {
+      t.push({ id: 'pipeBtn', text: '🟢 Reingehen (Röhre/Leiter/Andocken)' });
+    }
+    if (document.getElementById('bowBtn') && document.getElementById('bowBtn').classList.contains('show')) {
+      t.push({ id: 'bowBtn', text: '🏹 Pfeil schießen' });
+    }
+  }
+  t.push({ id: 'hud',           text: '❤️ Deine Lebenspunkte und Münzen' });
+  t.push({ id: 'charPreview',   text: '👤 Du selbst (so siehst du aus)' });
+  t.push({ id: 'qualityChip',   text: '⚡ Grafik-Qualität' });
+  t.push({ id: 'abortBtn',      text: '✕ Zurück zum Hauptmenü' });
+  return t.filter(o => {
+    const el = document.getElementById(o.id);
+    return el && el.offsetWidth > 0 && el.offsetHeight > 0;
+  });
+}
+function showInfoOverlay() {
+  if (_infoOverlayActive) return;
+  _infoOverlayActive = true;
+  infoOverlay.innerHTML = '';
+  // Schließ-Hinweis
+  const hint = document.createElement('div');
+  hint.id = 'infoCloseHint';
+  hint.textContent = 'Tipp irgendwo, um zu schließen';
+  infoOverlay.appendChild(hint);
+  const targets = getInfoTargets();
+  for (const t of targets) {
+    const el = document.getElementById(t.id);
+    if (!el) continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) continue;
+    // Gelber Rahmen
+    const hl = document.createElement('div');
+    hl.className = 'info-highlight';
+    hl.style.left = (rect.left - 4) + 'px';
+    hl.style.top = (rect.top - 4) + 'px';
+    hl.style.width = (rect.width + 8) + 'px';
+    hl.style.height = (rect.height + 8) + 'px';
+    infoOverlay.appendChild(hl);
+    // Label mit Pfeil
+    const label = document.createElement('div');
+    label.className = 'info-label';
+    label.textContent = t.text;
+    // Position das Label intelligent: bei Element rechts → links davon, sonst rechts daneben
+    document.body.appendChild(label);
+    const lw = label.offsetWidth, lh = label.offsetHeight;
+    label.remove();
+    let lx, ly;
+    if (rect.left > window.innerWidth * 0.55) {
+      lx = rect.left - lw - 16;
+    } else if (rect.right < window.innerWidth * 0.45) {
+      lx = rect.right + 16;
+    } else if (rect.top > window.innerHeight * 0.55) {
+      lx = Math.max(8, rect.left + rect.width / 2 - lw / 2);
+      ly = rect.top - lh - 16;
+    } else {
+      lx = Math.max(8, rect.left + rect.width / 2 - lw / 2);
+    }
+    if (ly === undefined) {
+      ly = Math.max(8, rect.top + rect.height / 2 - lh / 2);
+    }
+    // Clamp ins Fenster
+    lx = Math.max(8, Math.min(window.innerWidth - lw - 8, lx));
+    ly = Math.max(8, Math.min(window.innerHeight - lh - 8, ly));
+    label.style.left = lx + 'px';
+    label.style.top = ly + 'px';
+    infoOverlay.appendChild(label);
+  }
+  infoOverlay.classList.add('show');
+  // Klick irgendwo zum Schließen
+  const closeHandler = (e) => {
+    hideInfoOverlay();
+    e.stopPropagation();
+    document.removeEventListener('click', closeHandler, true);
+    document.removeEventListener('touchend', closeHandler, true);
+  };
+  setTimeout(() => {
+    document.addEventListener('click', closeHandler, true);
+    document.addEventListener('touchend', closeHandler, true);
+  }, 100);
+}
+function hideInfoOverlay() {
+  _infoOverlayActive = false;
+  infoOverlay.classList.remove('show');
+  infoOverlay.innerHTML = '';
+}
+if (tutorialInfoBtn) {
+  bindRobustClick(tutorialInfoBtn, (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (_infoOverlayActive) hideInfoOverlay();
+    else showInfoOverlay();
+  });
+}
 
 // Tutorial-Hint: einmaliger Hinweis pro Schluessel — zeigt Text UND spricht ihn via Speech Synthesis
 const _shownTutorialKeys = new Set();
@@ -6839,6 +7145,8 @@ function startGame() {
   setQualityChipVisible(true);
   // Abbruch-Knopf oben links sichtbar
   if (abortBtn) abortBtn.classList.add('show');
+  // Info-Knopf nur im Tutorial sichtbar
+  if (tutorialInfoBtn) tutorialInfoBtn.classList.toggle('show', isTutorialMode());
   // Hintergrundmusik starten
   startMusic();
   // Tutorial-Welt vereinfachen (Bäume/Büsche/Steine ausblenden, nur 1 Hecke)
@@ -7032,7 +7340,8 @@ const UPDATES = [
   { id: 'v26', name: 'Update 26', desc: 'Abbruch-Knopf + Einstellungen mit Tabs', new: ['Abbruch-Knopf „✕ Zurück zum Menü" oben links im Spiel (für Tutorial UND Freestyle)', 'Klick auf Abbruch: zurück zur Modus-Auswahl (kein Neu-Laden)', 'Einstellungen jetzt mit 5 Tabs: Updates, Avatar, Game Mode, Grafik, Tag/Nacht', 'Modus-Screen hat jetzt direkt einen Einstellungen-Knopf', 'Zurück-Button geht je nach Quelle zurück (Modus-Screen oder Start-Screen)'] },
   { id: 'v27', name: 'Update 27', desc: 'Tutorial winzig + Sprachausgabe + Roboter besser sichtbar', new: ['Tutorial-Feld nur noch ±5 (vorher ±7) — wirklich winzig', 'Tutorial-Objekte enger zusammen (Pipe -2.5/+2.5, Leiter +2.5/-2.5, Portal -2.5/-2.5)', 'Tutorial-Zaun + Boden nur noch 10×10', '🔊 Sprachausgabe: jeder Tutorial-Hinweis wird auch VORGELESEN (Web Speech API auf Deutsch)', 'Roboter haben jetzt riesigen leuchtenden roten Kegel + Glow + Light', 'Roboter von überall im Mutterschiff gut sichtbar'] },
   { id: 'v28', name: 'Update 28', desc: 'Tutorial-Plattform + Cake direkt zugänglich + Portrait-Support', new: ['Tutorial: ALLE Hecken weg (vorher 1 sichtbar) — wirklich nur Plattform', 'Tutorial: Pedestal-Stein versteckt — Torte liegt direkt auf der Plattform', 'Tutorial: Cake an fester zugänglicher Position (0, 2.5) — kein Klettern nötig', 'Touch-UI passt sich an Portrait-Modus + kleine Screens an (Media Queries)', 'Joystick und Knöpfe kleiner und enger bei Portrait/kleinen Geräten', 'Spielbar in JEDER Orientierung ohne Geräte-Drehen'] },
-  { id: 'v29', name: 'Update 29 (aktuell)', desc: 'Sound-Effekte JETZT wirklich aktiv (vorher nur definiert)', new: ['🔊 playSfx() wird jetzt überall aufgerufen wo Sounds passieren sollten', 'jump-Sound beim Springen', 'kill-Sound wenn Monster besiegt', 'hurt-Sound wenn Spieler Schaden nimmt', 'arrow-Sound beim Pfeil abschießen', 'enemyShot-Sound beim Roboter-Schuss', 'coin-Sound beim Kronen-Sammeln', 'pipe-Sound beim in die Röhre fahren', 'dock-Sound beim Andocken am Mutterschiff', 'win-Sound beim Torte zerstören', 'powerup-Sound bei Heilung alle 3 Kills'] }
+  { id: 'v29', name: 'Update 29', desc: 'Sound-Effekte JETZT wirklich aktiv (vorher nur definiert)', new: ['🔊 playSfx() wird jetzt überall aufgerufen wo Sounds passieren sollten', 'jump-Sound beim Springen', 'kill-Sound wenn Monster besiegt', 'hurt-Sound wenn Spieler Schaden nimmt', 'arrow-Sound beim Pfeil abschießen', 'enemyShot-Sound beim Roboter-Schuss', 'coin-Sound beim Kronen-Sammeln', 'pipe-Sound beim in die Röhre fahren', 'dock-Sound beim Andocken am Mutterschiff', 'win-Sound beim Torte zerstören', 'powerup-Sound bei Heilung alle 3 Kills'] },
+  { id: 'v30', name: 'Update 30 (aktuell)', desc: 'Info-Knopf im Tutorial + viel coolere Sounds + Avatar mit Hut/Brille', new: ['ⓘ Info-Knopf oben links im Tutorial: zeigt alle wichtigen Knöpfe gelb markiert', 'Beim Info-Klick: Pfeil-Labels erklären jeden UI-Bereich', 'Sounds sind viel cooler: richTone() mit Obertönen + Frequency-Sweeps + Noise', 'Alle 13 Sounds neu komponiert (Sweep-Effekte, harmonische Layers)', 'Avatar bekommt Hut: Cap, 👑 Krone, 🧙 Zauberer, ⛑️ Helm, 🎉 Party-Hut', 'Avatar bekommt Brille: Sonnenbrille, 👓 Rund, ◽ Eckig', 'Avatar bekommt Gesichtsausdruck: 😊 Lächeln, 😮 Offen, 😐 Ernst, 😛 Zunge'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
