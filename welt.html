@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Welt-Karte — Geburtstagseinladung</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #fff; padding: 16px; }
+  h1 { color: #ffd700; margin-bottom: 12px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .tab { padding: 10px 18px; background: rgba(255,255,255,0.08); color: #fff; border: 2px solid rgba(255,255,255,0.25); border-radius: 8px; cursor: pointer; font-weight: bold; }
+  .tab.active { background: linear-gradient(135deg, #ffd700, #ffa500); color: #1a1a2e; border-color: #ffd700; }
+  .tab:hover:not(.active) { background: rgba(255,255,255,0.15); }
+  .container { display: flex; flex-wrap: wrap; gap: 20px; }
+  .canvas-wrap { position: relative; background: #0f0f1a; border: 3px solid #ffd700; border-radius: 12px; padding: 12px; }
+  canvas { display: block; cursor: crosshair; image-rendering: pixelated; }
+  .side { flex: 1; min-width: 280px; max-width: 480px; }
+  .panel { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+  .panel h3 { color: #ffd700; margin-bottom: 8px; font-size: 1rem; }
+  .legend { display: grid; grid-template-columns: 20px 1fr; gap: 6px 10px; font-size: 0.9em; align-items: center; }
+  .legend .sw { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); }
+  .notes { max-height: 320px; overflow-y: auto; }
+  .note { background: rgba(255,255,255,0.08); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 0.85em; display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+  .note .pos { color: #88ccff; font-family: monospace; font-size: 0.85em; }
+  .note button { background: #aa3344; color: #fff; border: 0; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em; }
+  .actions { display: flex; gap: 8px; margin-top: 8px; }
+  .actions button { padding: 8px 14px; background: linear-gradient(135deg, #88aacc, #4477aa); color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: bold; }
+  .info { color: #aab8c8; font-size: 0.85em; line-height: 1.5; }
+  .back { color: #88ccff; text-decoration: none; }
+  .back:hover { color: #ffd700; }
+</style>
+</head>
+<body>
+
+<h1>🗺️ Welt-Karte</h1>
+<p style="opacity: 0.85; margin-bottom: 12px;">Schau dir die Welten von oben an. Klick auf eine Stelle, um eine Notiz hinzuzufügen.</p>
+<p style="margin-bottom: 14px;"><a class="back" href="index.html">&larr; Zurück zum Spiel</a></p>
+
+<div class="toolbar">
+  <button class="tab active" data-world="garden">🌳 Garten</button>
+  <button class="tab" data-world="cave">⛏️ Höhle</button>
+  <button class="tab" data-world="bonus">☁️ Wolken</button>
+  <button class="tab" data-world="alien">👽 Alien-Planet</button>
+  <button class="tab" data-world="mothership">🛸 Mutterschiff</button>
+</div>
+
+<div class="container">
+  <div class="canvas-wrap">
+    <canvas id="map" width="640" height="640"></canvas>
+  </div>
+  <div class="side">
+    <div class="panel">
+      <h3>Legende</h3>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="panel">
+      <h3>📝 Notizen (klick aufs Canvas)</h3>
+      <div class="notes" id="notesList"></div>
+      <div class="actions">
+        <button id="exportBtn">📋 Notizen kopieren</button>
+        <button id="clearBtn" style="background: linear-gradient(135deg, #cc4444, #883333);">🗑️ Alle löschen</button>
+      </div>
+    </div>
+    <div class="panel info" id="worldInfo"></div>
+  </div>
+</div>
+
+<script>
+const SCALE = 8; // Pixel pro Welt-Einheit (für 80 Einheiten breit → 640 Pixel)
+const CENTER = 320;
+const ALIEN_X = -200;
+const CAVE_X = 400;
+const BONUS_X = 70;
+const BONUS_Y = 18;
+const MOTHERSHIP_X = -260;
+const MOTHERSHIP_Z = -45;
+
+const HEDGES_LAYOUT = [
+  [-3, 10, 14, 0],  [11, 6, 10, Math.PI / 2],  [-13, 2, 10, Math.PI / 2],
+  [0, -2, 14, 0],   [-9, -10, 12, Math.PI / 2], [10, -10, 10, 0],
+  [-5, -16, 10, 0], [16, -3, 8, 0], [-16, 12, 6, 0],
+  [6, 18, 8, Math.PI / 2], [16, 18, 6, 0], [-18, -18, 10, Math.PI / 4]
+];
+
+const WORLDS = {
+  garden: {
+    name: 'Garten',
+    bounds: { x: -30, z: -30, w: 60, h: 60 },
+    info: 'Hier startest du. Suche die Geburtstagstorte zwischen den Hecken. Begehbar ist der ganze Bereich innerhalb der Mauer. Hecken sind ECHTE Wände (durchgehen unmöglich). Es gibt eine grüne Röhre zur Höhle.',
+    draw(ctx) {
+      // Boden (gruen)
+      ctx.fillStyle = '#3a5520';
+      ctx.fillRect(0, 0, 640, 640);
+      // Aussen-Mauer
+      ctx.strokeStyle = '#a87f50';
+      ctx.lineWidth = 4;
+      this.bounds && drawRectWorld(ctx, this.bounds.x, this.bounds.z, this.bounds.w, this.bounds.h, null, '#a87f50', 4);
+      // Hecken (WAENDE — Durchgehen unmoeglich)
+      ctx.fillStyle = '#4a6628';
+      ctx.strokeStyle = '#2d4416';
+      ctx.lineWidth = 2;
+      for (const [x, z, l, r] of HEDGES_LAYOUT) {
+        ctx.save();
+        ctx.translate(CENTER + x * SCALE, CENTER + z * SCALE);
+        ctx.rotate(r);
+        ctx.fillRect(-l/2 * SCALE, -0.35 * SCALE, l * SCALE, 0.7 * SCALE);
+        ctx.strokeRect(-l/2 * SCALE, -0.35 * SCALE, l * SCALE, 0.7 * SCALE);
+        ctx.restore();
+      }
+      // Beispielhafte Pipe-Bereiche (random — variieren im Spiel)
+      ctx.fillStyle = '#00a04a';
+      ctx.strokeStyle = '#006c30';
+      ctx.lineWidth = 1.5;
+      drawCircle(ctx, -15, 8, 0.6, '#00a04a', '#006c30');
+      drawCircle(ctx, 20, -5, 0.6, '#00a04a', '#006c30');
+      drawCircle(ctx, 5, 15, 0.6, '#00a04a', '#006c30');
+      label(ctx, -15, 8, 'Pipe');
+      // Spieler-Spawn
+      drawCircle(ctx, -22, 22, 0.6, '#ffd700', '#aa8800');
+      label(ctx, -22, 22, 'Start');
+      // Torte (Beispiel — Position variiert)
+      drawCircle(ctx, 18, -16, 0.7, '#ff66cc', '#aa4488');
+      label(ctx, 18, -16, '🎂');
+    },
+    legend: [
+      { c: '#3a5520', t: 'Begehbarer Boden' },
+      { c: '#4a6628', t: 'Hecken (WAND — undurchdringlich)' },
+      { c: '#00a04a', t: 'Pipe (in die Höhle)' },
+      { c: '#ffd700', t: 'Spieler-Startpunkt' },
+      { c: '#ff66cc', t: 'Torte (Ziel)' }
+    ]
+  },
+  cave: {
+    name: 'Höhle',
+    bounds: { x: -19, z: -19, w: 38, h: 38, offX: CAVE_X },
+    info: 'Im Untergrund. Boden überall fest. Stein-Blocks zum Abbauen (verschwinden mit Hammer). 3 Werkbänke (Gold-Hammer, Schild, Rüstung). Goldene Exit-Pipe in der Mitte führt zurück zum Garten.',
+    draw(ctx) {
+      ctx.fillStyle = '#3a3530';
+      ctx.fillRect(0, 0, 640, 640);
+      // Boundary
+      drawRectWorld(ctx, -19, -19, 38, 38, null, '#7a6045', 3);
+      // Exit-Pipe (golden)
+      drawCircle(ctx, 0, 0, 1.2, '#ffd700', '#aa6611');
+      label(ctx, 0, 0, 'Pipe → Garten');
+      // Werkbänke
+      drawCircle(ctx, -12, -16, 0.8, '#9a5a2b', '#5b3018');
+      label(ctx, -12, -16, 'Hammer');
+      drawCircle(ctx, -9, -16, 0.8, '#6688cc', '#3d5588');
+      label(ctx, -9, -16, 'Schild');
+      drawCircle(ctx, -6, -16, 0.8, '#cdd2d8', '#888');
+      label(ctx, -6, -16, 'Rüstung');
+      // Stein-Blocks (Beispiele)
+      ctx.fillStyle = '#6a6258';
+      for (let i = 0; i < 12; i++) {
+        const x = (i % 4) * 7 - 10;
+        const z = Math.floor(i / 4) * 5 + 4;
+        ctx.fillRect(CENTER + x * SCALE - 4, CENTER + z * SCALE - 4, 8, 8);
+      }
+      label(ctx, -10, 4, 'Steinblöcke');
+      // Spawn
+      drawCircle(ctx, 5, 5, 0.6, '#ffd700', '#aa8800');
+      label(ctx, 5, 5, 'Start');
+    },
+    legend: [
+      { c: '#3a3530', t: 'Höhlenboden (begehbar)' },
+      { c: '#ffd700', t: 'Exit-Pipe zurück zum Garten' },
+      { c: '#9a5a2b', t: 'Werkbank: Gold-Hammer' },
+      { c: '#6688cc', t: 'Werkbank: Schild' },
+      { c: '#cdd2d8', t: 'Werkbank: Rüstung' },
+      { c: '#6a6258', t: 'Stein-Blocks (mit Hammer abbaubar)' }
+    ]
+  },
+  bonus: {
+    name: 'Wolkenwelt',
+    bounds: { x: -18, z: -18, w: 36, h: 36, offX: BONUS_X },
+    info: '⚠️ ACHTUNG: Hier kann man DURCH die Lücken zwischen den Wolken FALLEN! Die weißen Bereiche sind Wolken (begehbar). Alles andere ist Abgrund. Bonus-Cupcakes geben Sprungkraft.',
+    draw(ctx) {
+      // Himmel (Abgrund-Hintergrund)
+      ctx.fillStyle = '#6cbbff';
+      ctx.fillRect(0, 0, 640, 640);
+      // Boundary
+      drawRectWorld(ctx, -18, -18, 36, 36, 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.4)', 2);
+      // Wolken-Inseln (Beispiel-Layout — eigentlich random platziert)
+      const cloudSpots = [
+        [0, 0, 3.5], [-8, -5, 3], [7, -7, 2.8], [-6, 8, 3.2], [9, 6, 2.5],
+        [-12, 2, 2.5], [4, 12, 2.2], [12, -2, 2], [-3, -13, 2.3]
+      ];
+      for (const [x, z, r] of cloudSpots) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(CENTER + x * SCALE, CENTER + z * SCALE, r * SCALE, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#cce0f5';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      // Cupcakes (Beispiele)
+      drawCircle(ctx, 0, 0, 0.4, '#ff66cc', '#aa3388');
+      label(ctx, 0, 0, '🧁');
+      drawCircle(ctx, -8, -5, 0.4, '#ff66cc', '#aa3388');
+      // Spawn
+      drawCircle(ctx, 0, 0, 0.5, '#ffd700', '#aa8800');
+    },
+    legend: [
+      { c: '#6cbbff', t: '⚠️ ABGRUND (man fällt durch!)' },
+      { c: '#ffffff', t: 'Wolken (begehbar)' },
+      { c: '#ff66cc', t: 'Bonus-Cupcakes' }
+    ]
+  },
+  alien: {
+    name: 'Alien-Planet',
+    bounds: { x: -24, z: -24, w: 48, h: 48, offX: ALIEN_X },
+    info: '⚠️ KRATER sind Löcher im Boden — wenn man reinfällt, verliert man Lebenspunkte. Roboter mit Lasern. In der Mitte steht das Pedestal mit Leiter zum UFO. Alien-Cake schwebt entfernt im Hintergrund.',
+    draw(ctx) {
+      // Boden (lila/grau)
+      ctx.fillStyle = '#3a2848';
+      ctx.fillRect(0, 0, 640, 640);
+      drawRectWorld(ctx, -24, -24, 48, 48, null, '#664488', 3);
+      // Krater (Fall-Gefahr!)
+      const craters = [[10, 12, 1.6], [-14, 6, 1.8], [8, -10, 1.5], [-9, -14, 1.7]];
+      for (const [x, z, r] of craters) {
+        ctx.fillStyle = '#1a0a22';
+        ctx.beginPath();
+        ctx.arc(CENTER + x * SCALE, CENTER + z * SCALE, r * SCALE, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ff3344';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      // Vulkane (Beispiele)
+      const volcanoes = [[-18, 8, 1.2], [18, -12, 1.0]];
+      for (const [x, z, r] of volcanoes) {
+        ctx.fillStyle = '#5a2810';
+        ctx.beginPath();
+        ctx.arc(CENTER + x * SCALE, CENTER + z * SCALE, r * SCALE, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      label(ctx, -18, 8, '🌋');
+      // Pedestal + UFO
+      drawCircle(ctx, 0, 0, 1.0, '#aa6633', '#553322');
+      label(ctx, 0, 0, 'Pedestal');
+      drawCircle(ctx, 0, 0, 2.5, 'rgba(255,200,100,0.3)', '#ffaa44');
+      label(ctx, 0, -4, 'UFO');
+      // Spawn
+      drawCircle(ctx, 11, 11, 0.6, '#ffd700', '#aa8800');
+      label(ctx, 11, 11, 'Start');
+    },
+    legend: [
+      { c: '#3a2848', t: 'Alien-Boden (begehbar)' },
+      { c: '#1a0a22', t: '⚠️ Krater (rein = Schaden!)' },
+      { c: '#5a2810', t: '🌋 Vulkan (Wand)' },
+      { c: '#aa6633', t: 'Pedestal mit Leiter zum UFO' },
+      { c: '#ffaa44', t: 'UFO-Position' }
+    ]
+  },
+  mothership: {
+    name: 'Mutterschiff (innen)',
+    bounds: { x: -10, z: -10, w: 20, h: 20, offX: MOTHERSHIP_X, offZ: MOTHERSHIP_Z },
+    info: 'Du landest im Hangar des Star-Destroyer. ECHTE Wände (graue Boxen) blockieren den Weg. Goldener Ring in der Mitte = Controllerzentrale (Ziel). 6 Roboter wandern durchs Labyrinth.',
+    draw(ctx) {
+      // Innen-Boden
+      ctx.fillStyle = '#3a4252';
+      ctx.fillRect(0, 0, 640, 640);
+      // Aussen-Boundary
+      drawRectWorld(ctx, -10, -10, 20, 20, null, '#232a35', 4);
+      // Innen-Waende
+      const walls = [
+        [-4, -5, 3, 0.4], [4, -5, 3, 0.4], [-4, 5, 3, 0.4], [4, 5, 3, 0.4],
+        [-6, -2, 0.4, 3], [6, -2, 0.4, 3], [-6, 2, 0.4, 3], [6, 2, 0.4, 3]
+      ];
+      ctx.fillStyle = '#404a58';
+      ctx.strokeStyle = '#232a35';
+      ctx.lineWidth = 1.5;
+      for (const [x, z, w, d] of walls) {
+        ctx.fillRect(CENTER + (x - w/2) * SCALE, CENTER + (z - d/2) * SCALE, w * SCALE, d * SCALE);
+        ctx.strokeRect(CENTER + (x - w/2) * SCALE, CENTER + (z - d/2) * SCALE, w * SCALE, d * SCALE);
+      }
+      // Controllerzentrale (Mitte)
+      ctx.fillStyle = '#707a88';
+      ctx.beginPath();
+      ctx.arc(CENTER, CENTER, 1.5 * SCALE, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(CENTER, CENTER, 2.0 * SCALE, 0, Math.PI * 2);
+      ctx.stroke();
+      label(ctx, 0, 0, 'ZIEL');
+      // Roboter-Spawn (6)
+      const robotSpots = [[-6, -6], [6, -6], [-6, 6], [6, 6], [-8, 0], [8, 0]];
+      ctx.fillStyle = '#ff4466';
+      for (const [x, z] of robotSpots) {
+        ctx.beginPath();
+        ctx.arc(CENTER + x * SCALE, CENTER + z * SCALE, 0.4 * SCALE, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      label(ctx, -6, -6, '🤖');
+      // Player-Spawn (Ecke)
+      drawCircle(ctx, -8, 7.5, 0.6, '#ffd700', '#aa8800');
+      label(ctx, -8, 7.5, 'Start');
+      // Luke (unten Mitte) — symbolisch oben links
+      ctx.strokeStyle = '#66ddff';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(CENTER, CENTER, 2.5 * SCALE, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    },
+    legend: [
+      { c: '#3a4252', t: 'Begehbarer Schiff-Boden' },
+      { c: '#404a58', t: 'WAND (undurchdringlich)' },
+      { c: '#707a88', t: 'Controllerzentrale (Ziel)' },
+      { c: '#ffd700', t: 'Goldener Zielring' },
+      { c: '#ff4466', t: '🤖 Roboter-Spawnpunkte' },
+      { c: '#66ddff', t: 'Luke (Andock-Eingang)' }
+    ]
+  }
+};
+
+function drawRectWorld(ctx, x, z, w, h, fill, stroke, strokeW) {
+  if (fill) { ctx.fillStyle = fill; ctx.fillRect(CENTER + x * SCALE, CENTER + z * SCALE, w * SCALE, h * SCALE); }
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = strokeW || 2;
+    ctx.strokeRect(CENTER + x * SCALE, CENTER + z * SCALE, w * SCALE, h * SCALE);
+  }
+}
+function drawCircle(ctx, x, z, r, fill, stroke) {
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.arc(CENTER + x * SCALE, CENTER + z * SCALE, r * SCALE, 0, Math.PI * 2);
+  ctx.fill();
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+function label(ctx, x, z, text) {
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 3;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  const px = CENTER + x * SCALE;
+  const py = CENTER + z * SCALE + 4;
+  ctx.strokeText(text, px, py);
+  ctx.fillText(text, px, py);
+  ctx.textAlign = 'start';
+}
+
+const canvas = document.getElementById('map');
+const ctx = canvas.getContext('2d');
+const legendEl = document.getElementById('legend');
+const notesEl = document.getElementById('notesList');
+const infoEl = document.getElementById('worldInfo');
+
+let currentWorld = 'garden';
+let notes = JSON.parse(localStorage.getItem('weltKarteNotes') || '{}');
+
+function pixelToWorld(px, py) {
+  return { x: (px - CENTER) / SCALE, z: (py - CENTER) / SCALE };
+}
+
+function drawWorld() {
+  ctx.clearRect(0, 0, 640, 640);
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let g = -40; g <= 40; g += 5) {
+    ctx.beginPath(); ctx.moveTo(CENTER + g * SCALE, 0); ctx.lineTo(CENTER + g * SCALE, 640); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, CENTER + g * SCALE); ctx.lineTo(640, CENTER + g * SCALE); ctx.stroke();
+  }
+  // Welt-Geometrie
+  WORLDS[currentWorld].draw(ctx);
+  // Notes
+  const worldNotes = notes[currentWorld] || [];
+  for (const n of worldNotes) {
+    const px = CENTER + n.x * SCALE;
+    const py = CENTER + n.z * SCALE;
+    ctx.fillStyle = '#ff0044';
+    ctx.beginPath();
+    ctx.arc(px, py, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('!', px, py + 4);
+    ctx.textAlign = 'start';
+  }
+}
+
+function buildLegend() {
+  legendEl.innerHTML = '';
+  for (const item of WORLDS[currentWorld].legend) {
+    const sw = document.createElement('div');
+    sw.className = 'sw';
+    sw.style.background = item.c;
+    const txt = document.createElement('div');
+    txt.textContent = item.t;
+    legendEl.appendChild(sw);
+    legendEl.appendChild(txt);
+  }
+  infoEl.textContent = WORLDS[currentWorld].info;
+}
+
+function buildNotes() {
+  notesEl.innerHTML = '';
+  const worldNotes = notes[currentWorld] || [];
+  if (worldNotes.length === 0) {
+    notesEl.innerHTML = '<div style="opacity:0.6; font-size:0.85em;">Noch keine Notizen. Klick aufs Canvas, um eine hinzuzufügen.</div>';
+    return;
+  }
+  worldNotes.forEach((n, idx) => {
+    const el = document.createElement('div');
+    el.className = 'note';
+    const txt = document.createElement('div');
+    txt.innerHTML = '<span class="pos">x=' + n.x.toFixed(1) + ', z=' + n.z.toFixed(1) + '</span><br>' + escapeHtml(n.text);
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.title = 'Löschen';
+    btn.addEventListener('click', () => {
+      worldNotes.splice(idx, 1);
+      saveNotes();
+      buildNotes();
+      drawWorld();
+    });
+    el.appendChild(txt);
+    el.appendChild(btn);
+    notesEl.appendChild(el);
+  });
+}
+
+function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function saveNotes() { localStorage.setItem('weltKarteNotes', JSON.stringify(notes)); }
+
+canvas.addEventListener('click', (e) => {
+  const r = canvas.getBoundingClientRect();
+  const px = (e.clientX - r.left) * (canvas.width / r.width);
+  const py = (e.clientY - r.top) * (canvas.height / r.height);
+  const world = pixelToWorld(px, py);
+  const text = prompt('Notiz für diese Stelle (x=' + world.x.toFixed(1) + ', z=' + world.z.toFixed(1) + '):');
+  if (!text) return;
+  if (!notes[currentWorld]) notes[currentWorld] = [];
+  notes[currentWorld].push({ x: world.x, z: world.z, text });
+  saveNotes();
+  buildNotes();
+  drawWorld();
+});
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    currentWorld = t.dataset.world;
+    drawWorld();
+    buildLegend();
+    buildNotes();
+  });
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const text = JSON.stringify(notes, null, 2);
+  navigator.clipboard.writeText(text).then(() => alert('Alle Notizen in die Zwischenablage kopiert!'));
+});
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (!confirm('Alle Notizen löschen?')) return;
+  notes = {};
+  saveNotes();
+  buildNotes();
+  drawWorld();
+});
+
+drawWorld();
+buildLegend();
+buildNotes();
+</script>
+</body>
+</html>

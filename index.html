@@ -364,8 +364,12 @@
       <div id="versionList" style="max-height: 56vh; overflow-y: auto; text-align: left;"></div>
     </div>
     <div class="settings-page hidden" id="page-avatar" style="text-align: center;">
-      <p style="opacity: 0.85; margin-bottom: 12px;">&Auml;ndere dein Aussehen: Haut, Haare, Shirt, Hose.</p>
+      <p style="opacity: 0.85; margin-bottom: 12px;">&Auml;ndere dein Aussehen: Haut, Haare, Shirt, Hose, Hut, Brille, Mund.</p>
       <button class="btn" id="openCharEditorBtn" style="font-size: 1rem; padding: 12px 26px; background: linear-gradient(135deg, #cc88ee, #8866cc);">&#x1F3A8; Charakter ändern</button>
+      <div style="margin-top: 22px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.15);">
+        <p style="opacity: 0.85; margin-bottom: 10px;">&#x1F5FA;&#xFE0F; <b>Welt-Karte:</b> Schau dir an, wie die Welten aufgebaut sind und markiere Stellen.</p>
+        <a class="btn" id="openMapLink" href="welt.html" target="_blank" style="display: inline-block; text-decoration: none; font-size: 1rem; padding: 12px 26px; background: linear-gradient(135deg, #66cc88, #449966); color: #1a1a2e;">&#x1F5FA;&#xFE0F; Welt-Karte öffnen</a>
+      </div>
     </div>
     <div class="settings-page hidden" id="page-gamemode">
       <p style="margin-bottom: 10px;">Tutorial für Anleitungen, Freestyle für freies Spielen.</p>
@@ -1418,7 +1422,6 @@ function findSafeSpawn(x, z, r, maxRadius) {
   r = r || 0.45;
   maxRadius = maxRadius || 4;
   if (!collidesAny(x, z, r)) return { x, z };
-  // Spirale nach aussen: probiere immer weitere Ringe
   for (let ring = 1; ring <= maxRadius * 2; ring++) {
     const radius = ring * 0.5;
     const steps = 8 + ring * 4;
@@ -1429,7 +1432,29 @@ function findSafeSpawn(x, z, r, maxRadius) {
       if (!collidesAny(nx, nz, r)) return { x: nx, z: nz };
     }
   }
-  return { x, z }; // Notfall — kein freier Punkt gefunden
+  return { x, z };
+}
+// Sucht eine Position OHNE Krater UND ohne obstacles in der Alien-Welt
+function isInCrater(x, z) {
+  if (typeof alienCraters === 'undefined') return false;
+  for (const c of alienCraters) {
+    if (Math.hypot(x - c.x, z - c.z) < c.radius + 0.5) return true;
+  }
+  return false;
+}
+function findSafeAlienSpawn(x, z) {
+  if (!collidesAny(x, z, 0.5) && !isInCrater(x, z)) return { x, z };
+  for (let ring = 1; ring <= 10; ring++) {
+    const radius = ring * 1.0;
+    const steps = 8 + ring * 4;
+    for (let i = 0; i < steps; i++) {
+      const ang = (i / steps) * Math.PI * 2;
+      const nx = x + Math.cos(ang) * radius;
+      const nz = z + Math.sin(ang) * radius;
+      if (!collidesAny(nx, nz, 0.5) && !isInCrater(nx, nz)) return { x: nx, z: nz };
+    }
+  }
+  return { x, z };
 }
 
 // === Cake spot (random from a list) ===
@@ -5721,7 +5746,8 @@ function updateMovement(dt) {
       triggerDeath();
       return;
     }
-    { const _s = findSafeSpawn(ALIEN_X + 11, 11, 0.5); camera.position.set(_s.x, PLAYER_HEIGHT, _s.z); }
+    // Krater-Respawn: garantiert NICHT in einem anderen Krater (oder Hindernis)
+    { const _s = findSafeAlienSpawn(ALIEN_X + 11, 11); camera.position.set(_s.x, PLAYER_HEIGHT, _s.z); }
     yaw = Math.atan2(camera.position.x - ALIEN_X, camera.position.z - 0);
     playerVy = 0;
     onGround = true;
@@ -7463,7 +7489,8 @@ const UPDATES = [
   { id: 'v31', name: 'Update 31', desc: 'Übersichtlicher: gesperrte Items weg, Hearts nur bei Schaden, kleineres UI', new: ['Gesperrte Inventory-Slots werden VERSTECKT (vorher grau sichtbar)', 'Hearts/Lebenspunkte nur sichtbar wenn du Schaden hast (im Freestyle)', 'Im Tutorial bleiben die Hearts immer sichtbar (zum Lernen)', 'Inventory-Slots kleiner (48px statt 60px) — mehr Platz im HUD', 'Quality-Anzeige dezenter (kleiner, transparenter) — stört nicht mehr', 'Bei Quality-Wechsel blitzt sie kurz orange auf, sonst dezent grau'] },
   { id: 'v32', name: 'Update 32', desc: 'Performance-Optimierung — weniger stocken bei schönerer Optik', new: ['Char-Preview-Animation throttled auf 10 fps (vorher 60 fps) — 6× weniger Canvas-Drawing', 'Roboter-Marker-PointLight ENTFERNT — bei vielen Robotern war das teuer', 'Stattdessen: schönerer Glow mit Kern (Mesh-Material) — sieht besser aus', 'Mothership-Engines: nur 1 PointLight statt 3 (gleiche Wirkung, 3× billiger)', 'WebGL-Renderer mit „high-performance"-Hint (GPU statt iGPU)', 'Tone-Mapping-Exposure leicht erhöht (1.1) — wärmere Farben'] },
   { id: 'v33', name: 'Update 33', desc: 'Optische Politur — Sonne, Mond, Schatten, Spieler-Halo viel echter', new: ['☀️ Sonne mit 3 Glow-Schichten + Additive-Blending Lens-Halo', '☀️ Sun-Halo pulsiert sanft (atmosphärischer Effekt)', '🌙 Mond mit Kratern (8 zufällige Krater-Beulen) statt Sphäre', '🌙 Mond-Glow mit Additive-Blending für realistischen Schein', '👤 Spieler-Schatten-Halo auf dem Boden (skaliert beim Springen)', '🌑 Schatten weicher (radius 4) + besseres Bias (kein „Acne")', 'Sun-Sphere höhere Auflösung (32×20 statt 24×16) für glattere Form'] },
-  { id: 'v34', name: 'Update 34 (aktuell)', desc: 'Animierte Erfolgs-Feiern + Walkthrough-Tests', new: ['🎉 celebrateAchievement(): Rainbow-Banner + Konfetti-Burst bei Erfolg', '🎉 1. Krone gesammelt → Banner „Erste Krone!"', '🎉 3 Kronen → Doppelsprung-Banner', '🎉 1. Monster besiegt → Banner', '🎉 Pfeil & Bogen freigeschaltet → Banner', '🎉 Gold-Hammer/Schild/Rüstung gebaut → eigene Banner', '🎉 Mutterschiff angedockt → Banner', '🎉 Torte zerstört → 🎂-Banner', '🏆 GEWONNEN → riesiger Banner mit 120 Konfetti', 'Banner-Text rotiert die Regenbogen-Farben', 'Walkthrough-Tests: alle Game-Funktionen sind aufrufbar'] }
+  { id: 'v34', name: 'Update 34', desc: 'Animierte Erfolgs-Feiern + Walkthrough-Tests', new: ['🎉 celebrateAchievement(): Rainbow-Banner + Konfetti-Burst bei Erfolg', '🎉 1. Krone gesammelt → Banner „Erste Krone!"', '🎉 3 Kronen → Doppelsprung-Banner', '🎉 1. Monster besiegt → Banner', '🎉 Pfeil & Bogen freigeschaltet → Banner', '🎉 Gold-Hammer/Schild/Rüstung gebaut → eigene Banner', '🎉 Mutterschiff angedockt → Banner', '🎉 Torte zerstört → 🎂-Banner', '🏆 GEWONNEN → riesiger Banner mit 120 Konfetti', 'Banner-Text rotiert die Regenbogen-Farben', 'Walkthrough-Tests: alle Game-Funktionen sind aufrufbar'] },
+  { id: 'v35', name: 'Update 35 (aktuell)', desc: 'Anti-Krater-Spawn + interaktive Welt-Karte', new: ['🛡️ findSafeAlienSpawn: nach Krater-Sturz NIE wieder in einen Krater spawnen', 'Spirale-Suche meidet auch andere Hindernisse', '🗺️ Neue welt.html-Seite: top-down Karte aller 5 Welten', 'Karte zeigt: Wände, Lücken, Krater, Spawn-Punkte, Ziele', 'Klick auf Karte: Notiz mit Position hinzufügen', 'Notizen lokal gespeichert + Copy-to-Clipboard Export', 'Link „🗺️ Welt-Karte öffnen" im Avatar-Tab in den Einstellungen'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
