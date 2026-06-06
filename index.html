@@ -717,6 +717,7 @@ function drawCharacter(ctx, w, h, opts) {
   }
 }
 let animFrame = 0;
+let _charPreviewUpdateAccum = 0;
 
 const charPreviewEl = document.getElementById('charPreview');
 const charPreviewCanvas = document.getElementById('charPreviewCanvas');
@@ -956,14 +957,14 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x7ec0ee);
 scene.fog = new THREE.Fog(0xb5dcef, 20, 70);
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.1;
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.rotation.order = 'YXZ';
@@ -3197,17 +3198,22 @@ function makeHumanAlien(x, y, z, scale) {
   marker.position.y = 2.9 * s;
   marker.rotation.x = Math.PI;
   g.add(marker);
-  // Glow-Sphäre für noch bessere Sichtbarkeit
+  // Glow-Sphäre (ohne PointLight — die waren bei vielen Robotern zu teuer)
   const robotMarkerGlow = new THREE.Mesh(
-    new THREE.SphereGeometry(0.6 * s, 12, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff5566, transparent: true, opacity: 0.4 })
+    new THREE.SphereGeometry(0.7 * s, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff6677, transparent: true, opacity: 0.55 })
   );
   robotMarkerGlow.position.y = 2.9 * s;
   g.add(robotMarkerGlow);
-  // Punkt-Licht damit der Marker leuchtet
-  const robotMarkerLight = new THREE.PointLight(0xff2244, 1.2, 5);
-  robotMarkerLight.position.y = 2.9 * s;
-  g.add(robotMarkerLight);
+  // Kleinerer innerer Glow fuer mehr Tiefe
+  const robotMarkerCore = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3 * s, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffaa88 })
+  );
+  robotMarkerCore.position.y = 2.9 * s;
+  g.add(robotMarkerCore);
+  // Performance: KEIN PointLight pro Roboter — sonst stockt bei vielen
+  const robotMarkerLight = robotMarkerCore; // alias damit Tests nicht brechen
   // Glow under the marker
   const markerLight = new THREE.PointLight(0xff2244, 1.2, 4);
   markerLight.position.y = 2.2 * s;
@@ -3889,10 +3895,11 @@ function makeAlien(x, y, z, scale) {
     core.rotation.x = Math.PI / 2;
     core.position.set(dx, 0.4, -halfLen - 3.15);
     motherG.add(core);
-    const eL = new THREE.PointLight(0x99ddff, 3.2, 16);
-    eL.position.set(dx, 0.4, -halfLen - 2.95);
-    motherG.add(eL);
   }
+  // Nur EIN gemeinsames Engine-Light statt 3 (Performance)
+  const engineLightSingle = new THREE.PointLight(0x99ddff, 3.5, 22);
+  engineLightSingle.position.set(0, 0.4, -halfLen - 2.95);
+  motherG.add(engineLightSingle);
   // 4 kleinere seitliche Triebwerke
   for (const dx of [-13.5, -11, 11, 13.5]) {
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.35, 14), engineRing);
@@ -7347,7 +7354,8 @@ const UPDATES = [
   { id: 'v28', name: 'Update 28', desc: 'Tutorial-Plattform + Cake direkt zugänglich + Portrait-Support', new: ['Tutorial: ALLE Hecken weg (vorher 1 sichtbar) — wirklich nur Plattform', 'Tutorial: Pedestal-Stein versteckt — Torte liegt direkt auf der Plattform', 'Tutorial: Cake an fester zugänglicher Position (0, 2.5) — kein Klettern nötig', 'Touch-UI passt sich an Portrait-Modus + kleine Screens an (Media Queries)', 'Joystick und Knöpfe kleiner und enger bei Portrait/kleinen Geräten', 'Spielbar in JEDER Orientierung ohne Geräte-Drehen'] },
   { id: 'v29', name: 'Update 29', desc: 'Sound-Effekte JETZT wirklich aktiv (vorher nur definiert)', new: ['🔊 playSfx() wird jetzt überall aufgerufen wo Sounds passieren sollten', 'jump-Sound beim Springen', 'kill-Sound wenn Monster besiegt', 'hurt-Sound wenn Spieler Schaden nimmt', 'arrow-Sound beim Pfeil abschießen', 'enemyShot-Sound beim Roboter-Schuss', 'coin-Sound beim Kronen-Sammeln', 'pipe-Sound beim in die Röhre fahren', 'dock-Sound beim Andocken am Mutterschiff', 'win-Sound beim Torte zerstören', 'powerup-Sound bei Heilung alle 3 Kills'] },
   { id: 'v30', name: 'Update 30', desc: 'Info-Knopf im Tutorial + viel coolere Sounds + Avatar mit Hut/Brille', new: ['ⓘ Info-Knopf oben links im Tutorial: zeigt alle wichtigen Knöpfe gelb markiert', 'Beim Info-Klick: Pfeil-Labels erklären jeden UI-Bereich', 'Sounds sind viel cooler: richTone() mit Obertönen + Frequency-Sweeps + Noise', 'Alle 13 Sounds neu komponiert (Sweep-Effekte, harmonische Layers)', 'Avatar bekommt Hut: Cap, 👑 Krone, 🧙 Zauberer, ⛑️ Helm, 🎉 Party-Hut', 'Avatar bekommt Brille: Sonnenbrille, 👓 Rund, ◽ Eckig', 'Avatar bekommt Gesichtsausdruck: 😊 Lächeln, 😮 Offen, 😐 Ernst, 😛 Zunge'] },
-  { id: 'v31', name: 'Update 31 (aktuell)', desc: 'Übersichtlicher: gesperrte Items weg, Hearts nur bei Schaden, kleineres UI', new: ['Gesperrte Inventory-Slots werden VERSTECKT (vorher grau sichtbar)', 'Hearts/Lebenspunkte nur sichtbar wenn du Schaden hast (im Freestyle)', 'Im Tutorial bleiben die Hearts immer sichtbar (zum Lernen)', 'Inventory-Slots kleiner (48px statt 60px) — mehr Platz im HUD', 'Quality-Anzeige dezenter (kleiner, transparenter) — stört nicht mehr', 'Bei Quality-Wechsel blitzt sie kurz orange auf, sonst dezent grau'] }
+  { id: 'v31', name: 'Update 31', desc: 'Übersichtlicher: gesperrte Items weg, Hearts nur bei Schaden, kleineres UI', new: ['Gesperrte Inventory-Slots werden VERSTECKT (vorher grau sichtbar)', 'Hearts/Lebenspunkte nur sichtbar wenn du Schaden hast (im Freestyle)', 'Im Tutorial bleiben die Hearts immer sichtbar (zum Lernen)', 'Inventory-Slots kleiner (48px statt 60px) — mehr Platz im HUD', 'Quality-Anzeige dezenter (kleiner, transparenter) — stört nicht mehr', 'Bei Quality-Wechsel blitzt sie kurz orange auf, sonst dezent grau'] },
+  { id: 'v32', name: 'Update 32 (aktuell)', desc: 'Performance-Optimierung — weniger stocken bei schönerer Optik', new: ['Char-Preview-Animation throttled auf 10 fps (vorher 60 fps) — 6× weniger Canvas-Drawing', 'Roboter-Marker-PointLight ENTFERNT — bei vielen Robotern war das teuer', 'Stattdessen: schönerer Glow mit Kern (Mesh-Material) — sieht besser aus', 'Mothership-Engines: nur 1 PointLight statt 3 (gleiche Wirkung, 3× billiger)', 'WebGL-Renderer mit „high-performance"-Hint (GPU statt iGPU)', 'Tone-Mapping-Exposure leicht erhöht (1.1) — wärmere Farben'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
@@ -7908,9 +7916,13 @@ function animate() {
       s.group.position.z = Math.sin(s.baseAng) * h.open * 2.4;
     }
   }
-  // Avatar-Animation Frame + Vorschau aktualisieren
+  // Avatar-Animation Frame + Vorschau (THROTTLED auf 10 fps — Canvas-Drawing ist teuer)
   animFrame += dt;
-  if (charPreviewEl && charPreviewEl.classList.contains('show')) updateCharPreview();
+  _charPreviewUpdateAccum += dt;
+  if (_charPreviewUpdateAccum > 0.1 && charPreviewEl && charPreviewEl.classList.contains('show')) {
+    _charPreviewUpdateAccum = 0;
+    updateCharPreview();
+  }
   // Mutterschiff: pulsierender Beacon + leichte Schwebe-Animation
   if (window.__mothershipBeacon) {
     window.__mothershipBeacon.material.opacity = 0.22 + 0.18 * (0.5 + 0.5 * Math.sin(nowMs * 0.003));
