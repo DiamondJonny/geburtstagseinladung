@@ -1043,43 +1043,96 @@ function collidesAny(x, z, r) {
   return false;
 }
 
-// Tutorial-Welt: alle Garten-Decoration verstecken + nur 1 Hecke + 1 Pipe + 1 Leiter sichtbar
+// Sichtlinie zwischen zwei Punkten (XZ-Ebene) — gibt false zurueck wenn eine Wand dazwischen ist
+function hasLineOfSight(x1, z1, x2, z2) {
+  const dx = x2 - x1, dz = z2 - z1;
+  const dist = Math.hypot(dx, dz);
+  if (dist < 0.01) return true;
+  const steps = Math.max(4, Math.ceil(dist * 4)); // 4 Samples pro Einheit
+  const sx = dx / steps, sz = dz / steps;
+  for (let i = 1; i < steps; i++) {
+    const px = x1 + sx * i;
+    const pz = z1 + sz * i;
+    // Pruefe nur "block-artige" Hindernisse mit top (Waende, kletterbare Sachen schliessen wir aus)
+    for (const o of obstacles) {
+      if (o._disabled) continue;
+      if (o.isPipe || o.isCaveExit || o.isAlienLadder || o.isTutorialCloudLadder) continue;
+      if (Math.abs(px - o.x) < o.halfW && Math.abs(pz - o.z) < o.halfD) return false;
+    }
+  }
+  return true;
+}
+
+// Tutorial-Welt: alle Garten-Decoration verstecken + nur 1 Hecke + 1 Pipe + 1 Leiter + 1 Alien-Portal sichtbar
 let _tutorialPipeBuilt = false;
 let _tutorialLadder = null;
 let _tutorialLadderObs = null;
+let _tutorialAlienPortal = null;
+let _tutorialAlienPortalObs = null;
+let _tutorialFence = null;
 function buildTutorialObjects() {
   if (_tutorialPipeBuilt) return;
   _tutorialPipeBuilt = true;
-  // Tutorial-Pipe (links vom Spieler) — fuehrt in die Hoehle
+  // Tutorial-Pipe (links) — fuehrt in die Hoehle
   makePipe(-3, 3, 0.75);
-  // Tutorial-Leiter (vor dem Spieler) — fuehrt zur Wolkenwelt
-  const lg = new THREE.Group();
-  const ladderMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.7 });
-  const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 7, 0.1), ladderMat);
-  sideL.position.set(-0.3, 3.5, 0);
-  lg.add(sideL);
-  const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 7, 0.1), ladderMat);
-  sideR.position.set(0.3, 3.5, 0);
-  lg.add(sideR);
-  for (let i = 0; i < 14; i++) {
-    const rung = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.05), ladderMat);
-    rung.position.set(0, 0.5 + i * 0.5, 0);
-    lg.add(rung);
+  // Tutorial-Leiter zur Wolkenwelt (rechts hinten)
+  function makeLadder(color, indicatorColor) {
+    const lg = new THREE.Group();
+    const ladderMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.7 });
+    const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 7, 0.1), ladderMat);
+    sideL.position.set(-0.3, 3.5, 0);
+    lg.add(sideL);
+    const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 7, 0.1), ladderMat);
+    sideR.position.set(0.3, 3.5, 0);
+    lg.add(sideR);
+    for (let i = 0; i < 14; i++) {
+      const rung = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.05), ladderMat);
+      rung.position.set(0, 0.5 + i * 0.5, 0);
+      lg.add(rung);
+    }
+    const ind = new THREE.Mesh(
+      new THREE.SphereGeometry(0.6, 12, 8),
+      new THREE.MeshStandardMaterial({ color: indicatorColor, emissive: indicatorColor, emissiveIntensity: 0.5 })
+    );
+    ind.position.set(0, 7.5, 0);
+    lg.add(ind);
+    return lg;
   }
-  // Wolken-Indikator oben
-  const cloud = new THREE.Mesh(
-    new THREE.SphereGeometry(0.6, 12, 8),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xddeeff, emissiveIntensity: 0.4 })
-  );
-  cloud.position.set(0, 7.5, 0);
-  lg.add(cloud);
-  lg.position.set(2, 0, -3);
-  scene.add(lg);
-  _tutorialLadder = lg;
+  _tutorialLadder = makeLadder(0xffffff, 0xddeeff);
+  _tutorialLadder.position.set(2, 0, -3);
+  scene.add(_tutorialLadder);
   _tutorialLadderObs = { x: 2, z: -3, halfW: 1.0, halfD: 1.0, isTutorialCloudLadder: true };
   ladderTriggers.push(_tutorialLadderObs);
-  // Standardmaessig hide
-  lg.visible = false;
+  // Tutorial-Alien-Portal (lila Leiter) — fuehrt zum Alien-Planeten
+  _tutorialAlienPortal = makeLadder(0xff66cc, 0xff44ff);
+  _tutorialAlienPortal.position.set(-2, 0, -3);
+  scene.add(_tutorialAlienPortal);
+  _tutorialAlienPortalObs = { x: -2, z: -3, halfW: 1.0, halfD: 1.0, isTutorialAlienPortal: true };
+  ladderTriggers.push(_tutorialAlienPortalObs);
+  // Tutorial-Zaun (visueller goldener Ring um die Tutorial-Wiese)
+  _tutorialFence = new THREE.Group();
+  const fenceMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.5 });
+  // 4 Seiten als duenne Boxen
+  for (const side of [[-7,0,0.4,14], [7,0,0.4,14], [0,-7,14,0.4], [0,7,14,0.4]]) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(side[2], 0.8, side[3]), fenceMat);
+    f.position.set(side[0], 0.4, side[1]);
+    _tutorialFence.add(f);
+  }
+  scene.add(_tutorialFence);
+  // Tutorial-Boden (hellere Platte um die Tutorial-Wiese klar sichtbar zu machen)
+  const tutFloor = new THREE.Mesh(
+    new THREE.BoxGeometry(14, 0.08, 14),
+    new THREE.MeshStandardMaterial({ color: 0x6a9040, emissive: 0x4a7028, emissiveIntensity: 0.25, roughness: 0.85 })
+  );
+  tutFloor.position.set(0, 0.03, 0);
+  tutFloor.receiveShadow = true;
+  scene.add(tutFloor);
+  _tutorialFence.userData.floor = tutFloor;
+  // Standardmaessig alle hide
+  _tutorialLadder.visible = false;
+  _tutorialAlienPortal.visible = false;
+  _tutorialFence.visible = false;
+  tutFloor.visible = false;
 }
 function applyTutorialSimplification() {
   buildTutorialObjects();
@@ -1103,9 +1156,15 @@ function applyTutorialSimplification() {
       gardenPipes[i].obstacle._disabled = !visible;
     }
   }
-  // Tutorial-Leiter nur im Tutorial sichtbar
+  // Tutorial-Leiter (Wolken), Alien-Portal und Zaun nur im Tutorial sichtbar
   if (_tutorialLadder) _tutorialLadder.visible = isTut;
   if (_tutorialLadderObs) _tutorialLadderObs._disabled = !isTut;
+  if (_tutorialAlienPortal) _tutorialAlienPortal.visible = isTut;
+  if (_tutorialAlienPortalObs) _tutorialAlienPortalObs._disabled = !isTut;
+  if (_tutorialFence) {
+    _tutorialFence.visible = isTut;
+    if (_tutorialFence.userData.floor) _tutorialFence.userData.floor.visible = isTut;
+  }
 }
 
 // Sucht eine sichere Spawn-Position in der Naehe, falls (x,z) in einem Hindernis steckt
@@ -2988,11 +3047,16 @@ function alienShoot(alien) {
 function updateAlienProjectiles(dt) {
   for (let i = alienProjectiles.length - 1; i >= 0; i--) {
     const p = alienProjectiles[i];
+    const oldPos = p.pos.clone();
     p.pos.add(p.dir.clone().multiplyScalar(p.speed * dt));
     p.mesh.position.copy(p.pos);
     p.life -= dt;
     let hit = false;
-    if (gameState === 'playing' && p.pos.distanceTo(camera.position) < 0.75) {
+    // Schuss verschwindet an einer Wand — kein Durch-Wand-Schiessen
+    if (collidesAny(p.pos.x, p.pos.z, 0.05)) {
+      hit = true;
+    }
+    if (!hit && gameState === 'playing' && p.pos.distanceTo(camera.position) < 0.75) {
       damagePlayer(1);
       hit = true;
     }
@@ -3703,26 +3767,14 @@ function makeAlien(x, y, z, scale) {
   makeLabWall(0,  LAB_HALF, LAB_SIZE, 0.4, wallDark);  // Sued
   makeLabWall(-LAB_HALF, 0, 0.4, LAB_SIZE, wallDark);  // West
   makeLabWall( LAB_HALF, 0, 0.4, LAB_SIZE, wallDark);  // Ost
-  // INNERE LABYRINTH-WAENDE (Gang-Layout mit Zentrum erreichbar)
-  // Layout: 4 Quadranten mit Lueckungen, Zentrum (4x4) ist Ziel-Bereich
+  // INNERE LABYRINTH-WAENDE — vereinfacht, sodass alle 4 Ecken erreichbar sind
+  // 4 kurze Quadranten-Trenner + 2 schmale Engstellen vor der Mitte
   const innerWalls = [
-    // Nordwest-Quadrant
-    [-6, -7, 0.4, 4],
-    [-3, -4, 4, 0.4],
-    [-7, -3, 4, 0.4],
-    // Nordost-Quadrant
-    [ 6, -7, 0.4, 4],
-    [ 3, -4, 4, 0.4],
-    [ 7, -3, 4, 0.4],
-    // Suedwest-Quadrant
-    [-6,  7, 0.4, 4],
-    [-3,  4, 4, 0.4],
-    [-7,  3, 4, 0.4],
-    // Suedost-Quadrant
-    [ 6,  7, 0.4, 4],
-    [ 3,  4, 4, 0.4],
-    [ 7,  3, 4, 0.4],
-    // Schmale Engstellen zum Zentrum
+    [-5, -5, 3.5, 0.4],   // NW Quadrant-Trenner (waagrecht)
+    [ 5, -5, 3.5, 0.4],   // NE
+    [-5,  5, 3.5, 0.4],   // SW
+    [ 5,  5, 3.5, 0.4],   // SE
+    // Schmale Wände um die Controllerzentrale (Engstellen)
     [ 0, -3, 0.4, 2],
     [ 0,  3, 0.4, 2]
   ];
@@ -4264,6 +4316,11 @@ function tryClimbLadder() {
         enterBonusWorld();
         return true;
       }
+      // Tutorial-Alien-Portal: direkt zum Alien-Planeten
+      if (o.isTutorialAlienPortal) {
+        enterAlienWorldDirect();
+        return true;
+      }
       ladderClimbing = !ladderClimbing;
       ladderObj = o;
       if (ladderClimbing) {
@@ -4421,9 +4478,9 @@ function dockToMothership() {
   ufoDownBtn.classList.remove('show');
   ufoUpHold = false;
   ufoDownHold = false;
-  // Teleport in Labyrinth: an einer Ecke startet der Spieler, Controllerzentrale ist in Mitte (Ziel)
+  // Teleport in Labyrinth: in einem freien Gang am Rand, weit weg von der CCZ
   // findSafeSpawn schiebt den Spieler aus jeder Wand raus
-  const safe = findSafeSpawn(MOTHERSHIP_X - 8, MOTHERSHIP_Z + 8, 0.55);
+  const safe = findSafeSpawn(MOTHERSHIP_X - 8, MOTHERSHIP_Z + 7.5, 0.55);
   camera.position.set(safe.x, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, safe.z);
   yaw = -Math.PI / 4; // Schau in Richtung Mitte
   pitch = 0;
@@ -5206,9 +5263,9 @@ function updateMovement(dt) {
       minX = CAVE_X - 19; maxX = CAVE_X + 19;
       minZ = -19; maxZ = 19;
     } else if (onMothership) {
-      // Im Labyrinth-Innenraum (20x20)
-      minX = MOTHERSHIP_X - 9.5; maxX = MOTHERSHIP_X + 9.5;
-      minZ = MOTHERSHIP_Z - 9.5; maxZ = MOTHERSHIP_Z + 9.5;
+      // Im Labyrinth-Innenraum (20x20) — etwas mehr Spielraum als Innen-Wand-Grenze
+      minX = MOTHERSHIP_X - 9.6; maxX = MOTHERSHIP_X + 9.6;
+      minZ = MOTHERSHIP_Z - 9.6; maxZ = MOTHERSHIP_Z + 9.6;
     }
     camera.position.x = Math.max(minX, Math.min(maxX, camera.position.x));
     camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
@@ -5843,8 +5900,9 @@ function updateMonsters(dt) {
         const ux = dx / distXZ, uz = dz / distXZ;
         const nx = m.x + ux * moveSpeed * dt;
         const nz = m.z + uz * moveSpeed * dt;
-        if (m.isCloud || !collidesAny(nx, m.z, 0.25)) m.x = nx;
-        if (m.isCloud || !collidesAny(m.x, nz, 0.25)) m.z = nz;
+        // Roboter respektieren die gleichen Waende wie der Spieler (collisions-Radius 0.4)
+        if (m.isCloud || !collidesAny(nx, m.z, 0.4)) m.x = nx;
+        if (m.isCloud || !collidesAny(m.x, nz, 0.4)) m.z = nz;
         m.group.position.x = m.x;
         m.group.position.z = m.z;
         m.group.rotation.y = Math.atan2(ux, uz);
@@ -5862,7 +5920,9 @@ function updateMonsters(dt) {
       const maxShootDist = isMothershipBot ? 12 : 14;
       const shotGap = isMothershipBot ? 0 : ALIEN_SHOT_GAP;
       const nextShootDelay = isMothershipBot ? (1200 + Math.random() * 1500) : (6000 + Math.random() * 4000);
-      if (m.isHuman && distXZ > minShootDist && distXZ < maxShootDist && performance.now() > m.nextShoot) {
+      // Sichtlinie-Check: Roboter schiesst NUR wenn keine Wand zwischen ihm und Spieler
+      const canSee = m.isHuman ? hasLineOfSight(m.x, m.z, camera.position.x, camera.position.z) : false;
+      if (m.isHuman && canSee && distXZ > minShootDist && distXZ < maxShootDist && performance.now() > m.nextShoot) {
         if (performance.now() - lastAlienShotTime > shotGap) {
           alienShoot(m);
           if (!isMothershipBot) lastAlienShotTime = performance.now();
@@ -6113,13 +6173,22 @@ function updateCompass() {
 }
 
 function win() {
-  // Garden cake destroyed → UFO cinematic first, THEN show invitation after abduction
+  // Garden cake destroyed
   for (const child of cakeGroup.children) child.visible = false;
   spawnCrumbs(180, true);
   beep(523, 0.15, 'square', 0.15);
   setTimeout(() => beep(659, 0.15, 'square', 0.15), 150);
   setTimeout(() => beep(784, 0.3, 'square', 0.15), 300);
-  // Start abduction right away (no invitation popup yet)
+  // Tutorial-Modus: Torte zerstoert → automatisch zu Freestyle wechseln und neu starten
+  if (isTutorialMode()) {
+    playMode = 'freestyle';
+    safeStorageSet('geburtstag.playMode', 'freestyle');
+    safeStorageSet('geburtstag.tutorialDone', '1');
+    showUnlockMessage('\u{1F389} Tutorial abgeschlossen!<br>Du bist jetzt im <b>Freestyle</b>-Modus.<br>Viel Spass!');
+    setTimeout(() => startGame(), 2200);
+    return;
+  }
+  // Normaler Freestyle: UFO-Abduktion starten
   startAbductionDirect();
 }
 
@@ -6234,6 +6303,11 @@ function updateCinematic(dt) {
     camera.position.y = abductionUfo.group.position.y - 1.5;
     abductionUfo.group.position.y += 4 * dt; // UFO flies away
   }
+}
+
+// Direkter Sprung zur Alien-Welt (von Tutorial-Portal aus)
+function enterAlienWorldDirect() {
+  teleportToAlienWorld();
 }
 
 function teleportToAlienWorld() {
@@ -6843,7 +6917,8 @@ const UPDATES = [
   { id: 'v21', name: 'Update 21', desc: 'Tutorial + Musik + Sounds + Sonnen-Cycle + Char-Editor immer erreichbar', new: ['Tutorial/Freestyle-Auswahl beim ersten Spielen', 'Hilfetexte erscheinen im Tutorial-Modus an wichtigen Stellen', 'Hintergrundmusik (passend zu jeder Welt: Garten/Höhle/Wolken/Alien/Mutterschiff)', '13 verschiedene Soundeffekte (Sprung, Münze, Verletzung, Sieg, Tod, Pipe, …)', 'Quality-Anzeige oben rechts permanent sichtbar', 'Gras schon ab Quality-Stufe 2 sichtbar, Wind erst ab Stufe 8', 'Spawn-Safety: findSafeSpawn schiebt dich aus Wänden raus', 'Alien-Cake aus der Mitte des Alien-Planeten weg (schwebt klein im Weltall)', 'Tag/Nacht-Cycle ist jetzt Default — Sonne wandert mit Schatten von Ost nach West', 'Charakter-Editor jederzeit in Einstellungen erreichbar', 'Mehr Farb-Optionen (Haut: 7, Haare: 10, Shirts: 11, Hosen: 9)', 'Spielmodus-Wechsel auch in Einstellungen möglich'] },
   { id: 'v22', name: 'Update 22', desc: 'Avatar größer + Tutorial-Welt + 8-bit Musik + Mehr Monster + Updates-Liste sortiert', new: ['Avatar oben rechts: viel größer (130×170) + goldener Rahmen + Glow', 'Tutorial-Welt: nur 1 Hecke + 1 Monster, keine Bäume/Büsche/Steine', 'Tutorial: unendlich Herzen — kein Schaden, einfach lernen', 'Schritt-für-Schritt Tutorial-Hints (Steuerung, Torte, Monster, Pipe)', 'Freestyle: bis zu 20 Monster gleichzeitig (vorher 14), schneller spawnen', 'Reihenfolge: Name → Modus → Charakter → direkt ins Spiel (kein Start-Screen)', '8-bit Chiptune-Musik mit Lead + Bass pro Welt (Game-Style)', 'Schnellere Musik (175ms statt 320ms) für Game-Feeling', 'findSafeSpawn jetzt überall (Garten/Alien/Mutterschiff)', 'Updates-Liste: neueste oben, älteste unten'] },
   { id: 'v23', name: 'Update 23', desc: 'Tutorial-Welt kleiner + Höhle weiter weg + Mutterschiff-Respawn an Ecke', new: ['Tutorial: Garten-Boundary auf ±11 (vorher ±29) — viel kleineres Feld', 'Höhle (CAVE_X) auf +400 verschoben (vorher -110) — nicht mehr im Weltall sichtbar', 'Mutterschiff-Respawn nach Tod: zurück an Ecke (-8,+8), NICHT bei Controllerzentrale', 'Mutterschiff-Spawn mit findSafeSpawn → kein Einklemmen in Wand', 'Freestyle: Start-Screen mit Einstellungen wird angezeigt', 'Tutorial: direkt zum Char-Editor (keine Einstellungen mehr im Weg)'] },
-  { id: 'v24', name: 'Update 24 (aktuell)', desc: 'Tutorial: winziges Feld + 1 Pipe + 1 Leiter + Schritt-für-Schritt Hinweise', new: ['Tutorial-Garten nur noch ±7 (vorher ±11) — minimal!', 'Eine feste Tutorial-Pipe (-3, +3) führt in die Höhle', 'Eine feste Tutorial-Leiter (+2, -3) führt zur Wolkenwelt (visuell mit Wolke oben)', 'Im Tutorial verschwinden alle anderen Pipes', '8 detaillierte Tutorial-Hinweise (Bewegen, Springen, Hecke, Monster, Pipe, Leiter, Modus-Wechsel)', 'Tutorial erklärt von vorne bis hinten was zu tun ist'] }
+  { id: 'v24', name: 'Update 24', desc: 'Tutorial: winziges Feld + 1 Pipe + 1 Leiter + Schritt-für-Schritt Hinweise', new: ['Tutorial-Garten nur noch ±7 (vorher ±11) — minimal!', 'Eine feste Tutorial-Pipe (-3, +3) führt in die Höhle', 'Eine feste Tutorial-Leiter (+2, -3) führt zur Wolkenwelt (visuell mit Wolke oben)', 'Im Tutorial verschwinden alle anderen Pipes', '8 detaillierte Tutorial-Hinweise (Bewegen, Springen, Hecke, Monster, Pipe, Leiter, Modus-Wechsel)', 'Tutorial erklärt von vorne bis hinten was zu tun ist'] },
+  { id: 'v25', name: 'Update 25 (aktuell)', desc: 'Tutorial-Welt deutlich + Mutterschiff-Bugs gefixt', new: ['Tutorial: goldener Zaun rundherum zeigt klar die Spielfläche', 'Tutorial: hellgrüner Tutorial-Boden visualisiert die Wiese', 'Tutorial: lila Alien-Portal-Leiter (-2, -3) zum Alien-Planeten', 'Tutorial: nach Torte zerstören → automatisch Freestyle-Modus', 'Mutterschiff: Roboter schießen NICHT mehr durch Wände (Sichtlinie-Check)', 'Mutterschiff: Roboter respektieren Wände wie Spieler (Radius 0.4)', 'Mutterschiff: Innen-Wände vereinfacht — alle 4 Ecken erreichbar', 'Mutterschiff: Projektile zerschellen an Wänden (nicht mehr durch)', 'Mutterschiff: Spawn-Sackgasse aufgelöst (findSafeSpawn + weniger Wände)'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
