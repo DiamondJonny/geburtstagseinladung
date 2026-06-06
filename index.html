@@ -33,14 +33,15 @@
 
   #inventory { position: fixed; top: 96px; left: 50%; transform: translateX(-50%); z-index: 5; display: none; gap: 6px; user-select: none; pointer-events: none; }
   #inventory.show { display: flex; }
-  .inv-slot { width: 60px; height: 60px; background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.25); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; backdrop-filter: blur(3px); position: relative; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
-  .inv-slot.locked { opacity: 0.35; filter: grayscale(1); }
+  .inv-slot { width: 48px; height: 48px; background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.25); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; backdrop-filter: blur(3px); position: relative; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
+  /* Gesperrte Items komplett ausblenden — uebersichtlicher */
+  .inv-slot.locked { display: none; }
   .inv-slot.ready { border-color: rgba(255,215,0,0.7); }
   .inv-slot.gained { animation: invPop 0.5s; }
   @keyframes invPop { 0% { transform: scale(1); } 30% { transform: scale(1.3); box-shadow: 0 0 18px rgba(255,215,0,0.9); border-color: #ffd700; } 100% { transform: scale(1); } }
-  .inv-ico { font-size: 26px; line-height: 1; margin-top: -8px; }
-  .inv-num { font-size: 11px; font-weight: bold; color: #ffd700; position: absolute; bottom: 4px; text-shadow: 1px 1px 0 #000; }
-  .inv-lbl { font-size: 9px; text-transform: uppercase; opacity: 0.75; position: absolute; bottom: 4px; letter-spacing: 0.5px; }
+  .inv-ico { font-size: 22px; line-height: 1; margin-top: -6px; }
+  .inv-num { font-size: 10px; font-weight: bold; color: #ffd700; position: absolute; bottom: 3px; text-shadow: 1px 1px 0 #000; }
+  .inv-lbl { font-size: 8px; text-transform: uppercase; opacity: 0.75; position: absolute; bottom: 3px; letter-spacing: 0.5px; }
 
   .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(15,52,96,0.85) 0%, rgba(10,10,20,0.95) 100%); backdrop-filter: blur(8px); text-align: center; padding: 24px; transition: opacity 0.5s; z-index: 10; }
   .overlay.hidden { opacity: 0; pointer-events: none; }
@@ -87,9 +88,9 @@
   #abortBtn { position: fixed; top: 12px; left: 14px; background: rgba(40,20,30,0.7); color: #ff9090; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; z-index: 8; border: 2px solid rgba(255,120,120,0.6); cursor: pointer; pointer-events: auto; display: none; }
   #abortBtn:hover { background: rgba(80,30,40,0.85); color: #fff; }
   #abortBtn.show { display: block; }
-  #qualityChip { position: fixed; top: 14px; right: 16px; background: rgba(0,0,0,0.55); color: #cfe0ff; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; z-index: 8; opacity: 0; transition: opacity 0.25s, background 0.25s; pointer-events: none; border: 1px solid rgba(207,224,255,0.25); white-space: nowrap; }
-  #qualityChip.show { opacity: 0.95; }
-  #qualityChip.flash { background: rgba(255,170,40,0.85); color: #1a1a2e; border-color: rgba(255,170,40,1); }
+  #qualityChip { position: fixed; top: 12px; right: 14px; background: rgba(0,0,0,0.45); color: #aab8c8; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; z-index: 8; opacity: 0; transition: opacity 0.25s, background 0.25s; pointer-events: none; border: 1px solid rgba(207,224,255,0.18); white-space: nowrap; }
+  #qualityChip.show { opacity: 0.7; }
+  #qualityChip.flash { background: rgba(255,170,40,0.85); color: #1a1a2e; border-color: rgba(255,170,40,1); opacity: 1; }
   #charPreview { position: fixed; top: 12px; right: 14px; width: 130px; height: 170px; background: linear-gradient(180deg, rgba(60,80,120,0.65), rgba(20,30,50,0.8)); border: 3px solid #ffd700; border-radius: 14px; z-index: 7; display: none; pointer-events: none; box-shadow: 0 4px 18px rgba(255,215,0,0.35), inset 0 0 12px rgba(255,215,0,0.15); }
   #charPreview.show { display: block; }
   #charPreview canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
@@ -6895,6 +6896,10 @@ function updateHearts() {
     else html += '<span class="heart empty">♡</span>';
   }
   hearts.innerHTML = html;
+  // Uebersichtlicher: Hearts nur sichtbar wenn Spieler Schaden hat ODER im Tutorial (Lernpfase)
+  const showHearts = gameState === 'playing' && (playerHp < maxHp || isTutorialMode());
+  if (showHearts) hearts.classList.add('show');
+  else hearts.classList.remove('show');
 }
 
 function updateInventory() {
@@ -7341,7 +7346,8 @@ const UPDATES = [
   { id: 'v27', name: 'Update 27', desc: 'Tutorial winzig + Sprachausgabe + Roboter besser sichtbar', new: ['Tutorial-Feld nur noch ±5 (vorher ±7) — wirklich winzig', 'Tutorial-Objekte enger zusammen (Pipe -2.5/+2.5, Leiter +2.5/-2.5, Portal -2.5/-2.5)', 'Tutorial-Zaun + Boden nur noch 10×10', '🔊 Sprachausgabe: jeder Tutorial-Hinweis wird auch VORGELESEN (Web Speech API auf Deutsch)', 'Roboter haben jetzt riesigen leuchtenden roten Kegel + Glow + Light', 'Roboter von überall im Mutterschiff gut sichtbar'] },
   { id: 'v28', name: 'Update 28', desc: 'Tutorial-Plattform + Cake direkt zugänglich + Portrait-Support', new: ['Tutorial: ALLE Hecken weg (vorher 1 sichtbar) — wirklich nur Plattform', 'Tutorial: Pedestal-Stein versteckt — Torte liegt direkt auf der Plattform', 'Tutorial: Cake an fester zugänglicher Position (0, 2.5) — kein Klettern nötig', 'Touch-UI passt sich an Portrait-Modus + kleine Screens an (Media Queries)', 'Joystick und Knöpfe kleiner und enger bei Portrait/kleinen Geräten', 'Spielbar in JEDER Orientierung ohne Geräte-Drehen'] },
   { id: 'v29', name: 'Update 29', desc: 'Sound-Effekte JETZT wirklich aktiv (vorher nur definiert)', new: ['🔊 playSfx() wird jetzt überall aufgerufen wo Sounds passieren sollten', 'jump-Sound beim Springen', 'kill-Sound wenn Monster besiegt', 'hurt-Sound wenn Spieler Schaden nimmt', 'arrow-Sound beim Pfeil abschießen', 'enemyShot-Sound beim Roboter-Schuss', 'coin-Sound beim Kronen-Sammeln', 'pipe-Sound beim in die Röhre fahren', 'dock-Sound beim Andocken am Mutterschiff', 'win-Sound beim Torte zerstören', 'powerup-Sound bei Heilung alle 3 Kills'] },
-  { id: 'v30', name: 'Update 30 (aktuell)', desc: 'Info-Knopf im Tutorial + viel coolere Sounds + Avatar mit Hut/Brille', new: ['ⓘ Info-Knopf oben links im Tutorial: zeigt alle wichtigen Knöpfe gelb markiert', 'Beim Info-Klick: Pfeil-Labels erklären jeden UI-Bereich', 'Sounds sind viel cooler: richTone() mit Obertönen + Frequency-Sweeps + Noise', 'Alle 13 Sounds neu komponiert (Sweep-Effekte, harmonische Layers)', 'Avatar bekommt Hut: Cap, 👑 Krone, 🧙 Zauberer, ⛑️ Helm, 🎉 Party-Hut', 'Avatar bekommt Brille: Sonnenbrille, 👓 Rund, ◽ Eckig', 'Avatar bekommt Gesichtsausdruck: 😊 Lächeln, 😮 Offen, 😐 Ernst, 😛 Zunge'] }
+  { id: 'v30', name: 'Update 30', desc: 'Info-Knopf im Tutorial + viel coolere Sounds + Avatar mit Hut/Brille', new: ['ⓘ Info-Knopf oben links im Tutorial: zeigt alle wichtigen Knöpfe gelb markiert', 'Beim Info-Klick: Pfeil-Labels erklären jeden UI-Bereich', 'Sounds sind viel cooler: richTone() mit Obertönen + Frequency-Sweeps + Noise', 'Alle 13 Sounds neu komponiert (Sweep-Effekte, harmonische Layers)', 'Avatar bekommt Hut: Cap, 👑 Krone, 🧙 Zauberer, ⛑️ Helm, 🎉 Party-Hut', 'Avatar bekommt Brille: Sonnenbrille, 👓 Rund, ◽ Eckig', 'Avatar bekommt Gesichtsausdruck: 😊 Lächeln, 😮 Offen, 😐 Ernst, 😛 Zunge'] },
+  { id: 'v31', name: 'Update 31 (aktuell)', desc: 'Übersichtlicher: gesperrte Items weg, Hearts nur bei Schaden, kleineres UI', new: ['Gesperrte Inventory-Slots werden VERSTECKT (vorher grau sichtbar)', 'Hearts/Lebenspunkte nur sichtbar wenn du Schaden hast (im Freestyle)', 'Im Tutorial bleiben die Hearts immer sichtbar (zum Lernen)', 'Inventory-Slots kleiner (48px statt 60px) — mehr Platz im HUD', 'Quality-Anzeige dezenter (kleiner, transparenter) — stört nicht mehr', 'Bei Quality-Wechsel blitzt sie kurz orange auf, sonst dezent grau'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
