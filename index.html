@@ -1043,8 +1043,46 @@ function collidesAny(x, z, r) {
   return false;
 }
 
-// Tutorial-Welt: alle Garten-Decoration verstecken + nur 1 Hecke sichtbar lassen
+// Tutorial-Welt: alle Garten-Decoration verstecken + nur 1 Hecke + 1 Pipe + 1 Leiter sichtbar
+let _tutorialPipeBuilt = false;
+let _tutorialLadder = null;
+let _tutorialLadderObs = null;
+function buildTutorialObjects() {
+  if (_tutorialPipeBuilt) return;
+  _tutorialPipeBuilt = true;
+  // Tutorial-Pipe (links vom Spieler) — fuehrt in die Hoehle
+  makePipe(-3, 3, 0.75);
+  // Tutorial-Leiter (vor dem Spieler) — fuehrt zur Wolkenwelt
+  const lg = new THREE.Group();
+  const ladderMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.7 });
+  const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 7, 0.1), ladderMat);
+  sideL.position.set(-0.3, 3.5, 0);
+  lg.add(sideL);
+  const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 7, 0.1), ladderMat);
+  sideR.position.set(0.3, 3.5, 0);
+  lg.add(sideR);
+  for (let i = 0; i < 14; i++) {
+    const rung = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.05), ladderMat);
+    rung.position.set(0, 0.5 + i * 0.5, 0);
+    lg.add(rung);
+  }
+  // Wolken-Indikator oben
+  const cloud = new THREE.Mesh(
+    new THREE.SphereGeometry(0.6, 12, 8),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xddeeff, emissiveIntensity: 0.4 })
+  );
+  cloud.position.set(0, 7.5, 0);
+  lg.add(cloud);
+  lg.position.set(2, 0, -3);
+  scene.add(lg);
+  _tutorialLadder = lg;
+  _tutorialLadderObs = { x: 2, z: -3, halfW: 1.0, halfD: 1.0, isTutorialCloudLadder: true };
+  ladderTriggers.push(_tutorialLadderObs);
+  // Standardmaessig hide
+  lg.visible = false;
+}
 function applyTutorialSimplification() {
+  buildTutorialObjects();
   const isTut = isTutorialMode();
   // Alle Bäume/Büsche/Steine
   for (const d of gardenDecorations) {
@@ -1055,6 +1093,19 @@ function applyTutorialSimplification() {
   for (let i = 0; i < hedgeGroups.length; i++) {
     hedgeGroups[i].visible = isTut ? (i === 0) : true;
   }
+  // Pipes: im Tutorial nur die LETZTE (Tutorial-Pipe), sonst die ersten 3 random pipes
+  if (gardenPipes.length > 0) {
+    const tutPipeIdx = gardenPipes.length - 1; // letzte ist die Tutorial-Pipe
+    for (let i = 0; i < gardenPipes.length; i++) {
+      const isTutPipe = (i === tutPipeIdx);
+      const visible = isTut ? isTutPipe : !isTutPipe;
+      gardenPipes[i].group.visible = visible;
+      gardenPipes[i].obstacle._disabled = !visible;
+    }
+  }
+  // Tutorial-Leiter nur im Tutorial sichtbar
+  if (_tutorialLadder) _tutorialLadder.visible = isTut;
+  if (_tutorialLadderObs) _tutorialLadderObs._disabled = !isTut;
 }
 
 // Sucht eine sichere Spawn-Position in der Naehe, falls (x,z) in einem Hindernis steckt
@@ -1932,6 +1983,7 @@ for (const { dx, dz, h } of climbStones) {
 }
 
 // === Mario green pipes scattered in the garden ===
+const gardenPipes = [];
 function makePipe(x, z, height) {
   const g = new THREE.Group();
   const greenMat = new THREE.MeshStandardMaterial({ color: 0x00a04a, roughness: 0.4, metalness: 0.1 });
@@ -1961,7 +2013,9 @@ function makePipe(x, z, height) {
 
   g.position.set(x, 0, z);
   scene.add(g);
-  obstacles.push({ x, z, halfW: 0.55, halfD: 0.55, top: height, isPipe: true });
+  const obs = { x, z, halfW: 0.55, halfD: 0.55, top: height, isPipe: true };
+  obstacles.push(obs);
+  gardenPipes.push({ group: g, obstacle: obs });
 }
 
 (function spawnPipes() {
@@ -4112,8 +4166,8 @@ let ufoEnterStandTime = 0;
 // === State ===
 const CAKE_MAX_HP = 8;
 const BOUNDARY = 29;
-// Tutorial-Modus: viel kleinere Spielwiese, damit Anfaenger nicht verloren gehen
-function currentGardenBoundary() { return isTutorialMode() ? 11 : BOUNDARY; }
+// Tutorial-Modus: SEHR kleine Spielwiese, damit Anfaenger nicht verloren gehen
+function currentGardenBoundary() { return isTutorialMode() ? 7 : BOUNDARY; }
 let cakeHp = CAKE_MAX_HP;
 let gameState = 'start';
 let pointerLocked = false;
@@ -4203,7 +4257,13 @@ function tryClimbLadder() {
   if (gameState !== 'playing') return false;
   if (inBonusWorld || inCaveWorld) return false;
   for (const o of ladderTriggers) {
+    if (o._disabled) continue;
     if (Math.abs(camera.position.x - o.x) < o.halfW && Math.abs(camera.position.z - o.z) < o.halfD) {
+      // Tutorial-Leiter: direkt zur Wolkenwelt teleportieren
+      if (o.isTutorialCloudLadder) {
+        enterBonusWorld();
+        return true;
+      }
       ladderClimbing = !ladderClimbing;
       ladderObj = o;
       if (ladderClimbing) {
@@ -4222,6 +4282,7 @@ function isNearLadder() {
   if (gameState !== 'playing') return false;
   if (inBonusWorld || inCaveWorld || inAlienWorld) return false;
   for (const o of ladderTriggers) {
+    if (o._disabled) continue;
     if (Math.abs(camera.position.x - o.x) < o.halfW && Math.abs(camera.position.z - o.z) < o.halfD) return true;
   }
   return false;
@@ -6598,12 +6659,24 @@ function startGame() {
   startMusic();
   // Tutorial-Welt vereinfachen (Bäume/Büsche/Steine ausblenden, nur 1 Hecke)
   applyTutorialSimplification();
-  // Tutorial-Hints (Schritt für Schritt)
+  // Tutorial-Hints (Schritt für Schritt, viel ausführlicher)
   if (isTutorialMode()) {
-    setTimeout(() => showTutorialHint('start', 'Willkommen! Bewege dich mit <b>WASD</b> oder dem Joystick. <b>Springen:</b> Leertaste / gelber Knopf.'), 1200);
-    setTimeout(() => showTutorialHint('cake', 'Suche die <b>Geburtstagstorte</b> hinter der Hecke und schlag sie kaputt (Hammer-Knopf / linke Maus).'), 8000);
-    setTimeout(() => showTutorialHint('monster', 'Pass auf das <b>Monster</b> auf! Schlag es mit dem Hammer. Im Tutorial hast du <b>unendlich Herzen</b> — keine Sorge!'), 18000);
-    setTimeout(() => showTutorialHint('pipe', 'Die <b>grüne Röhre</b> führt nach unten in die <b>Höhle</b> — stell dich drauf und drück <b>F</b> oder den grünen Knopf.'), 32000);
+    setTimeout(() => showTutorialHint('welcome',
+      '<b>👋 Willkommen im Tutorial!</b><br>Hier hast du <b>unendlich Herzen</b> — du kannst nicht sterben.<br>Lerne alle Sachen in Ruhe kennen.'), 1200);
+    setTimeout(() => showTutorialHint('move',
+      '<b>🎮 Bewegen:</b> <b>WASD</b> oder der <b>Joystick</b> links. Schau dich mit der Maus oder durch Wischen um.'), 9000);
+    setTimeout(() => showTutorialHint('jump',
+      '<b>⬆️ Springen:</b> <b>Leertaste</b> oder gelber Sprung-Knopf. Probier es aus!'), 17000);
+    setTimeout(() => showTutorialHint('hedge',
+      '<b>🌳 Die Hecke</b> in der Mitte versteckt vielleicht etwas. Geh drum herum.'), 25000);
+    setTimeout(() => showTutorialHint('monster',
+      '<b>🍰 Das Monster!</b> Schlag mit dem Hammer (Hitknopf / linke Maus) zu, um es zu besiegen. Im Tutorial macht es dir keinen Schaden.'), 33000);
+    setTimeout(() => showTutorialHint('pipe',
+      '<b>🟢 Die grüne Röhre</b> bringt dich nach <b>unten in die Höhle</b>. Stell dich drauf und drücke <b>F</b> oder den grünen Knopf.'), 42000);
+    setTimeout(() => showTutorialHint('ladder',
+      '<b>🪜 Die Leiter</b> bringt dich hoch in die <b>Wolkenwelt</b>. Geh ran und drücke <b>F</b> / den grünen Knopf.'), 52000);
+    setTimeout(() => showTutorialHint('switch',
+      '<b>⚙️ Modus wechseln:</b> In den Einstellungen kannst du jederzeit auf <b>Freestyle</b> umstellen — da gibt es viel mehr Sachen!'), 64000);
   }
 }
 
@@ -6769,7 +6842,8 @@ const UPDATES = [
   { id: 'v20', name: 'Update 20', desc: 'Mutterschiff jetzt riesiges Labyrinth mit Controllerzentrale + animierte Luke', new: ['Mutterschiff-Inneres ist ein 20×20 LABYRINTH (vorher kleine Plattform)', 'Animierte LUKE unten — 4 Segmente öffnen sich wenn UFO darüber schwebt', 'CONTROLLERZENTRALE in der Mitte = Ziel (mit 3 Bildschirmen + rotem Hebel)', 'Wände in 4 Quadranten — du musst dich durchschlagen', '6 Roboter verteilt im Labyrinth (vorher 4 im Hangar)', 'Win-Bedingung: erreich die Controllerzentrale (Distanz < 2.4)', 'Goldener Ziel-Ring um die Controllerzentrale (gut sichtbar)'] },
   { id: 'v21', name: 'Update 21', desc: 'Tutorial + Musik + Sounds + Sonnen-Cycle + Char-Editor immer erreichbar', new: ['Tutorial/Freestyle-Auswahl beim ersten Spielen', 'Hilfetexte erscheinen im Tutorial-Modus an wichtigen Stellen', 'Hintergrundmusik (passend zu jeder Welt: Garten/Höhle/Wolken/Alien/Mutterschiff)', '13 verschiedene Soundeffekte (Sprung, Münze, Verletzung, Sieg, Tod, Pipe, …)', 'Quality-Anzeige oben rechts permanent sichtbar', 'Gras schon ab Quality-Stufe 2 sichtbar, Wind erst ab Stufe 8', 'Spawn-Safety: findSafeSpawn schiebt dich aus Wänden raus', 'Alien-Cake aus der Mitte des Alien-Planeten weg (schwebt klein im Weltall)', 'Tag/Nacht-Cycle ist jetzt Default — Sonne wandert mit Schatten von Ost nach West', 'Charakter-Editor jederzeit in Einstellungen erreichbar', 'Mehr Farb-Optionen (Haut: 7, Haare: 10, Shirts: 11, Hosen: 9)', 'Spielmodus-Wechsel auch in Einstellungen möglich'] },
   { id: 'v22', name: 'Update 22', desc: 'Avatar größer + Tutorial-Welt + 8-bit Musik + Mehr Monster + Updates-Liste sortiert', new: ['Avatar oben rechts: viel größer (130×170) + goldener Rahmen + Glow', 'Tutorial-Welt: nur 1 Hecke + 1 Monster, keine Bäume/Büsche/Steine', 'Tutorial: unendlich Herzen — kein Schaden, einfach lernen', 'Schritt-für-Schritt Tutorial-Hints (Steuerung, Torte, Monster, Pipe)', 'Freestyle: bis zu 20 Monster gleichzeitig (vorher 14), schneller spawnen', 'Reihenfolge: Name → Modus → Charakter → direkt ins Spiel (kein Start-Screen)', '8-bit Chiptune-Musik mit Lead + Bass pro Welt (Game-Style)', 'Schnellere Musik (175ms statt 320ms) für Game-Feeling', 'findSafeSpawn jetzt überall (Garten/Alien/Mutterschiff)', 'Updates-Liste: neueste oben, älteste unten'] },
-  { id: 'v23', name: 'Update 23 (aktuell)', desc: 'Tutorial-Welt kleiner + Höhle weiter weg + Mutterschiff-Respawn an Ecke', new: ['Tutorial: Garten-Boundary auf ±11 (vorher ±29) — viel kleineres Feld', 'Höhle (CAVE_X) auf +400 verschoben (vorher -110) — nicht mehr im Weltall sichtbar', 'Mutterschiff-Respawn nach Tod: zurück an Ecke (-8,+8), NICHT bei Controllerzentrale', 'Mutterschiff-Spawn mit findSafeSpawn → kein Einklemmen in Wand', 'Freestyle: Start-Screen mit Einstellungen wird angezeigt', 'Tutorial: direkt zum Char-Editor (keine Einstellungen mehr im Weg)'] }
+  { id: 'v23', name: 'Update 23', desc: 'Tutorial-Welt kleiner + Höhle weiter weg + Mutterschiff-Respawn an Ecke', new: ['Tutorial: Garten-Boundary auf ±11 (vorher ±29) — viel kleineres Feld', 'Höhle (CAVE_X) auf +400 verschoben (vorher -110) — nicht mehr im Weltall sichtbar', 'Mutterschiff-Respawn nach Tod: zurück an Ecke (-8,+8), NICHT bei Controllerzentrale', 'Mutterschiff-Spawn mit findSafeSpawn → kein Einklemmen in Wand', 'Freestyle: Start-Screen mit Einstellungen wird angezeigt', 'Tutorial: direkt zum Char-Editor (keine Einstellungen mehr im Weg)'] },
+  { id: 'v24', name: 'Update 24 (aktuell)', desc: 'Tutorial: winziges Feld + 1 Pipe + 1 Leiter + Schritt-für-Schritt Hinweise', new: ['Tutorial-Garten nur noch ±7 (vorher ±11) — minimal!', 'Eine feste Tutorial-Pipe (-3, +3) führt in die Höhle', 'Eine feste Tutorial-Leiter (+2, -3) führt zur Wolkenwelt (visuell mit Wolke oben)', 'Im Tutorial verschwinden alle anderen Pipes', '8 detaillierte Tutorial-Hinweise (Bewegen, Springen, Hecke, Monster, Pipe, Leiter, Modus-Wechsel)', 'Tutorial erklärt von vorne bis hinten was zu tun ist'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
