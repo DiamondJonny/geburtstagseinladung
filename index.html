@@ -681,6 +681,7 @@ if (modeTutorialBtn) {
     playMode = 'tutorial';
     safeStorageSet('geburtstag.playMode', 'tutorial');
     if (modeScreenEl) modeScreenEl.classList.add('hidden');
+    // Tutorial: direkt zum Char-Editor (kein Start-Screen mit Einstellungen)
     proceedToCharOrStart();
   });
 }
@@ -690,7 +691,8 @@ if (modeFreestyleBtn) {
     safeStorageSet('geburtstag.playMode', 'freestyle');
     safeStorageSet('geburtstag.tutorialDone', '1');
     if (modeScreenEl) modeScreenEl.classList.add('hidden');
-    proceedToCharOrStart();
+    // Freestyle: zeige Start-Screen mit Einstellungen, dann weiter zu Char + Spiel
+    startScreen.classList.remove('hidden');
   });
 }
 // Charakter-Erstellung "Fertig"-Button → startet das Spiel direkt
@@ -2172,7 +2174,7 @@ function spawnMonsters() {
 spawnMonsters();
 
 // === Cave World (underground, reached via pipes) ===
-const CAVE_X = -110;
+const CAVE_X = 400; // weit weg vom Mutterschiff (-260) und Alien-Planet (-200), damit man die Hoehle nicht im Weltall sieht
 let inCaveWorld = false;
 let caveReturnPos = null;
 const oreBlocks = [];
@@ -4110,6 +4112,8 @@ let ufoEnterStandTime = 0;
 // === State ===
 const CAKE_MAX_HP = 8;
 const BOUNDARY = 29;
+// Tutorial-Modus: viel kleinere Spielwiese, damit Anfaenger nicht verloren gehen
+function currentGardenBoundary() { return isTutorialMode() ? 11 : BOUNDARY; }
 let cakeHp = CAKE_MAX_HP;
 let gameState = 'start';
 let pointerLocked = false;
@@ -5127,9 +5131,10 @@ function updateMovement(dt) {
     const newZ = camera.position.z + dz;
     if (!collides(newX, camera.position.z, r, camera.position.y)) camera.position.x = newX;
     if (!collides(camera.position.x, newZ, r, camera.position.y)) camera.position.z = newZ;
-    // World-aware boundary
-    let minX = -BOUNDARY, maxX = BOUNDARY;
-    let minZ = -BOUNDARY, maxZ = BOUNDARY;
+    // World-aware boundary (Garten: Tutorial kleiner)
+    const gardenB = currentGardenBoundary();
+    let minX = -gardenB, maxX = gardenB;
+    let minZ = -gardenB, maxZ = gardenB;
     if (inAlienWorld) {
       minX = ALIEN_X - 24; maxX = ALIEN_X + 24;
       minZ = -24; maxZ = 24;
@@ -6638,8 +6643,10 @@ function retry() {
     }
     mothershipRobots.length = 0;
     spawnMothershipRobots();
-    camera.position.set(MOTHERSHIP_X, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, MOTHERSHIP_Z + 3);
-    yaw = 0;
+    // Wieder zum URSPRUNGS-Spawn an der Ecke (nicht in die Naehe der Controllerzentrale!)
+    const _msSafe = findSafeSpawn(MOTHERSHIP_X - 8, MOTHERSHIP_Z + 8, 0.55);
+    camera.position.set(_msSafe.x, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, _msSafe.z);
+    yaw = -Math.PI / 4;
     pitch = 0;
     playerVy = 0;
     onGround = true;
@@ -6761,7 +6768,8 @@ const UPDATES = [
   { id: 'v19', name: 'Update 19', desc: 'Tag/Nacht nur im Garten + UFO darf zum Mutterschiff + Roboter greifen an', new: ['Tag/Nacht-Cycle STRENG nur im Garten (Höhle/Alien/Weltall haben keinen Wechsel)', 'Sonne/Mond/Sterne nur sichtbar im Garten', 'UFO darf jetzt über die Alien-Welt-Boundary hinausfliegen zum Mutterschiff', 'Mutterschiff-Roboter greifen jetzt AGGRESSIV an — schießen alle 1.5–2.5s', 'Roboter im Hangar machen 1 Herz Kontaktschaden (vorher 0.5)', 'Schießen bereits ab 0.5 Einheiten Distanz (vorher 1.8)'] },
   { id: 'v20', name: 'Update 20', desc: 'Mutterschiff jetzt riesiges Labyrinth mit Controllerzentrale + animierte Luke', new: ['Mutterschiff-Inneres ist ein 20×20 LABYRINTH (vorher kleine Plattform)', 'Animierte LUKE unten — 4 Segmente öffnen sich wenn UFO darüber schwebt', 'CONTROLLERZENTRALE in der Mitte = Ziel (mit 3 Bildschirmen + rotem Hebel)', 'Wände in 4 Quadranten — du musst dich durchschlagen', '6 Roboter verteilt im Labyrinth (vorher 4 im Hangar)', 'Win-Bedingung: erreich die Controllerzentrale (Distanz < 2.4)', 'Goldener Ziel-Ring um die Controllerzentrale (gut sichtbar)'] },
   { id: 'v21', name: 'Update 21', desc: 'Tutorial + Musik + Sounds + Sonnen-Cycle + Char-Editor immer erreichbar', new: ['Tutorial/Freestyle-Auswahl beim ersten Spielen', 'Hilfetexte erscheinen im Tutorial-Modus an wichtigen Stellen', 'Hintergrundmusik (passend zu jeder Welt: Garten/Höhle/Wolken/Alien/Mutterschiff)', '13 verschiedene Soundeffekte (Sprung, Münze, Verletzung, Sieg, Tod, Pipe, …)', 'Quality-Anzeige oben rechts permanent sichtbar', 'Gras schon ab Quality-Stufe 2 sichtbar, Wind erst ab Stufe 8', 'Spawn-Safety: findSafeSpawn schiebt dich aus Wänden raus', 'Alien-Cake aus der Mitte des Alien-Planeten weg (schwebt klein im Weltall)', 'Tag/Nacht-Cycle ist jetzt Default — Sonne wandert mit Schatten von Ost nach West', 'Charakter-Editor jederzeit in Einstellungen erreichbar', 'Mehr Farb-Optionen (Haut: 7, Haare: 10, Shirts: 11, Hosen: 9)', 'Spielmodus-Wechsel auch in Einstellungen möglich'] },
-  { id: 'v22', name: 'Update 22 (aktuell)', desc: 'Avatar größer + Tutorial-Welt + 8-bit Musik + Mehr Monster + Updates-Liste sortiert', new: ['Avatar oben rechts: viel größer (130×170) + goldener Rahmen + Glow', 'Tutorial-Welt: nur 1 Hecke + 1 Monster, keine Bäume/Büsche/Steine', 'Tutorial: unendlich Herzen — kein Schaden, einfach lernen', 'Schritt-für-Schritt Tutorial-Hints (Steuerung, Torte, Monster, Pipe)', 'Freestyle: bis zu 20 Monster gleichzeitig (vorher 14), schneller spawnen', 'Reihenfolge: Name → Modus → Charakter → direkt ins Spiel (kein Start-Screen)', '8-bit Chiptune-Musik mit Lead + Bass pro Welt (Game-Style)', 'Schnellere Musik (175ms statt 320ms) für Game-Feeling', 'findSafeSpawn jetzt überall (Garten/Alien/Mutterschiff)', 'Updates-Liste: neueste oben, älteste unten'] }
+  { id: 'v22', name: 'Update 22', desc: 'Avatar größer + Tutorial-Welt + 8-bit Musik + Mehr Monster + Updates-Liste sortiert', new: ['Avatar oben rechts: viel größer (130×170) + goldener Rahmen + Glow', 'Tutorial-Welt: nur 1 Hecke + 1 Monster, keine Bäume/Büsche/Steine', 'Tutorial: unendlich Herzen — kein Schaden, einfach lernen', 'Schritt-für-Schritt Tutorial-Hints (Steuerung, Torte, Monster, Pipe)', 'Freestyle: bis zu 20 Monster gleichzeitig (vorher 14), schneller spawnen', 'Reihenfolge: Name → Modus → Charakter → direkt ins Spiel (kein Start-Screen)', '8-bit Chiptune-Musik mit Lead + Bass pro Welt (Game-Style)', 'Schnellere Musik (175ms statt 320ms) für Game-Feeling', 'findSafeSpawn jetzt überall (Garten/Alien/Mutterschiff)', 'Updates-Liste: neueste oben, älteste unten'] },
+  { id: 'v23', name: 'Update 23 (aktuell)', desc: 'Tutorial-Welt kleiner + Höhle weiter weg + Mutterschiff-Respawn an Ecke', new: ['Tutorial: Garten-Boundary auf ±11 (vorher ±29) — viel kleineres Feld', 'Höhle (CAVE_X) auf +400 verschoben (vorher -110) — nicht mehr im Weltall sichtbar', 'Mutterschiff-Respawn nach Tod: zurück an Ecke (-8,+8), NICHT bei Controllerzentrale', 'Mutterschiff-Spawn mit findSafeSpawn → kein Einklemmen in Wand', 'Freestyle: Start-Screen mit Einstellungen wird angezeigt', 'Tutorial: direkt zum Char-Editor (keine Einstellungen mehr im Weg)'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
@@ -7069,7 +7077,11 @@ bindRobustClick(settingsBackBtn, () => {
   startScreen.classList.remove('hidden');
 });
 
-bindRobustClick(document.getElementById('startBtn'), startGame);
+// "Garten betreten"-Button: gehe zuerst zum Char-Editor (falls neuer Spieler), sonst direkt los
+bindRobustClick(document.getElementById('startBtn'), () => {
+  startScreen.classList.add('hidden');
+  proceedToCharOrStart();
+});
 bindRobustClick(document.getElementById('restartBtn'), startGame);
 bindRobustClick(document.getElementById('retryBtn'), retry);
 bindRobustClick(document.getElementById('continueBtn'), () => {
