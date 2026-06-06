@@ -1102,8 +1102,8 @@ let _tutorialFence = null;
 function buildTutorialObjects() {
   if (_tutorialPipeBuilt) return;
   _tutorialPipeBuilt = true;
-  // Tutorial-Pipe (links) — fuehrt in die Hoehle
-  makePipe(-3, 3, 0.75);
+  // Tutorial-Pipe (links) — fuehrt in die Hoehle (engere Position fuer winziges Feld)
+  makePipe(-2.5, 2.5, 0.75);
   // Tutorial-Leiter zur Wolkenwelt (rechts hinten)
   function makeLadder(color, indicatorColor) {
     const lg = new THREE.Group();
@@ -1128,29 +1128,28 @@ function buildTutorialObjects() {
     return lg;
   }
   _tutorialLadder = makeLadder(0xffffff, 0xddeeff);
-  _tutorialLadder.position.set(2, 0, -3);
+  _tutorialLadder.position.set(2.5, 0, -2.5);
   scene.add(_tutorialLadder);
-  _tutorialLadderObs = { x: 2, z: -3, halfW: 1.0, halfD: 1.0, isTutorialCloudLadder: true };
+  _tutorialLadderObs = { x: 2.5, z: -2.5, halfW: 1.0, halfD: 1.0, isTutorialCloudLadder: true };
   ladderTriggers.push(_tutorialLadderObs);
   // Tutorial-Alien-Portal (lila Leiter) — fuehrt zum Alien-Planeten
   _tutorialAlienPortal = makeLadder(0xff66cc, 0xff44ff);
-  _tutorialAlienPortal.position.set(-2, 0, -3);
+  _tutorialAlienPortal.position.set(-2.5, 0, -2.5);
   scene.add(_tutorialAlienPortal);
-  _tutorialAlienPortalObs = { x: -2, z: -3, halfW: 1.0, halfD: 1.0, isTutorialAlienPortal: true };
+  _tutorialAlienPortalObs = { x: -2.5, z: -2.5, halfW: 1.0, halfD: 1.0, isTutorialAlienPortal: true };
   ladderTriggers.push(_tutorialAlienPortalObs);
-  // Tutorial-Zaun (visueller goldener Ring um die Tutorial-Wiese)
+  // Tutorial-Zaun (visueller goldener Ring) — kleines 10x10 Feld
   _tutorialFence = new THREE.Group();
   const fenceMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.5 });
-  // 4 Seiten als duenne Boxen
-  for (const side of [[-7,0,0.4,14], [7,0,0.4,14], [0,-7,14,0.4], [0,7,14,0.4]]) {
+  for (const side of [[-5,0,0.4,10], [5,0,0.4,10], [0,-5,10,0.4], [0,5,10,0.4]]) {
     const f = new THREE.Mesh(new THREE.BoxGeometry(side[2], 0.8, side[3]), fenceMat);
     f.position.set(side[0], 0.4, side[1]);
     _tutorialFence.add(f);
   }
   scene.add(_tutorialFence);
-  // Tutorial-Boden (hellere Platte um die Tutorial-Wiese klar sichtbar zu machen)
+  // Tutorial-Boden 10x10
   const tutFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(14, 0.08, 14),
+    new THREE.BoxGeometry(10, 0.08, 10),
     new THREE.MeshStandardMaterial({ color: 0x6a9040, emissive: 0x4a7028, emissiveIntensity: 0.25, roughness: 0.85 })
   );
   tutFloor.position.set(0, 0.03, 0);
@@ -3021,12 +3020,23 @@ function makeHumanAlien(x, y, z, scale) {
   const gunLight = new THREE.Mesh(new THREE.SphereGeometry(0.02 * s, 6, 5), visorMat);
   gunLight.position.set(0.3 * s, 0.45 * s, 0.31 * s);
   g.add(gunLight);
-  // Big red marker above the robot — easy to spot from anywhere
+  // Riesiger leuchtender roter Marker oben drauf — von ueberall sichtbar
   const markerMat = new THREE.MeshBasicMaterial({ color: 0xff2244 });
-  const marker = new THREE.Mesh(new THREE.ConeGeometry(0.35 * s, 0.7 * s, 8), markerMat);
-  marker.position.y = 2.6 * s;
+  const marker = new THREE.Mesh(new THREE.ConeGeometry(0.5 * s, 1.0 * s, 8), markerMat);
+  marker.position.y = 2.9 * s;
   marker.rotation.x = Math.PI;
   g.add(marker);
+  // Glow-Sphäre für noch bessere Sichtbarkeit
+  const robotMarkerGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.6 * s, 12, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff5566, transparent: true, opacity: 0.4 })
+  );
+  robotMarkerGlow.position.y = 2.9 * s;
+  g.add(robotMarkerGlow);
+  // Punkt-Licht damit der Marker leuchtet
+  const robotMarkerLight = new THREE.PointLight(0xff2244, 1.2, 5);
+  robotMarkerLight.position.y = 2.9 * s;
+  g.add(robotMarkerLight);
   // Glow under the marker
   const markerLight = new THREE.PointLight(0xff2244, 1.2, 4);
   markerLight.position.y = 2.2 * s;
@@ -4249,8 +4259,8 @@ let ufoEnterStandTime = 0;
 // === State ===
 const CAKE_MAX_HP = 8;
 const BOUNDARY = 29;
-// Tutorial-Modus: SEHR kleine Spielwiese, damit Anfaenger nicht verloren gehen
-function currentGardenBoundary() { return isTutorialMode() ? 7 : BOUNDARY; }
+// Tutorial-Modus: WINZIGES Feld (±5 = 10x10 Einheiten) — alles auf einen Blick
+function currentGardenBoundary() { return isTutorialMode() ? 5 : BOUNDARY; }
 let cakeHp = CAKE_MAX_HP;
 let gameState = 'start';
 let pointerLocked = false;
@@ -5903,8 +5913,28 @@ function abortToMenu() {
 }
 bindRobustClick(abortBtn, abortToMenu);
 
-// Tutorial-Hint: einmaliger Hinweis pro Schluessel (zeigt nur im Tutorial-Mode und nur einmal pro Session)
+// Tutorial-Hint: einmaliger Hinweis pro Schluessel — zeigt Text UND spricht ihn via Speech Synthesis
 const _shownTutorialKeys = new Set();
+function speakTutorial(text) {
+  try {
+    if (!('speechSynthesis' in window)) return;
+    // HTML-Tags entfernen + Emojis weglassen damit Text natuerlich klingt
+    const clean = text.replace(/<[^>]*>/g, '').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}]/gu, '').replace(/\s+/g, ' ').trim();
+    if (!clean) return;
+    // Bestehende Ansage abbrechen
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.lang = 'de-DE';
+    utter.rate = 1.0;
+    utter.pitch = 1.05;
+    utter.volume = 0.9;
+    // Versuche eine deutsche Stimme zu finden
+    const voices = speechSynthesis.getVoices();
+    const deVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('de'));
+    if (deVoice) utter.voice = deVoice;
+    speechSynthesis.speak(utter);
+  } catch (e) {}
+}
 function showTutorialHint(key, text) {
   if (!isTutorialMode()) return;
   if (_shownTutorialKeys.has(key)) return;
@@ -5915,6 +5945,8 @@ function showTutorialHint(key, text) {
   document.body.appendChild(el);
   setTimeout(() => { el.style.transition = 'opacity 0.6s'; el.style.opacity = '0'; }, 5500);
   setTimeout(() => el.remove(), 6200);
+  // Sprachausgabe
+  speakTutorial(text);
 }
 
 function updateMonsters(dt) {
@@ -6979,7 +7011,8 @@ const UPDATES = [
   { id: 'v23', name: 'Update 23', desc: 'Tutorial-Welt kleiner + Höhle weiter weg + Mutterschiff-Respawn an Ecke', new: ['Tutorial: Garten-Boundary auf ±11 (vorher ±29) — viel kleineres Feld', 'Höhle (CAVE_X) auf +400 verschoben (vorher -110) — nicht mehr im Weltall sichtbar', 'Mutterschiff-Respawn nach Tod: zurück an Ecke (-8,+8), NICHT bei Controllerzentrale', 'Mutterschiff-Spawn mit findSafeSpawn → kein Einklemmen in Wand', 'Freestyle: Start-Screen mit Einstellungen wird angezeigt', 'Tutorial: direkt zum Char-Editor (keine Einstellungen mehr im Weg)'] },
   { id: 'v24', name: 'Update 24', desc: 'Tutorial: winziges Feld + 1 Pipe + 1 Leiter + Schritt-für-Schritt Hinweise', new: ['Tutorial-Garten nur noch ±7 (vorher ±11) — minimal!', 'Eine feste Tutorial-Pipe (-3, +3) führt in die Höhle', 'Eine feste Tutorial-Leiter (+2, -3) führt zur Wolkenwelt (visuell mit Wolke oben)', 'Im Tutorial verschwinden alle anderen Pipes', '8 detaillierte Tutorial-Hinweise (Bewegen, Springen, Hecke, Monster, Pipe, Leiter, Modus-Wechsel)', 'Tutorial erklärt von vorne bis hinten was zu tun ist'] },
   { id: 'v25', name: 'Update 25', desc: 'Tutorial-Welt deutlich + Mutterschiff-Bugs gefixt', new: ['Tutorial: goldener Zaun rundherum zeigt klar die Spielfläche', 'Tutorial: hellgrüner Tutorial-Boden visualisiert die Wiese', 'Tutorial: lila Alien-Portal-Leiter (-2, -3) zum Alien-Planeten', 'Tutorial: nach Torte zerstören → automatisch Freestyle-Modus', 'Mutterschiff: Roboter schießen NICHT mehr durch Wände (Sichtlinie-Check)', 'Mutterschiff: Roboter respektieren Wände wie Spieler (Radius 0.4)', 'Mutterschiff: Innen-Wände vereinfacht — alle 4 Ecken erreichbar', 'Mutterschiff: Projektile zerschellen an Wänden (nicht mehr durch)', 'Mutterschiff: Spawn-Sackgasse aufgelöst (findSafeSpawn + weniger Wände)'] },
-  { id: 'v26', name: 'Update 26 (aktuell)', desc: 'Abbruch-Knopf + Einstellungen mit Tabs', new: ['Abbruch-Knopf „✕ Zurück zum Menü" oben links im Spiel (für Tutorial UND Freestyle)', 'Klick auf Abbruch: zurück zur Modus-Auswahl (kein Neu-Laden)', 'Einstellungen jetzt mit 5 Tabs: Updates, Avatar, Game Mode, Grafik, Tag/Nacht', 'Modus-Screen hat jetzt direkt einen Einstellungen-Knopf', 'Zurück-Button geht je nach Quelle zurück (Modus-Screen oder Start-Screen)'] }
+  { id: 'v26', name: 'Update 26', desc: 'Abbruch-Knopf + Einstellungen mit Tabs', new: ['Abbruch-Knopf „✕ Zurück zum Menü" oben links im Spiel (für Tutorial UND Freestyle)', 'Klick auf Abbruch: zurück zur Modus-Auswahl (kein Neu-Laden)', 'Einstellungen jetzt mit 5 Tabs: Updates, Avatar, Game Mode, Grafik, Tag/Nacht', 'Modus-Screen hat jetzt direkt einen Einstellungen-Knopf', 'Zurück-Button geht je nach Quelle zurück (Modus-Screen oder Start-Screen)'] },
+  { id: 'v27', name: 'Update 27 (aktuell)', desc: 'Tutorial winzig + Sprachausgabe + Roboter besser sichtbar', new: ['Tutorial-Feld nur noch ±5 (vorher ±7) — wirklich winzig', 'Tutorial-Objekte enger zusammen (Pipe -2.5/+2.5, Leiter +2.5/-2.5, Portal -2.5/-2.5)', 'Tutorial-Zaun + Boden nur noch 10×10', '🔊 Sprachausgabe: jeder Tutorial-Hinweis wird auch VORGELESEN (Web Speech API auf Deutsch)', 'Roboter haben jetzt riesigen leuchtenden roten Kegel + Glow + Light', 'Roboter von überall im Mutterschiff gut sichtbar'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
