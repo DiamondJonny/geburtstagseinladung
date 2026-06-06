@@ -69,8 +69,9 @@
   #nameInput.shake { animation: nameShake 0.4s; }
   @keyframes nameShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0a0a14; color: #ffd700; font-size: 1.2rem; z-index: 100; }
-  #qualityChip { position: fixed; top: 14px; right: 16px; background: rgba(0,0,0,0.55); color: #cfe0ff; padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: bold; z-index: 8; opacity: 0; transition: opacity 0.25s; pointer-events: none; border: 1px solid rgba(207,224,255,0.25); }
-  #qualityChip.show { opacity: 1; }
+  #qualityChip { position: fixed; top: 14px; right: 16px; background: rgba(0,0,0,0.55); color: #cfe0ff; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; z-index: 8; opacity: 0; transition: opacity 0.25s, background 0.25s; pointer-events: none; border: 1px solid rgba(207,224,255,0.25); white-space: nowrap; }
+  #qualityChip.show { opacity: 0.95; }
+  #qualityChip.flash { background: rgba(255,170,40,0.85); color: #1a1a2e; border-color: rgba(255,170,40,1); }
   #charPreview { position: fixed; top: 14px; right: 16px; width: 92px; height: 120px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,215,0,0.6); border-radius: 10px; z-index: 7; display: none; pointer-events: none; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
   #charPreview.show { display: block; }
   #charPreview canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
@@ -168,6 +169,15 @@
   <button id="ufoUpBtn" type="button">&#x2B06;</button>
   <button id="ufoDownBtn" type="button">&#x2B07;</button>
   <button id="hitBtn" type="button">&#x2692;</button>
+</div>
+
+<div class="overlay hidden" id="modeScreen">
+  <h1>&#x1F3AE; Wie willst du spielen?</h1>
+  <p>W&auml;hle deinen Modus &mdash; du kannst sp&auml;ter in den Einstellungen wechseln.</p>
+  <div style="display: flex; gap: 18px; margin: 22px 0; flex-wrap: wrap; justify-content: center;">
+    <button class="btn" id="modeTutorialBtn" style="font-size: 1.05rem; padding: 18px 32px; background: linear-gradient(135deg, #88cc88, #44aa66);">&#x1F4D6; Tutorial<br><span style="font-size: 0.75em; opacity: 0.9;">Lernen Schritt f&uuml;r Schritt</span></button>
+    <button class="btn" id="modeFreestyleBtn" style="font-size: 1.05rem; padding: 18px 32px;">&#x1F680; Freestyle<br><span style="font-size: 0.75em; opacity: 0.9;">Direkt loslegen</span></button>
+  </div>
 </div>
 
 <div class="overlay" id="nameScreen">
@@ -279,6 +289,16 @@
     <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">Grafik-Qualit&auml;t</div>
     <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Automatisch passt sich an dein Ger&auml;t an (stockt nie). Wenn du lieber selber w&auml;hlst, geht das auch.</p>
     <div id="qualityChoices" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+  </div>
+  <div id="charSection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
+    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">&#x1F468;&#x200D;&#x1F3A8; Mein Charakter</div>
+    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">&Auml;ndere dein Aussehen: Haut, Haare, Shirt, Hose.</p>
+    <button class="btn" id="openCharEditorBtn" style="font-size: 0.95rem; padding: 8px 18px; background: linear-gradient(135deg, #cc88ee, #8866cc);">&#x1F3A8; Charakter ändern</button>
+  </div>
+  <div id="playModeSection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
+    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">&#x1F3AE; Spielmodus</div>
+    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Tutorial für Anleitungen, Freestyle für freies Spielen.</p>
+    <div id="playModeChoices" style="display: flex; gap: 8px;"></div>
   </div>
   <div id="dayNightSection" style="max-width: 580px; width: 90%; margin-top: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 12px 16px; text-align: left;">
     <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px;">Tag &amp; Nacht</div>
@@ -413,10 +433,10 @@ let playerName = '';
 let playerIsInvited = false;
 
 // === Character Customization ===
-const CHAR_SKINS  = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524'];
-const CHAR_HAIRS  = ['#2b1d12', '#5b3a1c', '#a86b30', '#dfb56a', '#cc4422', '#ffffff'];
-const CHAR_SHIRTS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#ffffff'];
-const CHAR_PANTS  = ['#34495e', '#2c3e50', '#5d4037', '#1565c0', '#37474f', '#212121'];
+const CHAR_SKINS  = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#5d3320', '#fce5d4'];
+const CHAR_HAIRS  = ['#2b1d12', '#5b3a1c', '#a86b30', '#dfb56a', '#cc4422', '#ffffff', '#88aaff', '#ff66cc', '#44dd44', '#222222'];
+const CHAR_SHIRTS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#ffffff', '#ffd700', '#ff66cc', '#222222', '#ff6b00'];
+const CHAR_PANTS  = ['#34495e', '#2c3e50', '#5d4037', '#1565c0', '#37474f', '#212121', '#7a4a2b', '#0a3a1a', '#5d2b6e'];
 let charSkin  = CHAR_SKINS[0];
 let charHair  = CHAR_HAIRS[0];
 let charShirt = CHAR_SHIRTS[1]; // blau
@@ -616,6 +636,10 @@ function buildCharChoices() {
   }
 }
 
+// Spielmodus: 'tutorial' oder 'freestyle'. Beim allerersten Mal: Auswahl-Screen anzeigen.
+let playMode = safeStorageGet('geburtstag.playMode', 'freestyle');
+function isTutorialMode() { return playMode === 'tutorial'; }
+
 function handleNameSubmit() {
   // Wert AUSLESEN bevor wir was anderes machen (auf iOS commited blur asynchron)
   const n = (nameInput.value || '').trim();
@@ -629,7 +653,17 @@ function handleNameSubmit() {
   playerIsInvited = INVITED_NAMES.includes(n.toLowerCase());
   // UI-Wechsel ZUERST, blur NACHHER (sonst kann iOS den Click verschlucken)
   nameScreen.classList.add('hidden');
-  // Bei erstem Spielen: Charakter-Erstellung; sonst gleich zum Start
+  // Bei erstem Spielen: Modus-Auswahl, dann Charakter-Erstellung, dann Start
+  const tutorialDone = safeStorageGet('geburtstag.tutorialDone', '') === '1';
+  const modeScreen = document.getElementById('modeScreen');
+  if (!tutorialDone && modeScreen) {
+    modeScreen.classList.remove('hidden');
+  } else {
+    proceedToCharOrStart();
+  }
+  try { nameInput.blur(); } catch (e) {}
+}
+function proceedToCharOrStart() {
   const charDone = safeStorageGet('geburtstag.charDone', '') === '1';
   if (!charDone && charScreen) {
     charScreen.classList.remove('hidden');
@@ -638,7 +672,27 @@ function handleNameSubmit() {
   } else {
     startScreen.classList.remove('hidden');
   }
-  try { nameInput.blur(); } catch (e) {}
+}
+// Modus-Auswahl-Buttons
+const modeTutorialBtn = document.getElementById('modeTutorialBtn');
+const modeFreestyleBtn = document.getElementById('modeFreestyleBtn');
+const modeScreenEl = document.getElementById('modeScreen');
+if (modeTutorialBtn) {
+  bindRobustClick(modeTutorialBtn, () => {
+    playMode = 'tutorial';
+    safeStorageSet('geburtstag.playMode', 'tutorial');
+    if (modeScreenEl) modeScreenEl.classList.add('hidden');
+    proceedToCharOrStart();
+  });
+}
+if (modeFreestyleBtn) {
+  bindRobustClick(modeFreestyleBtn, () => {
+    playMode = 'freestyle';
+    safeStorageSet('geburtstag.playMode', 'freestyle');
+    safeStorageSet('geburtstag.tutorialDone', '1');
+    if (modeScreenEl) modeScreenEl.classList.add('hidden');
+    proceedToCharOrStart();
+  });
 }
 // Charakter-Erstellung "Fertig"-Button
 const charDoneBtn = document.getElementById('charDoneBtn');
@@ -759,9 +813,12 @@ scene.add(sunGlow);
 
 // === Tag/Nacht-Cycle ===
 // Modus: 'day' = nur Tag, 'night' = nur Nacht, 'cycle' = Beides (Sonne wandert)
-let dayNightMode = safeStorageGet('geburtstag.dayNight', 'day');
-if (!['day', 'night', 'cycle'].includes(dayNightMode)) dayNightMode = 'day';
-let dayProgress = 0.25; // 0..1, 0.25 = Mittag
+let dayNightMode = safeStorageGet('geburtstag.dayNight', 'cycle');
+if (!['day', 'night', 'cycle'].includes(dayNightMode)) dayNightMode = 'cycle';
+let dayProgress = 0.2; // 0..1, 0.25 = Mittag — startet kurz vor Mittag (morgen)
+// Sun-Target zum Ursprung damit das DirectionalLight die Szene beleuchtet
+sun.target.position.set(0, 0, 0);
+scene.add(sun.target);
 // Mond (sichtbar bei Nacht)
 const moonSphere = new THREE.Mesh(
   new THREE.SphereGeometry(2.2, 20, 14),
@@ -981,6 +1038,25 @@ function collidesAny(x, z, r) {
     if (Math.abs(x - o.x) < o.halfW + r && Math.abs(z - o.z) < o.halfD + r) return true;
   }
   return false;
+}
+
+// Sucht eine sichere Spawn-Position in der Naehe, falls (x,z) in einem Hindernis steckt
+function findSafeSpawn(x, z, r, maxRadius) {
+  r = r || 0.45;
+  maxRadius = maxRadius || 4;
+  if (!collidesAny(x, z, r)) return { x, z };
+  // Spirale nach aussen: probiere immer weitere Ringe
+  for (let ring = 1; ring <= maxRadius * 2; ring++) {
+    const radius = ring * 0.5;
+    const steps = 8 + ring * 4;
+    for (let i = 0; i < steps; i++) {
+      const ang = (i / steps) * Math.PI * 2;
+      const nx = x + Math.cos(ang) * radius;
+      const nz = z + Math.sin(ang) * radius;
+      if (!collidesAny(nx, nz, r)) return { x: nx, z: nz };
+    }
+  }
+  return { x, z }; // Notfall — kein freier Punkt gefunden
 }
 
 // === Cake spot (random from a list) ===
@@ -3128,7 +3204,9 @@ function makeAlien(x, y, z, scale) {
 
   // The final Alien Cake (glowing)
   alienCakeGroup = new THREE.Group();
-  alienCakeGroup.position.set(ALIEN_X, 1.2, 0);
+  // Verschoben weg vom Spieler-Spawn — schwebt jetzt klein im Weltall als Deko (war frueher das Ziel)
+  alienCakeGroup.position.set(ALIEN_X - 38, 28, -55);
+  alienCakeGroup.scale.set(0.6, 0.6, 0.6);
   // Lime-green base (appetitlich, aber alien)
   const acBase = new THREE.Mesh(
     new THREE.CylinderGeometry(0.5, 0.55, 0.35, 24),
@@ -4247,7 +4325,9 @@ function dockToMothership() {
   ufoUpHold = false;
   ufoDownHold = false;
   // Teleport in Labyrinth: an einer Ecke startet der Spieler, Controllerzentrale ist in Mitte (Ziel)
-  camera.position.set(MOTHERSHIP_X - 8, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, MOTHERSHIP_Z + 8);
+  // findSafeSpawn schiebt den Spieler aus jeder Wand raus
+  const safe = findSafeSpawn(MOTHERSHIP_X - 8, MOTHERSHIP_Z + 8, 0.55);
+  camera.position.set(safe.x, MOTHERSHIP_Y - 2.42 + PLAYER_HEIGHT, safe.z);
   yaw = -Math.PI / 4; // Schau in Richtung Mitte
   pitch = 0;
   playerVy = 0;
@@ -4773,6 +4853,79 @@ function beep(freq, duration, type='square', volume=0.1) {
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
   } catch (e) {}
+}
+
+// === Soundeffekte ===
+function playSfx(type) {
+  if (musicMuted) return;
+  switch (type) {
+    case 'jump':       beep(360, 0.08, 'sine', 0.10); setTimeout(() => beep(540, 0.06, 'sine', 0.07), 30); break;
+    case 'coin':       beep(880, 0.06, 'square', 0.10); setTimeout(() => beep(1320, 0.10, 'square', 0.10), 50); break;
+    case 'hurt':       beep(180, 0.18, 'sawtooth', 0.18); setTimeout(() => beep(120, 0.18, 'sawtooth', 0.14), 60); break;
+    case 'kill':       beep(440, 0.08, 'square', 0.12); setTimeout(() => beep(220, 0.12, 'sine', 0.10), 70); break;
+    case 'powerup':    beep(523, 0.08, 'square', 0.10); setTimeout(() => beep(659, 0.08, 'square', 0.10), 80); setTimeout(() => beep(784, 0.12, 'square', 0.10), 160); setTimeout(() => beep(1046, 0.16, 'sine', 0.10), 250); break;
+    case 'arrow':      beep(900, 0.05, 'sawtooth', 0.08); setTimeout(() => beep(450, 0.05, 'sine', 0.05), 30); break;
+    case 'pipe':       beep(220, 0.15, 'square', 0.10); setTimeout(() => beep(440, 0.12, 'square', 0.10), 80); setTimeout(() => beep(660, 0.15, 'square', 0.10), 160); break;
+    case 'mine':       beep(180, 0.10, 'sawtooth', 0.10); setTimeout(() => beep(140, 0.12, 'sawtooth', 0.08), 60); break;
+    case 'dock':       beep(330, 0.10, 'sine', 0.10); setTimeout(() => beep(440, 0.10, 'sine', 0.10), 80); setTimeout(() => beep(660, 0.15, 'sine', 0.10), 160); break;
+    case 'win':        for (let i = 0; i < 6; i++) { setTimeout(() => beep([262, 330, 392, 523, 659, 784][i], 0.18, 'square', 0.10), i * 100); } break;
+    case 'dead':       beep(220, 0.2, 'sawtooth', 0.14); setTimeout(() => beep(165, 0.25, 'sawtooth', 0.12), 130); setTimeout(() => beep(110, 0.35, 'sawtooth', 0.10), 280); break;
+    case 'laser':      beep(1200, 0.05, 'square', 0.06); setTimeout(() => beep(800, 0.06, 'square', 0.04), 40); break;
+    case 'enemyShot':  beep(700, 0.06, 'sawtooth', 0.07); setTimeout(() => beep(450, 0.08, 'square', 0.05), 40); break;
+  }
+}
+
+// === Hintergrund-Musik (procedural) ===
+let musicMuted = safeStorageGet('geburtstag.musicMuted', '') === '1';
+let musicInterval = null;
+let musicStep = 0;
+// Kleine fröhliche Melodie (C-Dur-Pentatonik) — wechselt je nach Welt
+const MUSIC_NOTES = {
+  garden:   [262, 294, 330, 392, 440, 392, 330, 294, 262, 294, 330, 440, 392, 330, 294, 0],
+  cave:     [196, 0, 220, 0, 247, 0, 220, 0, 196, 0, 175, 0, 196, 0, 220, 0],
+  bonus:    [523, 587, 659, 784, 880, 784, 659, 587, 523, 587, 659, 880, 784, 659, 587, 0],
+  alien:    [220, 277, 330, 277, 220, 165, 220, 277, 330, 415, 330, 277, 220, 165, 110, 0],
+  mothership:[110, 0, 130, 0, 165, 0, 130, 0, 110, 0, 98, 0, 110, 0, 130, 0]
+};
+function getCurrentWorldKey() {
+  if (onMothership) return 'mothership';
+  if (inAlienWorld) return 'alien';
+  if (inCaveWorld)  return 'cave';
+  if (inBonusWorld) return 'bonus';
+  return 'garden';
+}
+function startMusic() {
+  if (musicMuted || musicInterval) return;
+  musicStep = 0;
+  musicInterval = setInterval(() => {
+    if (musicMuted || gameState !== 'playing') return;
+    const notes = MUSIC_NOTES[getCurrentWorldKey()] || MUSIC_NOTES.garden;
+    const note = notes[musicStep % notes.length];
+    musicStep++;
+    if (note > 0) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = note;
+        gain.gain.value = 0.04;
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.28);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.32);
+      } catch (e) {}
+    }
+  }, 320);
+}
+function stopMusic() {
+  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+}
+function toggleMusic() {
+  musicMuted = !musicMuted;
+  safeStorageSet('geburtstag.musicMuted', musicMuted ? '1' : '0');
+  if (musicMuted) stopMusic();
+  else startMusic();
 }
 
 // Bird tweet — short pitched chirp (only in garden)
@@ -5514,6 +5667,20 @@ function showUnlockMessage(html) {
   document.body.appendChild(el);
   setTimeout(() => { el.style.transition = 'opacity 0.6s'; el.style.opacity = '0'; }, 2500);
   setTimeout(() => el.remove(), 3200);
+}
+
+// Tutorial-Hint: einmaliger Hinweis pro Schluessel (zeigt nur im Tutorial-Mode und nur einmal pro Session)
+const _shownTutorialKeys = new Set();
+function showTutorialHint(key, text) {
+  if (!isTutorialMode()) return;
+  if (_shownTutorialKeys.has(key)) return;
+  _shownTutorialKeys.add(key);
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed; bottom:24%; left:50%; transform:translate(-50%,0); background:rgba(20,30,50,0.92); padding:14px 24px; border-radius:14px; color:#fff; font-size:1.0rem; z-index:50; box-shadow:0 0 24px rgba(100,200,255,0.6); border:2px solid #66ccff; pointer-events:none; text-align:center; max-width: 80%;';
+  el.innerHTML = '<span style="color:#ffd700;font-weight:bold;">&#x1F4D6; Tutorial:</span><br>' + text;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity 0.6s'; el.style.opacity = '0'; }, 5500);
+  setTimeout(() => el.remove(), 6200);
 }
 
 function updateMonsters(dt) {
@@ -6358,6 +6525,15 @@ function startGame() {
   updateHammerVisuals();
   updateShieldVisuals();
   updateCharPreview();
+  // Quality-Chip oben rechts immer sichtbar im Spiel
+  refreshQualityChip();
+  setQualityChipVisible(true);
+  // Hintergrundmusik starten
+  startMusic();
+  // Erster Tutorial-Hint
+  if (isTutorialMode()) {
+    setTimeout(() => showTutorialHint('start', 'Finde die <b>Geburtstagstorte</b> zwischen den Hecken! Steig auf Steine, um sie zu erreichen, und schlag sie mit dem Hammer kaputt.'), 1500);
+  }
 }
 
 if (isTouch) {
@@ -6517,7 +6693,8 @@ const UPDATES = [
   { id: 'v17', name: 'Update 17', desc: 'Eigener Charakter + Schild + Gold-Hammer + Tag/Nacht + Auto-Aim', new: ['Charakter-Vorschau oben rechts (zeigt aktuelle Ausrüstung)', 'Charakter-Erstellung am Anfang: Haut, Haare, Shirt, Hose wählbar', 'Schild jetzt SICHTBAR links in der Hand (mit goldenem Stern)', 'Gold-Hammer-Kopf wird wirklich golden wenn gekauft', 'Bow Auto-Aim: Pfeil zielt leicht auf Monster in der Nähe (65/35 Mix)', 'Tag/Nacht-Cycle in den Einstellungen: Nur Tag / Nur Nacht / Beides', 'Sonne wandert mit Sonnenauf- und untergang, Sterne + Mond bei Nacht', 'gameMode-Default repariert: immer aktuelles Update vorausgewählt'] },
   { id: 'v18', name: 'Update 18', desc: 'Animierter Avatar + Andocken fixt + Slots zurück + Form-Submit', new: ['Avatar oben rechts ist jetzt ANIMIERT (läuft, springt, schlägt mit dir)', 'Spielername unter dem Avatar angezeigt', 'Gold/Schild/Rüstung Slots zurück (grau wenn nicht gekauft, gold wenn gekauft)', 'Mutterschiff-Andocken: grüner Knopf erscheint jetzt auch bei Mutterschiff-Nähe', '„Los geht\'s" jetzt als HTML-Form (zuverlässigste Methode + iOS-Go-Button)', 'Sonne UND Mond nicht mehr gleichzeitig sichtbar — exklusiv', 'Avatar-Editor klarer mit Emoji-Icons und größerer Vorschau'] },
   { id: 'v19', name: 'Update 19', desc: 'Tag/Nacht nur im Garten + UFO darf zum Mutterschiff + Roboter greifen an', new: ['Tag/Nacht-Cycle STRENG nur im Garten (Höhle/Alien/Weltall haben keinen Wechsel)', 'Sonne/Mond/Sterne nur sichtbar im Garten', 'UFO darf jetzt über die Alien-Welt-Boundary hinausfliegen zum Mutterschiff', 'Mutterschiff-Roboter greifen jetzt AGGRESSIV an — schießen alle 1.5–2.5s', 'Roboter im Hangar machen 1 Herz Kontaktschaden (vorher 0.5)', 'Schießen bereits ab 0.5 Einheiten Distanz (vorher 1.8)'] },
-  { id: 'v20', name: 'Update 20 (aktuell)', desc: 'Mutterschiff jetzt riesiges Labyrinth mit Controllerzentrale + animierte Luke', new: ['Mutterschiff-Inneres ist ein 20×20 LABYRINTH (vorher kleine Plattform)', 'Animierte LUKE unten — 4 Segmente öffnen sich wenn UFO darüber schwebt', 'CONTROLLERZENTRALE in der Mitte = Ziel (mit 3 Bildschirmen + rotem Hebel)', 'Wände in 4 Quadranten — du musst dich durchschlagen', '6 Roboter verteilt im Labyrinth (vorher 4 im Hangar)', 'Win-Bedingung: erreich die Controllerzentrale (Distanz < 2.4)', 'Goldener Ziel-Ring um die Controllerzentrale (gut sichtbar)'] }
+  { id: 'v20', name: 'Update 20', desc: 'Mutterschiff jetzt riesiges Labyrinth mit Controllerzentrale + animierte Luke', new: ['Mutterschiff-Inneres ist ein 20×20 LABYRINTH (vorher kleine Plattform)', 'Animierte LUKE unten — 4 Segmente öffnen sich wenn UFO darüber schwebt', 'CONTROLLERZENTRALE in der Mitte = Ziel (mit 3 Bildschirmen + rotem Hebel)', 'Wände in 4 Quadranten — du musst dich durchschlagen', '6 Roboter verteilt im Labyrinth (vorher 4 im Hangar)', 'Win-Bedingung: erreich die Controllerzentrale (Distanz < 2.4)', 'Goldener Ziel-Ring um die Controllerzentrale (gut sichtbar)'] },
+  { id: 'v21', name: 'Update 21 (aktuell)', desc: 'Tutorial + Musik + Sounds + Sonnen-Cycle + Char-Editor immer erreichbar', new: ['Tutorial/Freestyle-Auswahl beim ersten Spielen', 'Hilfetexte erscheinen im Tutorial-Modus an wichtigen Stellen', 'Hintergrundmusik (passend zu jeder Welt: Garten/Höhle/Wolken/Alien/Mutterschiff)', '13 verschiedene Soundeffekte (Sprung, Münze, Verletzung, Sieg, Tod, Pipe, …)', 'Quality-Anzeige oben rechts permanent sichtbar', 'Gras schon ab Quality-Stufe 2 sichtbar, Wind erst ab Stufe 8', 'Spawn-Safety: findSafeSpawn schiebt dich aus Wänden raus', 'Alien-Cake aus der Mitte des Alien-Planeten weg (schwebt klein im Weltall)', 'Tag/Nacht-Cycle ist jetzt Default — Sonne wandert mit Schatten von Ost nach West', 'Charakter-Editor jederzeit in Einstellungen erreichbar', 'Mehr Farb-Optionen (Haut: 7, Haare: 10, Shirts: 11, Hosen: 9)', 'Spielmodus-Wechsel auch in Einstellungen möglich'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
@@ -6780,7 +6957,44 @@ bindRobustClick(settingsBtn, () => {
   settingsScreen.classList.remove('hidden');
   buildQualityChoices();
   buildDayNightChoices();
+  buildPlayModeChoices();
 });
+// Char-Editor aus Settings heraus aufrufen
+const openCharEditorBtn = document.getElementById('openCharEditorBtn');
+if (openCharEditorBtn) {
+  bindRobustClick(openCharEditorBtn, () => {
+    settingsScreen.classList.add('hidden');
+    charScreen.classList.remove('hidden');
+    buildCharChoices();
+    updateCharBigPreview();
+  });
+}
+// playMode-Auswahl in den Einstellungen
+const playModeChoicesEl = document.getElementById('playModeChoices');
+function buildPlayModeChoices() {
+  if (!playModeChoicesEl) return;
+  playModeChoicesEl.innerHTML = '';
+  const opts = [
+    { val: 'tutorial',  label: '📖 Tutorial' },
+    { val: 'freestyle', label: '🚀 Freestyle' }
+  ];
+  for (const o of opts) {
+    const b = document.createElement('button');
+    b.textContent = o.label;
+    const active = playMode === o.val;
+    b.style.cssText = 'padding: 10px 16px; font-weight: bold; border-radius: 8px; cursor: pointer; border: 2px solid ' +
+      (active ? '#ffd700' : 'rgba(255,255,255,0.25)') + '; background: ' +
+      (active ? 'linear-gradient(135deg,#ffd700,#ffa500)' : 'rgba(255,255,255,0.08)') + '; color: ' +
+      (active ? '#1a1a2e' : '#fff') + ';';
+    bindRobustClick(b, () => {
+      playMode = o.val;
+      safeStorageSet('geburtstag.playMode', o.val);
+      _shownTutorialKeys.clear();
+      buildPlayModeChoices();
+    });
+    playModeChoicesEl.appendChild(b);
+  }
+}
 bindRobustClick(settingsBackBtn, () => {
   settingsScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
@@ -6837,13 +7051,13 @@ let stutterLockUntil = 0;
 const QUALITY_CONFIG = [
   null,
   { px: 0.5,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 10, fogFar: 22 }, // 1 — Notfall (Hecken bleiben, fuers Spiel-Gefuehl)
-  { px: 0.6,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: false, hedges: true, fogNear: 12, fogFar: 28 }, // 2
-  { px: 0.7,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 14, fogFar: 32 }, // 3 (Gras zurueck)
+  { px: 0.6,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true, fogNear: 12, fogFar: 28 }, // 2 (Gras schon hier)
+  { px: 0.7,  shadow: false, butt: 0,  clouds: 0, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 14, fogFar: 32 }, // 3
   { px: 0.85, shadow: false, butt: 0,  clouds: 1, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 16, fogFar: 38 }, // 4
   { px: 1.0,  shadow: false, butt: 0,  clouds: 2, wind: false, sun: false, birds: false, grass: false, grassBlades: true,  hedges: true,  fogNear: 18, fogFar: 46 }, // 5
   { px: 1.2,  shadow: false, butt: 0,  clouds: 3, wind: false, sun: false, birds: true,  grass: false, grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 56 }, // 6
-  { px: 1.4,  shadow: false, butt: 0,  clouds: 4, wind: true,  sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 66 }, // 7
-  { px: 1.6,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 8
+  { px: 1.4,  shadow: false, butt: 0,  clouds: 4, wind: false, sun: false, birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 66 }, // 7 (Wind erst spaeter)
+  { px: 1.6,  shadow: false, butt: 0,  clouds: 5, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 8 (Wind ab hier)
   { px: 1.75, shadow: false, butt: 0,  clouds: 6, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 9
   { px: 1.9,  shadow: true,  butt: 0,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 10
   { px: 2.0,  shadow: true,  butt: 2,  clouds: 7, wind: true,  sun: true,  birds: true,  grass: true,  grassBlades: true,  hedges: true,  fogNear: 20, fogFar: 70 }, // 11
@@ -6875,21 +7089,32 @@ function applyQualityLevel() {
 }
 
 const qualityChip = document.getElementById('qualityChip');
-let qualityChipHideAt = 0;
+let qualityChipFlashUntil = 0;
 function showQualityChip(level) {
-  const prefix = (manualQualityLevel !== null) ? '🔒 Qualität: ' : '⚡ Qualität: ';
+  const prefix = (manualQualityLevel !== null) ? '🔒 Q: ' : '⚡ Q: ';
   qualityChip.textContent = prefix + level;
   qualityChip.classList.add('show');
-  qualityChipHideAt = performance.now() + 1500;
+  qualityChip.classList.add('flash');
+  qualityChipFlashUntil = performance.now() + 800;
+}
+// Immer sichtbar im Spiel anzeigen
+function setQualityChipVisible(on) {
+  if (on) qualityChip.classList.add('show');
+  else qualityChip.classList.remove('show');
+}
+function refreshQualityChip() {
+  const prefix = (manualQualityLevel !== null) ? '🔒 Q: ' : '⚡ Q: ';
+  qualityChip.textContent = prefix + qualityLevel;
 }
 
 let goodFrameStreak = 0;
 function updateAdaptiveQuality(nowMs) {
   frameTimes.push(nowMs);
   if (frameTimes.length > 20) frameTimes.shift();
-  if (qualityChipHideAt > 0 && nowMs > qualityChipHideAt) {
-    qualityChip.classList.remove('show');
-    qualityChipHideAt = 0;
+  // Flash-Effekt nach Quality-Wechsel
+  if (qualityChipFlashUntil > 0 && nowMs > qualityChipFlashUntil) {
+    qualityChip.classList.remove('flash');
+    qualityChipFlashUntil = 0;
   }
   // Manueller Modus: keine automatischen Wechsel
   if (manualQualityLevel !== null) return;
@@ -6946,6 +7171,9 @@ function updateAdaptiveQuality(nowMs) {
     qualityLevel = target;
     applyQualityLevel();
     showQualityChip(target);
+  } else {
+    // Chip immer aktuell halten (wegen manual changes oder Level-Wechsel)
+    refreshQualityChip();
   }
 }
 
