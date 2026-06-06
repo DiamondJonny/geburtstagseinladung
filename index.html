@@ -985,22 +985,31 @@ sun.shadow.camera.left = -32;
 sun.shadow.camera.right = 32;
 sun.shadow.camera.top = 32;
 sun.shadow.camera.bottom = -32;
-sun.shadow.bias = -0.0005;
+sun.shadow.bias = -0.00035;
+sun.shadow.normalBias = 0.02;
+sun.shadow.radius = 4; // weichere Schatten-Raender
 scene.add(sun);
 
-// Visible sun in the garden sky (yellow glowing sphere where the directional light comes from)
+// Sichtbare Sonne — heller Kern + zwei Glow-Schichten fuer realistischen Lens-Halo
 const sunSphere = new THREE.Mesh(
-  new THREE.SphereGeometry(2.6, 24, 16),
-  new THREE.MeshBasicMaterial({ color: 0xfff5b3 })
+  new THREE.SphereGeometry(2.6, 32, 20),
+  new THREE.MeshBasicMaterial({ color: 0xfff8c8 })
 );
 sunSphere.position.set(28, 36, 22);
 scene.add(sunSphere);
 const sunGlow = new THREE.Mesh(
-  new THREE.SphereGeometry(3.8, 20, 14),
-  new THREE.MeshBasicMaterial({ color: 0xfff5b3, transparent: true, opacity: 0.35 })
+  new THREE.SphereGeometry(4.2, 24, 16),
+  new THREE.MeshBasicMaterial({ color: 0xffeb88, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false })
 );
 sunGlow.position.copy(sunSphere.position);
 scene.add(sunGlow);
+// Aeusserer Lens-Halo (groesser, weicher) — additive blending fuer realistischen Glow
+const sunHalo = new THREE.Mesh(
+  new THREE.SphereGeometry(8.5, 20, 14),
+  new THREE.MeshBasicMaterial({ color: 0xffd86b, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false })
+);
+sunHalo.position.copy(sunSphere.position);
+scene.add(sunHalo);
 
 // === Tag/Nacht-Cycle ===
 // Modus: 'day' = nur Tag, 'night' = nur Nacht, 'cycle' = Beides (Sonne wandert)
@@ -1010,19 +1019,38 @@ let dayProgress = 0.2; // 0..1, 0.25 = Mittag — startet kurz vor Mittag (morge
 // Sun-Target zum Ursprung damit das DirectionalLight die Szene beleuchtet
 sun.target.position.set(0, 0, 0);
 scene.add(sun.target);
-// Mond (sichtbar bei Nacht)
+// Mond — schoener mit Kratern, weichem Glow-Halo
+const moonGroup = new THREE.Group();
 const moonSphere = new THREE.Mesh(
-  new THREE.SphereGeometry(2.2, 20, 14),
-  new THREE.MeshBasicMaterial({ color: 0xeef0ff })
+  new THREE.SphereGeometry(2.2, 28, 18),
+  new THREE.MeshStandardMaterial({ color: 0xeef0ff, emissive: 0xccd6ff, emissiveIntensity: 0.6, roughness: 0.95 })
 );
-moonSphere.visible = false;
-scene.add(moonSphere);
+moonGroup.add(moonSphere);
+// Krater
+const craterMat = new THREE.MeshStandardMaterial({ color: 0xbbc4d8, emissive: 0xaab2c4, emissiveIntensity: 0.3, roughness: 1 });
+for (let i = 0; i < 8; i++) {
+  const a = Math.random() * Math.PI * 2;
+  const b = (Math.random() - 0.5) * Math.PI;
+  const r = 0.3 + Math.random() * 0.5;
+  const crater = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), craterMat);
+  crater.position.set(
+    Math.cos(a) * Math.cos(b) * 2.05,
+    Math.sin(b) * 2.05,
+    Math.sin(a) * Math.cos(b) * 2.05
+  );
+  crater.scale.set(0.9, 0.4, 0.9);
+  moonGroup.add(crater);
+}
+moonGroup.visible = false;
+scene.add(moonGroup);
 const moonGlow = new THREE.Mesh(
-  new THREE.SphereGeometry(3.2, 16, 12),
-  new THREE.MeshBasicMaterial({ color: 0xccd6ff, transparent: true, opacity: 0.3 })
+  new THREE.SphereGeometry(4.5, 20, 14),
+  new THREE.MeshBasicMaterial({ color: 0xccd6ff, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false })
 );
 moonGlow.visible = false;
 scene.add(moonGlow);
+// moonSphere alias auf moonGroup damit bestehender Code funktioniert
+const _moonRef = moonGroup;
 // Sterne (sichtbar bei Nacht)
 const starGroup = new THREE.Group();
 for (let i = 0; i < 80; i++) {
@@ -1072,8 +1100,9 @@ function updateDayNight(dt) {
   sun.position.set(sunX, sunY, sunZ);
   sunSphere.position.set(sunX, sunY, sunZ);
   sunGlow.position.set(sunX, sunY, sunZ);
-  // Mond gegenueber der Sonne
-  moonSphere.position.set(-sunX, -sunY, sunZ);
+  if (typeof sunHalo !== 'undefined') sunHalo.position.set(sunX, sunY, sunZ);
+  // Mond gegenueber der Sonne (moonGroup hat Kern + Krater + Glow als Children)
+  moonGroup.position.set(-sunX, -sunY, sunZ);
   moonGlow.position.set(-sunX, -sunY, sunZ);
   // Sichtbarkeit basierend auf Hoehe — Sonne UND Mond niemals gleichzeitig
   const dayFactor = Math.max(0, Math.min(1, (sunY + 5) / 25));
@@ -1081,7 +1110,8 @@ function updateDayNight(dt) {
   const showMoon = !showSun && sunY < 0;
   sunSphere.visible = showSun;
   sunGlow.visible = showSun;
-  moonSphere.visible = showMoon;
+  if (typeof sunHalo !== 'undefined') sunHalo.visible = showSun;
+  moonGroup.visible = showMoon;
   moonGlow.visible = showMoon;
   starGroup.visible = dayFactor < 0.3;
   // Himmel-Farbe (blau → orange → dunkelblau)
@@ -4347,6 +4377,14 @@ const hammerRestPos = hammerGroup.position.clone();
 const hammerRestRot = hammerGroup.rotation.clone();
 camera.add(hammerGroup);
 
+// Subtle Schatten-Halo unter dem Spieler (folgt der Kamera im animate-Loop)
+const playerShadow = new THREE.Mesh(
+  new THREE.CircleGeometry(0.55, 18),
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false })
+);
+playerShadow.rotation.x = -Math.PI / 2;
+scene.add(playerShadow);
+
 // === Schild (linke Seite, sichtbar wenn hasShield) ===
 const shieldGroup = new THREE.Group();
 shieldGroup.position.set(-0.42, -0.28, -0.55);
@@ -7355,7 +7393,8 @@ const UPDATES = [
   { id: 'v29', name: 'Update 29', desc: 'Sound-Effekte JETZT wirklich aktiv (vorher nur definiert)', new: ['🔊 playSfx() wird jetzt überall aufgerufen wo Sounds passieren sollten', 'jump-Sound beim Springen', 'kill-Sound wenn Monster besiegt', 'hurt-Sound wenn Spieler Schaden nimmt', 'arrow-Sound beim Pfeil abschießen', 'enemyShot-Sound beim Roboter-Schuss', 'coin-Sound beim Kronen-Sammeln', 'pipe-Sound beim in die Röhre fahren', 'dock-Sound beim Andocken am Mutterschiff', 'win-Sound beim Torte zerstören', 'powerup-Sound bei Heilung alle 3 Kills'] },
   { id: 'v30', name: 'Update 30', desc: 'Info-Knopf im Tutorial + viel coolere Sounds + Avatar mit Hut/Brille', new: ['ⓘ Info-Knopf oben links im Tutorial: zeigt alle wichtigen Knöpfe gelb markiert', 'Beim Info-Klick: Pfeil-Labels erklären jeden UI-Bereich', 'Sounds sind viel cooler: richTone() mit Obertönen + Frequency-Sweeps + Noise', 'Alle 13 Sounds neu komponiert (Sweep-Effekte, harmonische Layers)', 'Avatar bekommt Hut: Cap, 👑 Krone, 🧙 Zauberer, ⛑️ Helm, 🎉 Party-Hut', 'Avatar bekommt Brille: Sonnenbrille, 👓 Rund, ◽ Eckig', 'Avatar bekommt Gesichtsausdruck: 😊 Lächeln, 😮 Offen, 😐 Ernst, 😛 Zunge'] },
   { id: 'v31', name: 'Update 31', desc: 'Übersichtlicher: gesperrte Items weg, Hearts nur bei Schaden, kleineres UI', new: ['Gesperrte Inventory-Slots werden VERSTECKT (vorher grau sichtbar)', 'Hearts/Lebenspunkte nur sichtbar wenn du Schaden hast (im Freestyle)', 'Im Tutorial bleiben die Hearts immer sichtbar (zum Lernen)', 'Inventory-Slots kleiner (48px statt 60px) — mehr Platz im HUD', 'Quality-Anzeige dezenter (kleiner, transparenter) — stört nicht mehr', 'Bei Quality-Wechsel blitzt sie kurz orange auf, sonst dezent grau'] },
-  { id: 'v32', name: 'Update 32 (aktuell)', desc: 'Performance-Optimierung — weniger stocken bei schönerer Optik', new: ['Char-Preview-Animation throttled auf 10 fps (vorher 60 fps) — 6× weniger Canvas-Drawing', 'Roboter-Marker-PointLight ENTFERNT — bei vielen Robotern war das teuer', 'Stattdessen: schönerer Glow mit Kern (Mesh-Material) — sieht besser aus', 'Mothership-Engines: nur 1 PointLight statt 3 (gleiche Wirkung, 3× billiger)', 'WebGL-Renderer mit „high-performance"-Hint (GPU statt iGPU)', 'Tone-Mapping-Exposure leicht erhöht (1.1) — wärmere Farben'] }
+  { id: 'v32', name: 'Update 32', desc: 'Performance-Optimierung — weniger stocken bei schönerer Optik', new: ['Char-Preview-Animation throttled auf 10 fps (vorher 60 fps) — 6× weniger Canvas-Drawing', 'Roboter-Marker-PointLight ENTFERNT — bei vielen Robotern war das teuer', 'Stattdessen: schönerer Glow mit Kern (Mesh-Material) — sieht besser aus', 'Mothership-Engines: nur 1 PointLight statt 3 (gleiche Wirkung, 3× billiger)', 'WebGL-Renderer mit „high-performance"-Hint (GPU statt iGPU)', 'Tone-Mapping-Exposure leicht erhöht (1.1) — wärmere Farben'] },
+  { id: 'v33', name: 'Update 33 (aktuell)', desc: 'Optische Politur — Sonne, Mond, Schatten, Spieler-Halo viel echter', new: ['☀️ Sonne mit 3 Glow-Schichten + Additive-Blending Lens-Halo', '☀️ Sun-Halo pulsiert sanft (atmosphärischer Effekt)', '🌙 Mond mit Kratern (8 zufällige Krater-Beulen) statt Sphäre', '🌙 Mond-Glow mit Additive-Blending für realistischen Schein', '👤 Spieler-Schatten-Halo auf dem Boden (skaliert beim Springen)', '🌑 Schatten weicher (radius 4) + besseres Bias (kein „Acne")', 'Sun-Sphere höhere Auflösung (32×20 statt 24×16) für glattere Form'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
@@ -7916,12 +7955,30 @@ function animate() {
       s.group.position.z = Math.sin(s.baseAng) * h.open * 2.4;
     }
   }
+  // Spieler-Schatten folgt der Kamera (auf dem Boden, leicht angehoben)
+  if (playerShadow && gameState === 'playing' && !inUfo) {
+    const groundY = (typeof getGroundHeightAt === 'function') ? getGroundHeightAt(camera.position.x, camera.position.z) : 0;
+    playerShadow.visible = true;
+    playerShadow.position.set(camera.position.x, groundY + 0.02, camera.position.z);
+    // Skaliere je nach Hoehe ueber Boden (kleiner wenn weit weg = beim Springen)
+    const playerFeet = camera.position.y - PLAYER_HEIGHT;
+    const heightAbove = Math.max(0, playerFeet - groundY);
+    const sc = Math.max(0.4, 1 - heightAbove * 0.15);
+    playerShadow.scale.set(sc, sc, sc);
+    playerShadow.material.opacity = 0.35 * sc;
+  } else if (playerShadow) {
+    playerShadow.visible = false;
+  }
   // Avatar-Animation Frame + Vorschau (THROTTLED auf 10 fps — Canvas-Drawing ist teuer)
   animFrame += dt;
   _charPreviewUpdateAccum += dt;
   if (_charPreviewUpdateAccum > 0.1 && charPreviewEl && charPreviewEl.classList.contains('show')) {
     _charPreviewUpdateAccum = 0;
     updateCharPreview();
+  }
+  // Sun-Halo sanft pulsieren (echter wirkender Glow)
+  if (typeof sunHalo !== 'undefined' && sunHalo.visible) {
+    sunHalo.material.opacity = 0.15 + 0.06 * (0.5 + 0.5 * Math.sin(nowMs * 0.0008));
   }
   // Mutterschiff: pulsierender Beacon + leichte Schwebe-Animation
   if (window.__mothershipBeacon) {
