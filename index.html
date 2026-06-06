@@ -85,6 +85,24 @@
   .info-label { position: fixed; background: #ffd700; color: #1a1a2e; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; pointer-events: none; z-index: 22; box-shadow: 0 4px 12px rgba(0,0,0,0.5); white-space: nowrap; max-width: 180px; }
   .info-arrow { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 22; }
   #infoCloseHint { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #ffd700; padding: 10px 20px; border-radius: 20px; font-weight: bold; z-index: 23; pointer-events: none; border: 2px solid #ffd700; }
+  /* Animierte Erfolgs-Feiereffekte */
+  #celebrateBanner { position: fixed; top: 32%; left: 50%; transform: translate(-50%, -50%) scale(0.3) rotate(-15deg); font-size: clamp(1.8rem, 5vw, 3.4rem); font-weight: 900; text-align: center; pointer-events: none; z-index: 60; opacity: 0; text-shadow: 0 4px 20px rgba(0,0,0,0.6); background: linear-gradient(90deg, #ff0066, #ff9900, #ffeb00, #00ff66, #00ccff, #cc00ff, #ff0066); background-size: 400% 100%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: celebrateText 2.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, rainbowShift 1.8s linear infinite; }
+  @keyframes celebrateText {
+    0%   { transform: translate(-50%, -50%) scale(0.3) rotate(-15deg); opacity: 0; }
+    18%  { transform: translate(-50%, -50%) scale(1.25) rotate(2deg); opacity: 1; }
+    35%  { transform: translate(-50%, -50%) scale(1.0) rotate(-1deg); opacity: 1; }
+    78%  { transform: translate(-50%, -50%) scale(1.05) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.9) rotate(0deg); opacity: 0; }
+  }
+  @keyframes rainbowShift {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 400% 50%; }
+  }
+  .celebrate-particle { position: fixed; top: 50%; left: 50%; width: 14px; height: 14px; pointer-events: none; z-index: 59; border-radius: 3px; will-change: transform, opacity; animation: confettiFly var(--dur, 1.6s) cubic-bezier(0.2, 0.8, 0.3, 1) forwards; }
+  @keyframes confettiFly {
+    0%   { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx, 200px)), calc(-50% + var(--dy, 200px))) scale(0.5) rotate(720deg); opacity: 0; }
+  }
   #abortBtn { position: fixed; top: 12px; left: 14px; background: rgba(40,20,30,0.7); color: #ff9090; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; z-index: 8; border: 2px solid rgba(255,120,120,0.6); cursor: pointer; pointer-events: auto; display: none; }
   #abortBtn:hover { background: rgba(80,30,40,0.85); color: #fff; }
   #abortBtn.show { display: block; }
@@ -4326,6 +4344,8 @@ function collectCrown(c) {
   updateInventory();
   checkUnlockBow();
   playSfx('coin');
+  if (crownsCollected === 1) celebrateOnce('firstCrown', '👑 Erste Krone!');
+  if (crownsCollected === 3) celebrateOnce('threeCrowns', '✨ Drei Kronen! Doppelsprung!');
   // Sparkle burst
   for (let i = 0; i < 24; i++) {
     const sz = 0.04 + Math.random() * 0.05;
@@ -4747,6 +4767,7 @@ function dockToMothership() {
   spawnMothershipRobots();
   showUnlockMessage('🛸 Du bist im Mutterschiff! Erreiche die Controllerzentrale in der Mitte!');
   playSfx('dock');
+  celebrateAchievement('🛸 Andocken geschafft!', { count: 60 });
 }
 
 function checkMothershipWin() {
@@ -5831,14 +5852,17 @@ function tryCraft(cs) {
     hasGoldHammer = true;
     playerHp = Math.min(getMaxHp(), playerHp + 1);
     showUnlockMessage('\u{2692} Gold-Hammer gebaut! +1 Herz, mehr Reichweite!');
+    celebrateAchievement('⚒️ Gold-Hammer!', { count: 50 });
   } else if (cs.kind === 'shield') {
     hasShield = true;
     playerHp = Math.min(getMaxHp(), playerHp + 1);
     showUnlockMessage('\u{1F6E1} Schild gebaut! +1 Herz, halber Schaden!');
+    celebrateAchievement('🛡️ Schild!', { count: 50 });
   } else if (cs.kind === 'armor') {
     hasArmor = true;
     playerHp = Math.min(getMaxHp(), playerHp + 2);
     showUnlockMessage('\u{1F9E5} R&uuml;stung gebaut! +2 Herzen!');
+    celebrateAchievement('🦺 Rüstung!', { count: 50 });
   }
   updateInventory();
   updateHearts();
@@ -5957,6 +5981,8 @@ function killMonster(m) {
   updateInventory();
   checkUnlockBow();
   playSfx('kill');
+  if (monstersKilled === 1) celebrateOnce('firstKill', '⚔️ Erstes Monster besiegt!');
+  if (monstersKilled === 8) celebrateOnce('bowUnlock', '🏹 Pfeil & Bogen freigeschaltet!');
   if (m._onMothership) setTimeout(checkMothershipWin, 200);
   // Every 3 kills: heal half a heart (if not full)
   if (monstersKilled % 3 === 0 && playerHp < getMaxHp()) {
@@ -6282,6 +6308,45 @@ if (tutorialInfoBtn) {
     if (_infoOverlayActive) hideInfoOverlay();
     else showInfoOverlay();
   });
+}
+
+// === Animierte Erfolgs-Feier (Rainbow-Banner + Konfetti) ===
+const _shownAchievements = new Set();
+function celebrateAchievement(text, opts) {
+  opts = opts || {};
+  // Banner mit Regenbogen-Farben (animiert via CSS)
+  const existing = document.getElementById('celebrateBanner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'celebrateBanner';
+  banner.textContent = text;
+  document.body.appendChild(banner);
+  setTimeout(() => { try { banner.remove(); } catch (e) {} }, 2800);
+  // Konfetti-Burst (40 fliegende Partikel)
+  const colors = ['#ff0066', '#ff9900', '#ffeb00', '#00ff66', '#00ccff', '#cc00ff', '#ffffff', '#ffd700'];
+  const count = opts.count || 40;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'celebrate-particle';
+    const ang = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+    const dist = 120 + Math.random() * 280;
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty('--dx', (Math.cos(ang) * dist).toFixed(1) + 'px');
+    p.style.setProperty('--dy', (Math.sin(ang) * dist - 60).toFixed(1) + 'px');
+    p.style.setProperty('--dur', (1.2 + Math.random() * 0.9).toFixed(2) + 's');
+    p.style.width = (10 + Math.random() * 8) + 'px';
+    p.style.height = (10 + Math.random() * 8) + 'px';
+    if (Math.random() < 0.3) p.style.borderRadius = '50%';
+    document.body.appendChild(p);
+    setTimeout(() => { try { p.remove(); } catch (e) {} }, 2200);
+  }
+  // Sound
+  if (typeof playSfx === 'function') playSfx('powerup');
+}
+function celebrateOnce(key, text, opts) {
+  if (_shownAchievements.has(key)) return;
+  _shownAchievements.add(key);
+  celebrateAchievement(text, opts);
 }
 
 // Tutorial-Hint: einmaliger Hinweis pro Schluessel — zeigt Text UND spricht ihn via Speech Synthesis
@@ -6638,6 +6703,7 @@ function win() {
   for (const child of cakeGroup.children) child.visible = false;
   spawnCrumbs(180, true);
   playSfx('win');
+  celebrateAchievement('🎂 Torte gefunden!', { count: 80 });
   // Tutorial-Modus: Torte zerstoert → automatisch zu Freestyle wechseln und neu starten
   if (isTutorialMode()) {
     playMode = 'freestyle';
@@ -6866,6 +6932,8 @@ function registerAlienCakeHit() {
 
 function finalWin() {
   gameState = 'won';
+  if (typeof playSfx === 'function') playSfx('win');
+  celebrateAchievement('🏆 GEWONNEN!', { count: 120 });
   alienCakeState.alive = false;
   for (const c of alienCakeGroup.children) c.visible = false;
   // big colorful burst
@@ -7394,7 +7462,8 @@ const UPDATES = [
   { id: 'v30', name: 'Update 30', desc: 'Info-Knopf im Tutorial + viel coolere Sounds + Avatar mit Hut/Brille', new: ['ⓘ Info-Knopf oben links im Tutorial: zeigt alle wichtigen Knöpfe gelb markiert', 'Beim Info-Klick: Pfeil-Labels erklären jeden UI-Bereich', 'Sounds sind viel cooler: richTone() mit Obertönen + Frequency-Sweeps + Noise', 'Alle 13 Sounds neu komponiert (Sweep-Effekte, harmonische Layers)', 'Avatar bekommt Hut: Cap, 👑 Krone, 🧙 Zauberer, ⛑️ Helm, 🎉 Party-Hut', 'Avatar bekommt Brille: Sonnenbrille, 👓 Rund, ◽ Eckig', 'Avatar bekommt Gesichtsausdruck: 😊 Lächeln, 😮 Offen, 😐 Ernst, 😛 Zunge'] },
   { id: 'v31', name: 'Update 31', desc: 'Übersichtlicher: gesperrte Items weg, Hearts nur bei Schaden, kleineres UI', new: ['Gesperrte Inventory-Slots werden VERSTECKT (vorher grau sichtbar)', 'Hearts/Lebenspunkte nur sichtbar wenn du Schaden hast (im Freestyle)', 'Im Tutorial bleiben die Hearts immer sichtbar (zum Lernen)', 'Inventory-Slots kleiner (48px statt 60px) — mehr Platz im HUD', 'Quality-Anzeige dezenter (kleiner, transparenter) — stört nicht mehr', 'Bei Quality-Wechsel blitzt sie kurz orange auf, sonst dezent grau'] },
   { id: 'v32', name: 'Update 32', desc: 'Performance-Optimierung — weniger stocken bei schönerer Optik', new: ['Char-Preview-Animation throttled auf 10 fps (vorher 60 fps) — 6× weniger Canvas-Drawing', 'Roboter-Marker-PointLight ENTFERNT — bei vielen Robotern war das teuer', 'Stattdessen: schönerer Glow mit Kern (Mesh-Material) — sieht besser aus', 'Mothership-Engines: nur 1 PointLight statt 3 (gleiche Wirkung, 3× billiger)', 'WebGL-Renderer mit „high-performance"-Hint (GPU statt iGPU)', 'Tone-Mapping-Exposure leicht erhöht (1.1) — wärmere Farben'] },
-  { id: 'v33', name: 'Update 33 (aktuell)', desc: 'Optische Politur — Sonne, Mond, Schatten, Spieler-Halo viel echter', new: ['☀️ Sonne mit 3 Glow-Schichten + Additive-Blending Lens-Halo', '☀️ Sun-Halo pulsiert sanft (atmosphärischer Effekt)', '🌙 Mond mit Kratern (8 zufällige Krater-Beulen) statt Sphäre', '🌙 Mond-Glow mit Additive-Blending für realistischen Schein', '👤 Spieler-Schatten-Halo auf dem Boden (skaliert beim Springen)', '🌑 Schatten weicher (radius 4) + besseres Bias (kein „Acne")', 'Sun-Sphere höhere Auflösung (32×20 statt 24×16) für glattere Form'] }
+  { id: 'v33', name: 'Update 33', desc: 'Optische Politur — Sonne, Mond, Schatten, Spieler-Halo viel echter', new: ['☀️ Sonne mit 3 Glow-Schichten + Additive-Blending Lens-Halo', '☀️ Sun-Halo pulsiert sanft (atmosphärischer Effekt)', '🌙 Mond mit Kratern (8 zufällige Krater-Beulen) statt Sphäre', '🌙 Mond-Glow mit Additive-Blending für realistischen Schein', '👤 Spieler-Schatten-Halo auf dem Boden (skaliert beim Springen)', '🌑 Schatten weicher (radius 4) + besseres Bias (kein „Acne")', 'Sun-Sphere höhere Auflösung (32×20 statt 24×16) für glattere Form'] },
+  { id: 'v34', name: 'Update 34 (aktuell)', desc: 'Animierte Erfolgs-Feiern + Walkthrough-Tests', new: ['🎉 celebrateAchievement(): Rainbow-Banner + Konfetti-Burst bei Erfolg', '🎉 1. Krone gesammelt → Banner „Erste Krone!"', '🎉 3 Kronen → Doppelsprung-Banner', '🎉 1. Monster besiegt → Banner', '🎉 Pfeil & Bogen freigeschaltet → Banner', '🎉 Gold-Hammer/Schild/Rüstung gebaut → eigene Banner', '🎉 Mutterschiff angedockt → Banner', '🎉 Torte zerstört → 🎂-Banner', '🏆 GEWONNEN → riesiger Banner mit 120 Konfetti', 'Banner-Text rotiert die Regenbogen-Farben', 'Walkthrough-Tests: alle Game-Funktionen sind aufrufbar'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
