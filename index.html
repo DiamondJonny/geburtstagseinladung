@@ -536,7 +536,7 @@ const nameInput = document.getElementById('nameInput');
 const nameSubmit = document.getElementById('nameSubmit');
 
 // Gästeliste — Namen kleingeschrieben! Groß/Kleinschreibung beim Vergleich egal.
-const INVITED_NAMES = ['jonathan', 'samuel', 'mavi', 'daniel', 'christian', 'bastian', 'ben'];
+const INVITED_NAMES = ['jonathan', 'samuel', 'mavi', 'daniel', 'christian', 'bastian', 'ben', 'leon', 'richard', 'rosemarien'];
 let playerName = '';
 let playerIsInvited = false;
 
@@ -7672,7 +7672,8 @@ const UPDATES = [
   { id: 'v38', name: 'Update 38', desc: 'Verlassen-Knopf + Quality-Pfeile + iPad-Quality-Fix', new: ['🛸 „Verlassen (ins UFO)"-Knopf oben links wenn auf Mutterschiff', 'Klick: zurück ins UFO unter dem Schiff — kann erneut andocken', '▲▼ Manuelle Quality-Pfeile direkt unter dem Quality-Chip', 'Klick wechselt Quality um 1 hoch/runter und merkt sich die Wahl', '🛡️ Quality-Warmup: in den ersten 4s KEINE Spike-Reaktion', 'Verhindert dass iPad sofort auf Stufe 1 fällt durch Welt-Aufbau-Spikes', 'Mothership-Bodenfläche jetzt 9.8 (war 9.5) — passt zur Boundary 9.6', 'Kein „Rausfliegen" mehr durch inkonsistente Boundary/Boden-Grenzen'] },
   { id: 'v39', name: 'Update 39', desc: 'Gästeliste erweitert', new: ['🎉 Christian, Bastian und Ben jetzt auch auf der Gästeliste', 'Gesamte Liste: Jonathan, Samuel, Mavi, Daniel, Christian, Bastian, Ben'] },
   { id: 'v40', name: 'Update 40', desc: 'Querformat-Fix: alle Menüs scrollbar + kompakter', new: ['📱 Overlays sind jetzt scrollbar wenn der Inhalt zu hoch ist (iPad-Querformat)', 'Du erreichst „Zurück" und „Einstellungen" jetzt auch im Querformat', 'Vertikales Zentrieren funktioniert TROTZ overflow:auto (flex + pseudo-spacer)', '@media (max-height: 600px): kompakteres Layout im Querformat', '  - Überschriften kleiner (1.4rem)', '  - Texte kompakter (0.85em + 1.3 line-height)', '  - Buttons kleiner und enger', '-webkit-overflow-scrolling: touch für smooth Scrolling auf iOS'] },
-  { id: 'v41', name: 'Update 41 (aktuell)', desc: 'Unsichtbar = durchgängig (keine unsichtbaren Wände mehr)', new: ['👻 Hecken-Obstacles werden disabled wenn die Hecke unsichtbar ist', '👻 Pedestal-Obstacle wird disabled wenn das Pedestal unsichtbar ist', 'Sichtbarkeit + Kollision sind jetzt immer synchron', 'Im Tutorial kannst du jetzt überall hin laufen (kein unsichtbarer Block)', 'Group + Obstacle via userData.obstacle gekoppelt für sauberes Toggle'] }
+  { id: 'v41', name: 'Update 41', desc: 'Unsichtbar = durchgängig (keine unsichtbaren Wände mehr)', new: ['👻 Hecken-Obstacles werden disabled wenn die Hecke unsichtbar ist', '👻 Pedestal-Obstacle wird disabled wenn das Pedestal unsichtbar ist', 'Sichtbarkeit + Kollision sind jetzt immer synchron', 'Im Tutorial kannst du jetzt überall hin laufen (kein unsichtbarer Block)', 'Group + Obstacle via userData.obstacle gekoppelt für sauberes Toggle'] },
+  { id: 'v42', name: 'Update 42 (aktuell)', desc: 'Gästeliste erweitert auf 10 Namen', new: ['🎉 Leon, Richard und Rosemarien jetzt auch eingeladen', 'Gesamte Liste: Jonathan, Samuel, Mavi, Daniel, Christian, Bastian, Ben, Leon, Richard, Rosemarien (10)'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
