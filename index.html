@@ -43,7 +43,20 @@
   .inv-num { font-size: 10px; font-weight: bold; color: #ffd700; position: absolute; bottom: 3px; text-shadow: 1px 1px 0 #000; }
   .inv-lbl { font-size: 8px; text-transform: uppercase; opacity: 0.75; position: absolute; bottom: 3px; letter-spacing: 0.5px; }
 
-  .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(15,52,96,0.85) 0%, rgba(10,10,20,0.95) 100%); backdrop-filter: blur(8px); text-align: center; padding: 24px; transition: opacity 0.5s; z-index: 10; }
+  /* Overlay: scrollbar wenn Inhalt zu hoch — wichtig fuer iPad-Querformat */
+  .overlay { position: fixed; inset: 0; background: radial-gradient(ellipse at center, rgba(15,52,96,0.85) 0%, rgba(10,10,20,0.95) 100%); backdrop-filter: blur(8px); text-align: center; padding: 16px; transition: opacity 0.5s; z-index: 10; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; align-items: center; }
+  /* Vertikales Zentrieren via auto-margins (funktioniert MIT overflow scroll, im Gegensatz zu justify-content:center) */
+  .overlay > * { flex-shrink: 0; }
+  .overlay::before, .overlay::after { content: ''; flex: 1 0 8px; min-height: 8px; }
+  /* Im Querformat (kurze Hoehe): kompakter */
+  @media (max-height: 600px) {
+    .overlay { padding: 8px 16px; }
+    .overlay h1 { font-size: 1.4rem !important; margin-bottom: 6px !important; }
+    .overlay p { font-size: 0.85em !important; margin-bottom: 5px !important; line-height: 1.3 !important; }
+    .overlay .btn { padding: 8px 20px !important; font-size: 0.95rem !important; margin-top: 6px !important; }
+    .overlay .controls { padding: 8px 14px !important; font-size: 0.8rem !important; margin-top: 8px !important; }
+    .overlay .invitation { padding: 16px 20px !important; }
+  }
   .overlay.hidden { opacity: 0; pointer-events: none; }
   .overlay h1 { font-size: clamp(1.8rem, 4vw, 3rem); margin-bottom: 16px; color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.6); letter-spacing: 1px; }
   .overlay p { font-size: clamp(0.9rem, 1.6vw, 1.2rem); margin-bottom: 10px; line-height: 1.5; max-width: 600px; }
@@ -7642,7 +7655,8 @@ const UPDATES = [
   { id: 'v36', name: 'Update 36', desc: 'Mothership-Durchfall-Schutz + 20 Quality-Stufen + globaler Info-Knopf', new: ['🛡️ Mothership Anti-Fall: Y < (MOTHERSHIP_Y-4) → sofort sicher zurück zur Ecke', '⚙️ Quality-Stufen jetzt 1–20 (vorher 1–13) für mehr Granularität', 'Stufe 1 nur für ganz alte iPads (px 0.4 — absolutes Notfall)', 'Stufen 1–3 für sehr alte Geräte, 4–11 für iPads, 12–17 für PCs, 18–20 für Top-Hardware', 'Modernes iPad startet auf Stufe 11 (vorher 6), guter PC auf 18 (vorher 13)', '🟡 Globaler ℹ️-Info-Knopf neben dem Inventory — IMMER sichtbar', 'Klick zeigt Markierungen für ALLE klickbaren Knöpfe mit Pfeil-Erklärungen', 'findSafeAlienSpawn jetzt mit 16 Ringen + 4 Fallback-Spots'] },
   { id: 'v37', name: 'Update 37', desc: 'Roboter sanfter + Info-Overlay komplett überarbeitet', new: ['Roboter-Schüsse alle 3.5–6s (vorher 1.2–2.7s) — fairer für Spieler', 'Mindestschuss-Distanz 1.5 (vorher 0.5) — nicht mehr aus nächster Nähe', 'Projektile langsamer (speed 8 statt 11) — Ausweichen möglich', 'ALIEN_SHOT_GAP 400ms zwischen Schüssen im Mutterschiff', '📋 Info-Overlay: Labels jetzt ALLE zentral in der Mitte gestackt', '➡️ Goldene gestrichelte Pfeile gehen vom Label zum Knopf mit Spitze', 'Kein Überlappen mehr — kontrastreiche schwarze Text auf goldem Label', 'Schließ-Hinweis unten mit goldenem Rand'] },
   { id: 'v38', name: 'Update 38', desc: 'Verlassen-Knopf + Quality-Pfeile + iPad-Quality-Fix', new: ['🛸 „Verlassen (ins UFO)"-Knopf oben links wenn auf Mutterschiff', 'Klick: zurück ins UFO unter dem Schiff — kann erneut andocken', '▲▼ Manuelle Quality-Pfeile direkt unter dem Quality-Chip', 'Klick wechselt Quality um 1 hoch/runter und merkt sich die Wahl', '🛡️ Quality-Warmup: in den ersten 4s KEINE Spike-Reaktion', 'Verhindert dass iPad sofort auf Stufe 1 fällt durch Welt-Aufbau-Spikes', 'Mothership-Bodenfläche jetzt 9.8 (war 9.5) — passt zur Boundary 9.6', 'Kein „Rausfliegen" mehr durch inkonsistente Boundary/Boden-Grenzen'] },
-  { id: 'v39', name: 'Update 39 (aktuell)', desc: 'Gästeliste erweitert', new: ['🎉 Christian, Bastian und Ben jetzt auch auf der Gästeliste', 'Gesamte Liste: Jonathan, Samuel, Mavi, Daniel, Christian, Bastian, Ben'] }
+  { id: 'v39', name: 'Update 39', desc: 'Gästeliste erweitert', new: ['🎉 Christian, Bastian und Ben jetzt auch auf der Gästeliste', 'Gesamte Liste: Jonathan, Samuel, Mavi, Daniel, Christian, Bastian, Ben'] },
+  { id: 'v40', name: 'Update 40 (aktuell)', desc: 'Querformat-Fix: alle Menüs scrollbar + kompakter', new: ['📱 Overlays sind jetzt scrollbar wenn der Inhalt zu hoch ist (iPad-Querformat)', 'Du erreichst „Zurück" und „Einstellungen" jetzt auch im Querformat', 'Vertikales Zentrieren funktioniert TROTZ overflow:auto (flex + pseudo-spacer)', '@media (max-height: 600px): kompakteres Layout im Querformat', '  - Überschriften kleiner (1.4rem)', '  - Texte kompakter (0.85em + 1.3 line-height)', '  - Buttons kleiner und enger', '-webkit-overflow-scrolling: touch für smooth Scrolling auf iOS'] }
 ];
 
 // gameMode: standardmaessig IMMER das aktuelle Update — und Auto-Migration
